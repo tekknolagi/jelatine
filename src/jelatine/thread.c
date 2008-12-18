@@ -1,0 +1,1099 @@
+/***************************************************************************
+ *   Copyright © 2005, 2006, 2007, 2008 by Gabriele Svelto                 *
+ *   gabriele.svelto@gmail.com                                             *
+ *                                                                         *
+ *   This file is part of Jelatine.                                        *
+ *                                                                         *
+ *   Jelatine is free software: you can redistribute it and/or modify      *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation, either version 3 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ *   Jelatine is distributed in the hope that it will be useful,           *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU General Public License for more details.                          *
+ *                                                                         *
+ *   You should have received a copy of the GNU General Public License     *
+ *   along with Jelatine.  If not, see <http://www.gnu.org/licenses/>.     *
+ ***************************************************************************/
+
+/** \file thread.c
+ * Implementation of the virtual machine thread */
+
+#include "wrappers.h"
+
+#include "class.h"
+#include "interpreter.h"
+#include "loader.h"
+#include "memory.h"
+#include "thread.h"
+#include "vm.h"
+
+#include "java_lang_Thread.h"
+
+/******************************************************************************
+ * Thread manager                                                             *
+ ******************************************************************************/
+
+/** Payload passed to a new thread's thread_start() routine. Holds all the
+ * information necessary to bootstrap the thread. */
+
+struct thread_payload_t {
+    thread_t *thread; /**< The thread's own structure */
+    method_t *run; /**< The run() method of the thread */
+};
+
+/** Typedef for the ::struct thread_payload_t type */
+typedef struct thread_payload_t thread_payload_t;
+
+/** Represents a Java monitor */
+
+struct monitor_t {
+    struct monitor_t *next; ///< Next monitor in the list
+    uintptr_t ref; ///< Object associated with this monitor
+    thread_t *owner; ///< Owner thread, NULL if the monitor is unlocked
+    size_t count; ///< Number of times the monitor was acquired
+#if JEL_THREAD_POSIX
+    pthread_cond_t *pthread_cond;
+#elif JEL_THREAD_PTH
+    pth_cond_t *pth_cond; ///< GNU/Pth condition variable
+#endif
+};
+
+/** Typedef for the ::struct monitor_t type */
+typedef struct monitor_t monitor_t;
+
+/** Define the minimum capacity (i.e. number of buckets) of the monitor table */
+#define TM_CAPACITY (4)
+
+/** Thread manager, contains all the threads and is used to interact with them
+ * globally */
+
+struct thread_manager_t {
+#if JEL_THREAD_POSIX
+    pthread_mutex_t lock; ///< Global VM lock
+#elif JEL_THREAD_PTH
+    pth_mutex_t lock; ///< Global VM lock
+    size_t switch_n; ///< Number of context switches
+#endif
+    size_t active; ///< Number of active threads
+    thread_t *queue; ///< Doubly-linked queue of active threads
+    size_t capacity; ///< Capacity of the monitor hash-table
+    size_t entries; ///< Number of used entries of the monitor hash-table
+    monitor_t *buckets; ///< Buckets of the monitor hash-table
+};
+
+/** Typedef for the ::struct thread_manager_t type */
+typedef struct thread_manager_t thread_manager_t;
+
+/******************************************************************************
+ * Local declarations                                                         *
+ ******************************************************************************/
+
+/** \var self
+ * Thread-local self pointer of a thread */
+
+#if JEL_THREAD_POSIX
+#   ifdef TLS
+static TLS thread_t *self;
+#   else
+static pthread_key_t self;
+#   endif // TLS
+#elif JEL_THREAD_PTH
+static pth_key_t self;
+#else
+static thread_t *self;
+#endif
+
+/** Thread manager singleton */
+static thread_manager_t tm;
+
+/******************************************************************************
+ * Thread manager implementation                                              *
+ ******************************************************************************/
+
+/** Number of global lock acquisition/release couples before yielding when
+ * using GNU/Pth */
+#define PTH_SWITCH_N (500)
+
+/** Initialize the thread manager, this does not include the initialization of
+ * the Java monitors subsystem because the thread manager is initialized before
+ * the heap manager */
+
+void tm_init( void )
+{
+#if JEL_THREAD_POSIX
+    pthread_mutexattr_t attr;
+#endif // JEL_THREAD_POSIX
+
+    memset(&tm, 0, sizeof(thread_manager_t));
+
+    /* When using multi-threading the global machine lock is recursive so that
+     * the code can enter more than one syncrhonized sections safely */
+#if JEL_THREAD_POSIX
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&tm.lock, &attr);
+    pthread_mutexattr_destroy(&attr);
+#elif JEL_THREAD_PTH
+    if (!pth_init()) {
+        vm_fail();
+    }
+
+    pth_mutex_init(&tm.lock);
+    tm.switch_n = PTH_SWITCH_N;
+#endif
+
+#if JEL_THREAD_POSIX && !defined(TLS)
+    pthread_key_create(&self, NULL);
+#elif JEL_THREAD_PTH
+    pth_key_create(&self, NULL);
+#endif
+} // tm_init()
+
+/** Tears down the thread manager */
+
+void tm_teardown( void )
+{
+#if JEL_THREAD_POSIX
+    thread_t *thread;
+
+    tm_lock();
+    tm_stop_the_world();
+
+    for (thread = tm.queue; thread != NULL; thread = thread->next) {
+        pthread_cancel(thread->pthread);
+    }
+
+    tm_unlock();
+    pthread_mutex_destroy(&tm.lock);
+#   ifndef TLS
+    pthread_key_delete(self);
+#   endif // !TLS
+#elif JEL_THREAD_PTH
+    pth_key_delete(self);
+    pth_kill();
+#endif
+
+    gc_free(tm.buckets);
+} // tm_teardown()
+
+/** Register a new thread in the thread manager
+ * \param thread A pointer to the new thread */
+
+void tm_register(thread_t *thread)
+{
+    tm_lock();
+    thread->next = tm.queue;
+    tm.queue = thread;
+    tm.active++;
+    tm_unlock();
+} // tm_register()
+
+/** Unregister a dying thread
+ * \param thread A thread which has finished execution */
+
+void tm_unregister(thread_t *thread)
+{
+    thread_t *prev, *curr;
+
+    tm_lock();
+    prev = NULL;
+    curr = tm.queue;
+
+    while (thread != curr) {
+        prev = curr;
+        curr = curr->next;
+    }
+
+    if (prev == NULL) {
+        tm.queue = curr->next;
+    } else {
+        prev->next = curr->next;
+    }
+
+    tm.active--;
+    JAVA_LANG_THREAD_REF2PTR(thread->obj)->vmThread = JNULL;
+    tm_unlock();
+} // tm_unregister_thread()
+
+/** Returns the number of active threads in the system
+ * \returns Returns the number of active threads */
+
+uint32_t tm_active( void )
+{
+    return tm.active;
+} // tm_active()
+
+/** Marks all the references reacheable from the threads */
+
+void tm_mark( void )
+{
+    jword_t *scan;
+    thread_t *thread;
+
+    for (thread = tm.queue; thread != NULL; thread = thread->next) {
+        gc_mark_reference(thread->obj);
+
+        // Mark the temporary roots
+        for (size_t i = 0; i < thread->roots.used; i++) {
+            gc_mark_potential(*(thread->roots.pointers[i]));
+        }
+
+        // Crawl the stack
+        if (thread->stack != NULL) {
+            for (scan = thread->stack; scan < thread->sp; scan++) {
+                gc_mark_potential(*((uintptr_t *) scan));
+            }
+        }
+
+        // Mark the pending exception
+        gc_mark_reference(thread->exception);
+    }
+} // tm_mark()
+
+/** Hash function used for object references
+ * \param ref A reference to a Java object */
+
+static size_t tm_hash(uintptr_t ref)
+{
+#if SIZEOF_VOID_P == 4
+    return (ref >> 2);
+#else
+    return (ref >> 3);
+#endif
+} // tm_hash()
+
+/** Purge the monitor table by clearing the entries associated with dead
+ * objects, also purge the associated conditions */
+
+void tm_purge( void )
+{
+    size_t hash, entries = 0;
+    monitor_t *entry, *other;
+    header_t *header;
+
+    for (size_t i = 0; i < tm.capacity; i++) {
+        entry = tm.buckets + i;
+
+        if (entry->ref) {
+            header = (header_t *) entry->ref;
+
+            if (!header_is_marked(header)) {
+                /* The object referenced by this monitor is dead, let's purge
+                 * the monitor then */
+#if JEL_THREAD_POSIX
+                if (entry->pthread_cond) {
+                    pthread_cond_destroy(entry->pthread_cond);
+                    gc_free(entry->pthread_cond);
+                }
+#elif JEL_THREAD_PTH
+                if (entry->pth_cond) {
+                    /* HACK, GROSS: This relies on internal information of
+                     * GNU/Pth, we should find a better way for checking that
+                     * there are no waiters */
+                    assert(entry->pth_cond->cn_waiters == 0);
+                    gc_free(entry->pth_cond);
+                }
+#endif
+                memset(entry, 0, sizeof(monitor_t));
+            } else {
+                entries++;
+            }
+        }
+    }
+
+    tm.entries = entries;
+
+    /* This first phase will scan the buckets looking for the remaining
+     * monitors. If a monitor is not in the bucket corresponding to its hash
+     * value we check the bucket corresponding to the hash value. If it is
+     * empty the monitor is moved there, if it is full but the monitor there
+     * does not correspond to the hash value the two monitors are swapped.
+     * This phase also clears the 'next' field of the monitors so that we can
+     * re-chain them in the next phase */
+
+    for (size_t i = 0; i < tm.capacity; i++) {
+        entry = tm.buckets + i;
+
+        if (entry->ref) {
+            entry->next = NULL;
+            hash = tm_hash(entry->ref) & (tm.capacity - 1);
+
+            if (i != hash) {
+                other = tm.buckets + hash;
+
+                if (other->ref == JNULL) {
+                    *other = *entry;
+                    memset(entry, 0, sizeof(monitor_t));
+                } else if ((tm_hash(other->ref) & (tm.capacity - 1)) != hash) {
+                    monitor_t dummy = *other;
+                    *other = *entry;
+                    *entry = dummy;
+                }
+            }
+        }
+    }
+
+    /* We look for the entries that are in the buckets which are not associated
+     * with their hash value. Those entries are chained after the entries in
+     * the buckets associated with their hash value */
+
+    for (size_t i = 0; i < tm.capacity; i++) {
+        entry = tm.buckets + i;
+
+        if (entry->ref) {
+            hash = tm_hash(entry->ref) & (tm.capacity - 1);
+
+            if (i != hash) {
+                entry->next = tm.buckets[hash].next;
+                tm.buckets[hash].next = entry;
+            }
+        }
+    }
+} // tm_purge()
+
+/** Rehash the monitor table, growing or shrinking it
+ * \param grow true if the table must be grown, false if it must be shrinked */
+
+static void tm_rehash(bool grow)
+{
+    size_t capacity, hash;
+    size_t i, j;
+    monitor_t *buckets, *entry;
+
+    if (grow) {
+        capacity = tm.capacity * 2;
+    } else {
+        capacity = tm.capacity / 2;
+    }
+
+    buckets = gc_malloc(capacity * sizeof(monitor_t));
+
+    for (i = 0; i < tm.capacity; i++) {
+        entry = tm.buckets + i;
+
+        if (entry->ref) {
+            j = hash = tm_hash(entry->ref) & (capacity - 1);
+
+            while (buckets[j].ref != JNULL) {
+                j = (j + 1) & (capacity - 1);
+            }
+
+            buckets[j].ref = entry->ref;
+            buckets[j].owner = entry->owner;
+            buckets[j].count = entry->count;
+#if JEL_THREAD_POSIX
+            buckets[j].pthread_cond = entry->pthread_cond;
+#elif JEL_THREAD_PTH
+            buckets[j].pth_cond = entry->pth_cond;
+#endif
+
+            // Chain the entry if there was a clash
+            if (j == hash) {
+                buckets[j].next = NULL;
+            } else {
+                buckets[j].next = buckets[hash].next;
+                buckets[hash].next = buckets + j;
+            }
+        }
+    }
+
+    gc_free(tm.buckets);
+    tm.capacity = capacity;
+    tm.buckets = buckets;
+} // tm_rehash()
+
+#if JEL_THREAD_POSIX || JEL_THREAD_PTH
+
+/** Try to gain the ownership of the machine-wide lock.
+ * This function will return only when the caller has the ownership of the lock
+ * in the meantime the calling thread is considered in a safe zone if. It is
+ * safe to call this function repeatedly from the same thread as long as
+ * tm_unlock() is called the same number of times to release the lock
+ * multithreading is enabled */
+
+void tm_lock( void )
+{
+    thread_self()->safe++; // Enter or re-enter into a safe zone
+#if JEL_THREAD_POSIX
+    pthread_mutex_lock(&tm.lock);
+#elif JEL_THREAD_PTH
+    pth_mutex_acquire(&tm.lock, FALSE, NULL);
+#endif
+} // tm_lock()
+
+/** Release the ownership of the machine-wide lock */
+
+void tm_unlock( void )
+{
+    assert(thread_self()->safe != 0);
+    thread_self()->safe--; // Exit a safe zone if 'safe' drops to 0
+#if JEL_THREAD_POSIX
+    pthread_mutex_unlock(&tm.lock);
+#elif JEL_THREAD_PTH
+    pth_mutex_release(&tm.lock);
+
+    if (--tm.switch_n == 0) {
+        tm.switch_n = PTH_SWITCH_N;
+        pth_yield(NULL);
+    }
+#endif
+} // tm_unlock()
+
+/** Returns a pointer to the VM global lock. We should do away with this method
+ * but the garbage collector still uses it explicitely when registering
+ * finalizable objects
+ * \returns A pointer to the VM global lock */
+
+void *tm_get_lock( void )
+{
+    return &tm.lock;
+} // tm_get_lock()
+
+/** Waits for all threads to stop. The calling thread must have taken the VM
+ * lock for this to happen safely */
+
+void tm_stop_the_world( void )
+{
+    thread_t *thread;
+    bool stopped = false;
+
+    // Wait for all the threads to stop
+    while (!stopped) {
+        stopped = true;
+
+        for (thread = tm.queue; thread != NULL; thread = thread->next) {
+            /* If the 'safe' field is 1 then the thread has been stopped, the
+             * calling thread will have safe >= 1. */
+            if (thread->safe == 0) {
+                stopped = false;
+            }
+        }
+
+        thread_yield();
+    }
+} // tm_stop_the_world()
+
+#endif // JEL_THREAD_POSIX || JEL_THREAD_PTH
+
+/** Portable memory barrier, implemented only when real threads are used */
+
+#if JEL_THREAD_POSIX
+
+void memory_barrier( void )
+{
+    pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+    pthread_mutex_lock(&lock);
+    pthread_mutex_unlock(&lock);
+} // memory_barrier()
+
+#endif // JEL_THREAD_POSIX
+
+/******************************************************************************
+ * Monitors                                                                   *
+ ******************************************************************************/
+
+/** Initialization of the Java monitors subsystem */
+
+void monitor_init( void )
+{
+    tm.capacity = TM_CAPACITY;
+    tm.buckets = gc_malloc(TM_CAPACITY * sizeof(monitor_t));
+} // monitor_init()
+
+/** Implements the MONITOR_ENTER opcode
+ * \param thread The thread requesting the monitor
+ * \param ref A Java object reference */
+
+void monitor_enter(thread_t *thread, uintptr_t ref)
+{
+    monitor_t *entry;
+    size_t hash;
+    bool done;
+
+    do {
+        done = true;
+        tm_lock();
+
+        hash = tm_hash(ref) & (tm.capacity - 1);
+
+        // Check if the monitor is already present
+        entry = tm.buckets + hash;
+
+        while (entry && (entry->ref != ref)) {
+            entry = entry->next;
+        }
+
+        if (entry) {
+            // The monitor is already present
+            if (entry->owner == NULL) {
+                entry->owner = thread;
+                entry->count = 1;
+            } else if (entry->owner == thread) {
+                entry->count++;
+            } else {
+                // This monitor is contended, spin
+                tm_unlock();
+                thread_yield();
+                done = false;
+            }
+        } else {
+            // The monitor is not there, let's insert a new one
+            size_t i = hash;
+
+            while (tm.buckets[i].ref != JNULL) {
+                i = (i + 1) & (tm.capacity - 1);
+            }
+
+            entry = tm.buckets + i;
+            entry->ref = ref;
+            entry->owner = thread;
+            entry->count = 1;
+
+            // Chain the entry if there was a clash
+            if (i == hash) {
+                entry->next = NULL;
+            } else {
+                entry->next = tm.buckets[hash].next;
+                tm.buckets[hash].next = entry;
+            }
+
+            // Check if we must grow the table
+            tm.entries++;
+
+            if (tm.entries == tm.capacity) {
+                tm_rehash(true);
+            } else if (tm.entries < (tm.capacity / 4)) {
+                tm_rehash(false);
+            }
+        }
+    } while (!done);
+
+    tm_unlock();
+} // monitor_enter()
+
+/** Implements the MONITOR_EXIT opcode
+ * \param thread A pointer to the thread relinquishing the monitor
+ * \param ref The object on which the monitor was taken
+ * \returns true if everything went well, false if \a thread didn't own the
+ * monitor and thus MONITOR_EXIT would fail */
+
+bool monitor_exit(thread_t *thread, uintptr_t ref)
+{
+    monitor_t *entry;
+    size_t hash;
+    bool done = false;
+
+    tm_lock();
+    hash = tm_hash(ref) & (tm.capacity - 1);
+
+    // Look for the monitor
+    entry = tm.buckets + hash;
+
+    while (entry && (entry->ref != ref)) {
+        entry = entry->next;
+    }
+
+    if (entry) {
+        if (entry->owner == thread) {
+            if (entry->count == 1) {
+                entry->owner = NULL;
+            }
+
+            entry->count--;
+            done = true;
+        }
+    }
+
+    tm_unlock();
+
+    return done;
+} // monitor_exit()
+
+/******************************************************************************
+ * Thread implementation                                                      *
+ ******************************************************************************/
+
+/** Sets the thread's own ::thread_t structure
+ * \param thread A pointer to the thread's own structure */
+
+static void thread_set_self(thread_t *thread)
+{
+#if JEL_THREAD_POSIX
+#   ifdef TLS
+    self = thread;
+#   else
+    pthread_setspecific(self, thread);
+#   endif // TLS
+#elif JEL_THREAD_PTH
+    pth_key_setdata(self, thread);
+#else
+    self = thread;
+#endif
+} // thread_set_self()
+
+/** Return a pointer to the execution thread's ::thread_t structure
+ * \returns A pointer to this thread own structure */
+
+thread_t *thread_self( void )
+{
+#if JEL_THREAD_POSIX
+#   ifdef TLS
+    return self;
+#else
+    return (thread_t *) pthread_getspecific(self);
+#endif // TLS
+#elif JEL_THREAD_PTH
+    return (thread_t *) pth_key_getdata(self);
+#else
+    return self;
+#endif
+} // thread_self()
+
+/** Push a temporary root on the current thread's stack
+ * \param ref A pointer to an object reference to be pushed on the temporary
+ * root stack */
+
+void thread_push_root(uintptr_t *ref)
+{
+    thread_t *thread = thread_self();
+    uintptr_t **pointers;
+
+    thread->roots.pointers[thread->roots.used++] = ref;
+
+    /* Grow the stack so that a free slot is always available when entering
+     * this function */
+    if (thread->roots.used == thread->roots.capacity) {
+        pointers = gc_malloc((thread->roots.capacity + 1)
+                             * sizeof(uintptr_t *));
+        memcpy(pointers, thread->roots.pointers,
+               thread->roots.capacity * sizeof(uintptr_t *));
+        gc_free(thread->roots.pointers);
+        thread->roots.pointers = pointers;
+        thread->roots.capacity++;
+    }
+} // thread_push_root()
+
+/** Pop a temporary root from a thread's stack */
+
+void thread_pop_root( void )
+{
+    thread_self()->roots.used--;
+} // thread_pop_root()
+
+/** Initializes all the thread-local structures required for normal operation
+ * of a thread including the thread's self reference
+ * \param thread A pointer to the thread's own structure */
+
+void thread_init(thread_t *thread)
+{
+    thread_set_self(thread);
+
+#if JEL_THREAD_POSIX
+    // This is required for VM shutdown
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+    pthread_testcancel();
+#endif
+} // thread_init()
+
+/** Creates the main thread. This function doesn't return until the main thread
+ * has finished execution as it uses the current native/green thread instead of
+ * creating a new one
+ * \param thread The main thread pre-allocated structure
+ * \param run The main method
+ * \param args The arguments array
+ * \returns The reference to an uncaught exception if the main method terminated
+ * abruptly or JNULL */
+
+uintptr_t thread_create_main(thread_t *thread, method_t *run, uintptr_t args)
+{
+    java_lang_Thread_t *jthread;
+    class_t *thread_cl = bcl_find_class_by_name("java/lang/Thread");
+    size_t stack_size = opts_get_stack_size();
+    uintptr_t obj;
+
+    /* Contrary to the startup of a 'regular' thread we do not initialize nor
+     * register the thread as the main thread has already been initialized and
+     * registered even though it is only partially initialized */
+    thread_push_root(&args);
+
+    // Build the stack
+    thread->stack = gc_malloc(stack_size);
+    thread->sp = thread->stack;
+    thread->fp = (stack_frame_t *) ((char *) thread->stack + stack_size);
+
+    // HACK: Push the arguments on top of the stack
+    thread_pop_root();
+    *((uintptr_t *) thread->sp) = args;
+
+    /* Create the first Java thread structure, since the first thread is not
+     * created by VMThread.start() we have to do it by hand */
+    obj = gc_new(thread_cl);
+    jthread = JAVA_LANG_THREAD_REF2PTR(obj);
+    jthread->vmThread = (uintptr_t) thread;
+    jthread->priority = 5;
+    thread->obj = obj;
+
+    // Run the new thread's code
+    interpreter(run);
+
+    tm_unregister(thread);
+    gc_free(thread->roots.pointers);
+    gc_free(thread->stack);
+
+    return thread->exception;
+} // thread_create_main()
+
+#if JEL_THREAD_PTH
+
+/** Callback function used to check if a sleeping/waiting thread has been
+ * interrupted
+ * \param arg A pointer to the sleeping thread
+ * \returns TRUE if the thread was interrupted, false otherwise */
+
+static int thread_interrupted(void *arg)
+{
+    thread_t *thread = arg;
+
+    if (JAVA_LANG_THREAD_REF2PTR(thread->obj)->interrupted) {
+        return TRUE;
+    } else {
+        return FALSE;
+    }
+} // thread_sleep_interrupted()
+
+#endif // JEL_THREAD_PTH
+
+/** Implements the functionality required by the java.lang.Thread.sleep()
+ * method, waiting for the number of milliseconds specified by \a ms
+ * \param ms The number of milliseconds to wait */
+
+void thread_sleep(uint64_t ms)
+{
+#if JEL_THREAD_PTH
+    pth_event_t ev, time, interrupt;
+
+    time = pth_event(PTH_EVENT_TIME,
+                     pth_timeout(ms / (int64_t) 1000,
+                                 (ms % (int64_t) 1000) * (int64_t) 1000000));
+    interrupt = pth_event(PTH_EVENT_FUNC, thread_interrupted,
+                          thread_self(), pth_time(1, 0));
+    ev = pth_event_concat(time, interrupt, NULL);
+    pth_wait(ev);
+    pth_event_free(ev, PTH_FREE_ALL);
+#else
+    struct timespec req;
+
+    req.tv_sec = ms / (int64_t) 1000;
+    req.tv_nsec = (ms % (int64_t) 1000) * (int64_t) 1000000;
+    nanosleep(&req, NULL);
+#endif
+} // thread_sleep()
+
+#if JEL_THREAD_POSIX || JEL_THREAD_PTH
+
+/** Startup function used as the entry point of a new thread. Both the payload
+ * passed in \a arg and the new thread structures (including the stack) will be
+ * fred by this function upon ending execution
+ * \param arg A pointer to the thread payload structure
+ * \returns Nothing important */
+
+static void *thread_start(void *arg)
+{
+    thread_payload_t *payload = (thread_payload_t *) arg;
+    thread_t *thread = payload->thread;
+    method_t *run = payload->run;
+    int exception;
+
+    gc_free(payload); // Release the payload
+
+    // Wait for the parent thread to initialize the vmThread field
+    while (JAVA_LANG_THREAD_REF2PTR(thread->obj)->vmThread == JNULL)
+        ;
+
+    thread_init(thread); // Various infrastructure initialization
+
+    // HACK: Push the 'this' pointer on top of the stack
+    *((uintptr_t *) thread->stack) = thread->obj;
+
+    c_try {
+        interpreter(run); // Run the new thread's code
+    } c_catch (exception) {
+        c_print_exception(exception);
+        c_clear_exception();
+        vm_fail();
+    }
+
+    if (thread->exception != JNULL) {
+        // TODO: Print the exception and stack trace
+        dbg_error("Uncaught exception");
+        vm_fail();
+    }
+
+    tm_unregister(thread);
+    gc_free(thread->roots.pointers);
+    gc_free(thread->stack);
+    gc_free(thread);
+
+#if JEL_THREAD_POSIX
+    pthread_exit(NULL);
+#elif JEL_THREAD_PTH
+    pth_exit(NULL);
+#endif
+
+    return NULL;
+} // thread_start()
+
+/** Creates a new thread executing the provided method
+ * \param obj The java.lang.Thread object associated with this thread
+ * \param run The first method executed by this thread
+ * \returns A pointer to the newly created thread */
+
+thread_t *thread_create(uintptr_t ref, method_t *run)
+{
+    thread_t *thread;
+    thread_payload_t *payload;
+    size_t stack_size = opts_get_stack_size();
+#if JEL_THREAD_POSIX
+    int res;
+#endif
+
+    // Create the VM thread object
+    thread_push_root(&ref);
+    thread = gc_malloc(sizeof(thread_t));
+
+    // Build the stack
+    thread->stack = gc_malloc(stack_size);
+    thread->sp = thread->stack;
+    thread->fp = (stack_frame_t *) ((char *) thread->stack + stack_size);
+
+    // Create the temporary roots area
+    thread->roots.capacity = THREAD_TMP_ROOTS;
+    thread->roots.pointers = gc_malloc(THREAD_TMP_ROOTS * sizeof(uintptr_t *));
+
+    // Create the thread payload
+    payload = gc_malloc(sizeof(thread_payload_t));
+
+    // Register the thread
+    tm_register(thread);
+
+    // Link the java.lang.Thread object to the VM thread
+    thread_pop_root();
+    JAVA_LANG_THREAD_REF2PTR(ref)->vmThread = (uintptr_t) thread;
+    JAVA_LANG_THREAD_REF2PTR(ref)->priority = 5;
+    thread->obj = ref;
+
+    // Prepare the thread payload
+    payload->thread = thread;
+    payload->run = run;
+
+#if JEL_THREAD_POSIX
+    // FIXME: Check if this call fails and shut down the machine 'cleanly'
+    res = pthread_create(&thread->pthread, NULL, thread_start, payload);
+
+    if (res) {
+        dbg_error("Unable to create a new thread");
+        vm_fail();
+    }
+#elif JEL_THREAD_PTH
+    thread->pth = pth_spawn(PTH_ATTR_DEFAULT, thread_start, payload);
+
+    if (thread->pth == NULL) {
+        dbg_error("Unable to create a new thread");
+        vm_fail();
+    }
+#endif
+
+    return thread;
+} // thread_create()
+
+/** Causes the currently executing thread object to temporarily pause and allow
+ * other threads to execute */
+
+void thread_yield( void )
+{
+#if JEL_THREAD_POSIX
+    pthread_yield();
+#elif JEL_THREAD_PTH
+    pth_yield(NULL);
+#endif
+} // thread_yield()
+
+/** Joins on the passed thread
+ * \param thread The thread the function will join on */
+
+void thread_join(thread_t *thread)
+{
+#if JEL_THREAD_POSIX
+    pthread_t pthread;
+#else // JEL_THREAD_PTH
+    pth_t pth;
+#endif
+    thread_t *temp;
+
+    tm_lock();
+    temp = tm.queue;
+
+    while (temp) {
+        if (temp == thread) {
+#if JEL_THREAD_POSIX
+            pthread = thread->pthread;
+#else // JEL_THREAD_PTH
+            pth = thread->pth;
+#endif
+            break;
+        } else {
+            temp = temp->next;
+        }
+    }
+
+    tm_unlock();
+
+    if (temp) {
+        thread_self()->safe++;
+#if JEL_THREAD_POSIX
+        pthread_join(pthread, NULL);
+#else // JEL_THREAD_PTH
+        pth_join(pth, NULL);
+#endif
+        thread_self()->safe--;
+    }
+} // thread_join()
+
+/** Implements the functionality required by java.lang.Object.wait() and
+ * friends, waiting on an object until it is notified by notify() or notifyAll()
+ * or until a timeout occurs (if \a nanos or \a millis or both ar non-zero)
+ * \param thread The calling thread
+ * \param ref The object on which to wait
+ * \param millis Number of milliseconds before a timeout occurs
+ * \param nanso Number of nanoseconds before a timeout occurs
+ * \returns true if everything goes well, false if the monitor associated with
+ * \a ref was not owned \a thread. In the latter case an
+ * IllegalMonitorStateException should be thrown */
+
+bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
+                 uint32_t nanos)
+{
+    monitor_t *entry;
+    size_t hash;
+    bool res = false;
+
+    tm_lock();
+
+    // Look for the monitor
+    hash = tm_hash(ref) & (tm.capacity - 1);
+    entry = tm.buckets + hash;
+
+    while (entry && (entry->ref != ref)) {
+        entry = entry->next;
+    }
+
+    if (entry) {
+        if ((entry->owner == thread) && (entry->count == 1)) {
+            // Release the lock and wait
+            entry->owner = NULL;
+            entry->count = 0;
+
+#if JEL_THREAD_POSIX
+            if (entry->pthread_cond == NULL) {
+                entry->pthread_cond = gc_malloc(sizeof(pthread_cond_t));
+                pthread_cond_init(entry->pthread_cond, NULL);
+            }
+
+            if ((millis == 0) && (nanos == 0)) {
+                pthread_cond_wait(entry->pthread_cond, &tm.lock);
+            } else {
+                struct timespec ts;
+
+                ts.tv_sec = millis / (uint64_t) 1000;
+                ts.tv_nsec = (millis % (uint64_t) 1000) + nanos;
+                pthread_cond_timedwait(entry->pthread_cond, &tm.lock, &ts);
+            }
+#elif JEL_THREAD_PTH
+            if (entry->pth_cond == NULL) {
+                entry->pth_cond = gc_malloc(sizeof(pth_cond_t));
+                pth_cond_init(entry->pth_cond);
+            }
+
+            if ((millis == 0) && (nanos == 0)) {
+                pth_cond_await(entry->pth_cond, &tm.lock, NULL);
+            } else {
+                pth_event_t ev, time, interrupt;
+
+                time = pth_event(PTH_EVENT_TIME,
+                                 pth_timeout(millis / (int64_t) 1000,
+                                             millis % (int64_t) 1000 + nanos));
+                interrupt = pth_event(PTH_EVENT_FUNC, thread_interrupted,
+                                      thread_self(), pth_time(1, 0));
+                ev = pth_event_concat(time, interrupt, NULL);
+                pth_cond_await(entry->pth_cond, &tm.lock, ev);
+                pth_event_free(ev, PTH_FREE_ALL);
+            }
+#endif
+
+            // Re-acquire the monitor
+            tm_unlock();
+            monitor_enter(thread, ref);
+            res = true;
+        }
+    } else {
+        tm_unlock();
+    }
+
+    return res;
+} // thread_wait()
+
+/** Implements the functionliaty required by java.lang.Object.notify()
+ * \param thread The calling thread
+ * \param ref The object used for the notification
+ * \param broadcast If true, wake up all the threads waiting on this object,
+ * otherwise wake up only one thread
+ * \returns true if everything goes well, false if the monitor associated with
+ * \a ref was not owned by \a thread. In the latter case an
+ * IllegalMonitorStateException should be thrown */
+
+bool thread_notify(thread_t *thread, uintptr_t ref, bool broadcast)
+{
+    monitor_t *entry;
+    size_t hash;
+    bool res = false;
+
+    tm_lock();
+
+    // Look for the monitor
+    hash = tm_hash(ref) & (tm.capacity - 1);
+    entry = tm.buckets + hash;
+
+    while (entry && (entry->ref != ref)) {
+        entry = entry->next;
+    }
+
+    if (entry) {
+        if (entry->owner == thread) {
+            // Notify the waiting thread
+#if JEL_THREAD_POSIX
+            if (entry->pthread_cond != NULL) {
+                if (broadcast) {
+                    pthread_cond_broadcast(entry->pthread_cond);
+                } else {
+                    pthread_cond_signal(entry->pthread_cond);
+                }
+            }
+#elif JEL_THREAD_PTH
+            if (entry->pth_cond != NULL) {
+                pth_cond_notify(entry->pth_cond, broadcast);
+            }
+#endif
+            res = true;
+        }
+    }
+
+    tm_unlock();
+    return res;
+} // thread_notify()
+
+#endif // JEL_THREAD_POSIX || JEL_THREAD_PTH
+
