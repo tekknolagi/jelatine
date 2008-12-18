@@ -1,0 +1,36 @@
+*** TBD for Jelatine future releases:
+
+ - Add support for profiling and tracing method and bytecode execution
+   (partially done)
+ - jelatine.VMDouble.parseDouble() method must be implemented
+ - java.lang.Class.newInstance() is broken, it will work only on classes with an
+   empty nullary constructor
+ - An example profile should be written (for example the MIDP one) to provide
+   a reference implementation and the possibility of running code using more
+   classes than the pure CLDC classpath
+ - The bytecode verification process should be implemented properly
+ - Possibly remove the dependency on zziplib for JAR support or find a way to
+   make zziplib allocate its memory on Jelatine's unified heap
+ - Pointer compression should be added, this should allow us to store Java
+   references in 16-bit pointers for heaps of up to 256 KiB
+ - Implement object relocation and heap compaction
+ - Optimize allocation of permanent objects
+ - The preverifier breaks under heavy optimizations and 64-bit targets, it
+   should be rewritten
+ - The layout, size calculation and allocation interface has become very messy,
+   it should be cleaned up and simplified
+ - Remove all type-specific layout, create a VMPointer class to wrap C pointers
+   into Java references
+ - Make native method descriptors more compact
+ - Provide a more robust implementation of Thread.interrupt()
+ - Get rid of VMThread, integrate the virtual machine threads into the
+   regular thread class
+ - Refactor constant pool code and make it more compact, use C99 flexible
+   arrays to implement the data section for memory savings and smaller code in
+   the interpreter
+ - Rework the classpath build system, make it faster and more robust with
+   different javac & preverifier combinations
+ - Add support for CONSTANT_Class entries for the LDC and LDC_W instructions,
+   the LDC_STRING and LDC_W_STRING opcodes will be changed to LDC_REFERENCE and
+   LDC_W_REFERENCE and two new prelink opcodes will be added for this purpose
+ - Add support for modified UTF-8 surrogate characters
