@@ -101,6 +101,10 @@ public class Thread implements Runnable
 
     /** The interrupted status of this thread */
     volatile byte interrupted;
+    
+    /** The next thread number to use. */
+    private static int numAnonymousThreadsCreated = 0;
+
 
     /**
      * Allocates a new <code>Thread</code> object. This constructor has
@@ -191,11 +195,23 @@ public class Thread implements Runnable
     {
         Thread current = currentThread();
 
+        if (name == null)
+            name = createAnonymousThreadName();
         this.name = name;
         this.runnable = target;
 
         priority = current.priority;
+
     }
+    
+    /**
+     * Generate a name for an anonymous thread.
+     */
+    private static synchronized String createAnonymousThreadName()
+    {
+      return "Thread-" + ++numAnonymousThreadsCreated;
+    }
+
 
     /**
      * Get the currently executing Thread. In the situation that the
