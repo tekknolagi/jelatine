@@ -852,7 +852,7 @@ static void *thread_start(void *arg)
  * \param run The first method executed by this thread
  * \returns A pointer to the newly created thread */
 
-thread_t *thread_create(uintptr_t ref, method_t *run)
+thread_t *thread_launch(uintptr_t ref, method_t *run)
 {
     thread_t *thread;
     thread_payload_t *payload;
@@ -908,7 +908,7 @@ thread_t *thread_create(uintptr_t ref, method_t *run)
 #endif
 
     return thread;
-} // thread_create()
+} // thread_launch()
 
 /** Causes the currently executing thread object to temporarily pause and allow
  * other threads to execute */
@@ -916,7 +916,11 @@ thread_t *thread_create(uintptr_t ref, method_t *run)
 void thread_yield( void )
 {
 #if JEL_THREAD_POSIX
+#   if HAVE_PTHREAD_YIELD_NP
+    pthread_yield_np();
+#   else
     pthread_yield();
+#endif // JEL_THREAD_POSIX
 #elif JEL_THREAD_PTH
     pth_yield(NULL);
 #endif
@@ -944,23 +948,22 @@ void thread_join(thread_t *thread)
 #else // JEL_THREAD_PTH
             pth = thread->pth;
 #endif
-            break;
-        } else {
-            temp = temp->next;
+
+            tm_unlock();
+            thread_self()->safe++;
+#if JEL_THREAD_POSIX
+            pthread_join(pthread, NULL);
+#else // JEL_THREAD_PTH
+            pth_join(pth, NULL);
+#endif
+            thread_self()->safe--;
+            return;
         }
+
+        temp = temp->next;
     }
 
     tm_unlock();
-
-    if (temp) {
-        thread_self()->safe++;
-#if JEL_THREAD_POSIX
-        pthread_join(pthread, NULL);
-#else // JEL_THREAD_PTH
-        pth_join(pth, NULL);
-#endif
-        thread_self()->safe--;
-    }
 } // thread_join()
 
 /** Implements the functionality required by java.lang.Object.wait() and

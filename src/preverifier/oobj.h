@@ -52,7 +52,7 @@
 
 #define MAXOPTIONS 2048   /* maximum # of parameters */
 
-#define MAXPATHLEN 255
+#define XMAXPATHLEN 255
 
 /* maximum size allowed for package name of a class file */
 #define MAXPACKAGENAME 1024
@@ -71,8 +71,8 @@ typedef unsigned short unicode;
 extern unicode    *str2unicode(char *, unicode *, long);
 extern char    *int642CString(int64_t number, char *buf, int buflen);
 
-#define ALIGN(n) (((n)+3)&~3)
-#define UCALIGN(n) ((unsigned char *)ALIGN((uintptr_t)(n)))
+#define XALIGN(n) (((n)+3)&~3)
+#define UCALIGN(n) ((unsigned char *)XALIGN((uintptr_t)(n)))
 
 struct Hjava_lang_Class;    /* forward reference for some compilers */
 struct Classjava_lang_Class;    /* forward reference for some compilers */

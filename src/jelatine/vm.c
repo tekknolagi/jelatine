@@ -182,7 +182,7 @@ void vm_run(const char *classpath, const char *bootclasspath, char *main,
         ref = gc_new(thread_cl);
         JAVA_LANG_THREAD_REF2PTR(ref)->priority = 5;
         // After this call has returned the finalizer thread will be running
-        thread_create(ref, method);
+        thread_launch(ref, method);
 
 #endif // JEL_FINALIZER
 
