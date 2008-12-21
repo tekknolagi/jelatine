@@ -689,7 +689,7 @@ HuffmanCodeTable * makeCodeTable(
         putchar(c);
         }
         fprintf(stdout,
-            "   Char = %02zx, Code = %4x\n", (p - codelen), code);
+            "   Char = %02zx, Code = %4x\n", (size_t) (p - codelen), code);
     }
 
     }

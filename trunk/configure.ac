@@ -275,6 +275,9 @@ AS_IF([test "x$fp_support" = xyes],
     AC_SUBST([LIBM])]
 )
 
+# Other libraries
+AC_SEARCH_LIBS([iconv], [iconv]) # Needed on some hosts for the preverifier
+
 ################################################################################
 # Check for header files                                                       #
 ################################################################################
@@ -392,6 +395,11 @@ AC_CHECK_FUNCS([fmod sin cos tan sqrt ceil floor], ,
     [AS_IF([test "x$fp_support" = xyes],
         [AC_MSG_ERROR([Standard math.h functions are needed for FP support])]
     )]
+)
+
+# Thread related tests
+AS_IF([test "x$thread_model" = xpthread],
+    [AC_CHECK_FUNCS([pthread_yield pthread_yield_np])]
 )
 
 ################################################################################

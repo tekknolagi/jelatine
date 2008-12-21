@@ -1291,7 +1291,7 @@ void print_bin( void )
 {
     chunk_t *temp;
 
-   fprintf(stderr, "print_bin()\n");
+    fprintf(stderr, "print_bin()\n");
 
     for (size_t i = 0, j = 0; i < BIN_ENTRIES; i++) {
         temp = heap.bin[i];
@@ -1301,7 +1301,7 @@ void print_bin( void )
             temp = temp->next;
         }
 
-       fprintf(stderr, "heap->bin[size = %u words] = %zu\n", i + 2, j);
+       fprintf(stderr, "heap->bin[size = %zu words] = %zu\n", i + 2, j);
     }
 
     fprintf(stderr, "heap->large_bin = \n");

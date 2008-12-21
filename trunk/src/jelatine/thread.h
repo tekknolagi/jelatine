@@ -140,7 +140,7 @@ extern void thread_sleep(uint64_t);
 
 #if JEL_THREAD_POSIX || JEL_THREAD_PTH
 
-extern thread_t *thread_create(uintptr_t, method_t *);
+extern thread_t *thread_launch(uintptr_t, method_t *);
 extern void thread_yield( void );
 extern void thread_join(thread_t *);
 extern bool thread_wait(thread_t *, uintptr_t, uint64_t, uint32_t);
@@ -148,10 +148,10 @@ extern bool thread_notify(thread_t *, uintptr_t, bool);
 
 #else // JEL_THREAD_NONE
 
-static inline thread_t *thread_create(uintptr_t ref, method_t *run)
+static inline thread_t *thread_launch(uintptr_t ref, method_t *run)
 {
     return NULL;
-} // thread_create()
+} // thread_launch()
 
 static inline void thread_yield( void ) {}
 static inline void thread_join(thread_t *thread) {}

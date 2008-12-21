@@ -86,7 +86,7 @@ int native2utf8(const char* from, char* to, int buflen) {
     ileft = strlen(from);
     oleft = buflen;
 
-    ret = iconv(ic, (char **) &from, &ileft, &to, &oleft);
+    ret = iconv(ic, &from, &ileft, &to, &oleft);
     if (ret == (size_t)-1) {
         fprintf(stderr, "native2utf8:Failed to convert (err=%d)\n", ret);
         exit(1);
@@ -117,7 +117,7 @@ int utf2native(const char* from, char* to, int buflen) {
     ileft = strlen(from);
     oleft = buflen;
 
-    ret = iconv(ic, (char **) &from, &ileft, &to, &oleft);
+    ret = iconv(ic, &from, &ileft, &to, &oleft);
     if (ret == (size_t)-1) {
         fprintf(stderr, "utf2native:Failed to convert (err=%d)\n", ret);
         exit(1);

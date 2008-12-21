@@ -1300,7 +1300,7 @@ static KNI_RETURNTYPE_OBJECT jelatine_VMThread_start( void )
     jthread = JAVA_LANG_THREAD_REF2PTR(*thread_ref);
     cl = header_get_class(&(jthread->header));
     run = mm_get(cl->method_manager, "run", "()V");
-    new_thread = thread_create(*thread_ref, run);
+    new_thread = thread_launch(*thread_ref, run);
     // FIXME: We should never stuff a C pointer inside an object reference
     *vmthread = (uintptr_t) new_thread;
     KNI_EndHandlesAndReturnObject(vmthread);
