@@ -735,6 +735,7 @@ uintptr_t thread_create_main(thread_t *thread, method_t *run, uintptr_t args)
     jthread = JAVA_LANG_THREAD_REF2PTR(obj);
     jthread->vmThread = (uintptr_t) thread;
     jthread->priority = 5;
+    jthread->name = JAVA_LANG_STRING_PTR2REF(jstring_create_from_utf8("Thread-0"));
     thread->obj = obj;
 
     // Run the new thread's code
