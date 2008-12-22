@@ -155,7 +155,7 @@ public class Thread implements Runnable
      */
     public Thread()
     {
-        this((Runnable) null, (String) null);
+        this((Runnable) null, createAnonymousThreadName());
     }
 
     /**
@@ -169,7 +169,7 @@ public class Thread implements Runnable
      */
     public Thread(Runnable target)
     {
-        this(target, null);
+        this(target, createAnonymousThreadName());
     }
 
     /**
@@ -195,9 +195,8 @@ public class Thread implements Runnable
     {
         Thread current = currentThread();
 
-        if (name == null)
-            name = createAnonymousThreadName();
-        this.name = name;
+	// Use toString hack to detect null.
+        this.name = name.toString();
         this.runnable = target;
 
         priority = current.priority;
