@@ -2490,6 +2490,10 @@ void interpreter(method_t *main_method)
     OPCODE(ARRAYLENGTH) {
         array_t *array = (array_t *) *((uintptr_t *) (sp - 1));
 
+        if (array == NULL) {
+            goto throw_nullpointerexception;
+        }
+
         *((int32_t *) (sp - 1)) = array_length(array);
         pc++;
         DISPATCH;
