@@ -978,11 +978,12 @@ static KNI_RETURNTYPE_VOID java_lang_System_arraycopy( void )
     src_elem_type = src_type->elem_type;
     dest_elem_type = dest_type->elem_type;
 
-    if ((src_elem_type != PT_REFERENCE) && (dest_elem_type != PT_REFERENCE)) {
-        if (src_elem_type != dest_elem_type) {
-            KNI_ThrowNew("java/lang/ArrayStoreException", NULL);
-            goto end;
-        }
+    if ((src_elem_type != dest_elem_type)
+        && ((src_elem_type != PT_REFERENCE)
+            || (dest_elem_type != PT_REFERENCE)))
+    {
+        KNI_ThrowNew("java/lang/ArrayStoreException", NULL);
+        goto end;
     }
 
     if ((srcOffset < 0)
