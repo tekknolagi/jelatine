@@ -336,13 +336,7 @@ java_lang_String_t *jstring_create_literal(const char *src)
     }
 
     len = utf8_to_java_length(src);
-
-    if (len == 0) {
-        value = JNULL;
-    } else {
-        value = gc_new_array_nonref(T_CHAR, len);
-    }
-
+    value = gc_new_array_nonref(T_CHAR, len);
     data = array_get_data((array_t *) value);
     utf8_to_java(data, src);
     cached_hash_code = jstring_hash(data, 0, len);
