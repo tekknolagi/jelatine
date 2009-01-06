@@ -1316,7 +1316,8 @@ static KNI_RETURNTYPE_OBJECT jelatine_VMThread_start( void )
 
 static KNI_RETURNTYPE_INT jelatine_VMThread_activeCount( void )
 {
-    KNI_ReturnInt(tm_active());
+    // Decrease thread number by one as the finalizer thread is for internal purpose
+    KNI_ReturnInt(tm_active() - 1);
 } // jelatine_VMThread_activeCount()
 
 /** Implementation of jelatine.VMThread.join() */
