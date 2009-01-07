@@ -23,6 +23,7 @@
 
 #include "wrappers.h"
 
+#include "interpreter.h"
 #include "jstring.h"
 #include "kni.h"
 #include "loader.h"
@@ -542,6 +543,7 @@ static KNI_RETURNTYPE_OBJECT java_lang_Class_forName( void )
 static KNI_RETURNTYPE_OBJECT java_lang_Class_newInstance( void )
 {
     class_t *cl;
+    method_t *method;
 
     KNI_StartHandles(2);
     KNI_DeclareHandle(cl_ref);
@@ -551,7 +553,11 @@ static KNI_RETURNTYPE_OBJECT java_lang_Class_newInstance( void )
     cl = bcl_get_class_by_id(JAVA_LANG_CLASS_REF2PTR(*cl_ref)->id);
     *obj_ref = gc_new(cl);
 
-    // TODO: Invoke the constructor on obj!
+    // Find the default constructor
+    method = mm_get(cl->method_manager, "<init>", "()V");
+    // HACK: Push the object on top of the stack
+    *((uintptr_t *) thread_self()->sp) = *obj_ref;
+    interpreter(method);
     KNI_EndHandlesAndReturnObject(obj_ref);
 } // java_lang_Class_newInstance()
 
