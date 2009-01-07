@@ -565,8 +565,8 @@ static KNI_RETURNTYPE_BOOLEAN java_lang_Class_isInstance( void )
     KNI_DeclareHandle(cl_ref);
     KNI_DeclareHandle(obj_ref);
 
+    KNI_GetThisPointer(cl_ref);
     KNI_GetParameterAsObject(1, obj_ref);
-    KNI_GetClassPointer(cl_ref);
     res = KNI_IsInstanceOf(obj_ref, cl_ref);
     KNI_EndHandles();
     KNI_ReturnBoolean(res);
