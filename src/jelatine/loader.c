@@ -1603,11 +1603,13 @@ static method_t *resolve_method(class_t *src, uint16_t index, bool interface)
         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                 "Trying to access a private method from an external class");
     } else if (method_is_protected(method)) {
-        if (!((src == cl) || class_is_parent(cl, src) || same_package(cl, src))) {
-            printf("loader.c: method->name=%s cl->name=%s src->name=%s\n", method->name, cl->name, src->name);
+        if (!((src == cl)
+              || class_is_parent(cl, src)
+              || same_package(cl, src)))
+        {
             c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                "Trying to access a protected method from a non-child class of "
-                "a different package");
+                    "Trying to access a protected method from a non-child "
+                    "class of a different package");
         }
     } else if (!method_is_public(method) && !same_package(cl, src)) {
         // Field is package visible, if ACC_PUBLIC is set no check is needed
@@ -2107,10 +2109,13 @@ static field_t *resolve_instance_field(class_t *src, uint16_t index)
         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                 "Trying to access a private field from an external class");
     } else if (field_is_protected(field)) {
-        if (!((src == cl) || class_is_parent(cl, src) || same_package(cl, src))) {
+        if (!((src == cl)
+              || class_is_parent(cl, src)
+              || same_package(cl, src)))
+        {
             c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                "Trying to access a protected field from a non-child class in "
-                "a different package");
+                    "Trying to access a protected field from a non-child class "
+                    "in a different package");
         }
     } else if (!field_is_public(field) && !same_package(cl, src)) {
         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
