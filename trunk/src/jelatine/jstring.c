@@ -473,10 +473,10 @@ static uint32_t jstring_hash(const uint16_t *data, uint32_t offset,
                              uint32_t count)
 {
     uint32_t hash = 0;
+    uint32_t limit = count + offset;
 
-    for (size_t i = 0; i < count; i++) {
-        hash = (hash * 31) + data[i + offset];
-        i++;
+    for (size_t i = offset; i < limit; i++) {
+        hash = (hash * 31) + data[i];
     }
 
     return hash;
