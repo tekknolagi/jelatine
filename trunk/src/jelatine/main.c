@@ -180,7 +180,7 @@ static void parse_command_line_args(int argc, char *argv[])
         } else if ((strcmp("--stack-size", argv[i]) == 0) && (i + 1 < argc)) {
             size_t stack_size = atoi(argv[i + 1]);
 
-            opts_set_stack_size(size_ceil_round(stack_size, sizeof(uintptr_t)));
+            opts_set_stack_size(size_ceil(stack_size, sizeof(jword_t)));
             i += 2;
         } else if ((strcmp("-h", argv[i]) == 0)
                    || (strcmp("--help", argv[i]) == 0))

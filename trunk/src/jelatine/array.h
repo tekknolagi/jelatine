@@ -83,9 +83,6 @@ struct array_t {
 /** Typedef for ::struct array_t */
 typedef struct array_t array_t;
 
-/** Size in jwords of an array header */
-#define ARRAY_SIZE ((sizeof(array_t) + sizeof(jword_t) - 1) / sizeof(jword_t))
-
 /** Reference array header */
 
 struct ref_array_t {
@@ -101,10 +98,6 @@ struct ref_array_t {
 /** Typedef for ::struct ref_array_t */
 typedef struct ref_array_t ref_array_t;
 
-/** Size in jwords of a reference array header */
-#define REF_ARRAY_SIZE \
-        ((sizeof(ref_array_t) + sizeof(jword_t) - 1) / sizeof(jword_t))
-
 /******************************************************************************
  * Globals                                                                    *
  ******************************************************************************/
@@ -117,7 +110,7 @@ extern uint8_t prim_to_array_types[];
  ******************************************************************************/
 
 extern bool arraycopy_ref(array_t *, int32_t, array_t *, int32_t, int32_t);
-extern size_t array_get_nref_words(array_t *);
+extern size_t array_get_nref_size(array_t *);
 extern size_t array_get_ref_n(array_t *);
 
 /******************************************************************************

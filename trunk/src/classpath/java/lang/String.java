@@ -41,6 +41,7 @@ package java.lang;
 
 import java.lang.System;
 import java.io.UnsupportedEncodingException;
+import jelatine.VMPointer;
 
 /**
  * Strings represent an immutable set of characters.  All String literals
@@ -69,11 +70,8 @@ import java.io.UnsupportedEncodingException;
  */
 public final class String
 {
-    // WARNING: String is a CORE class in the bootstrap cycle. See the comments
-    // in vm/reference/java/lang/Runtime for implications of this fact.
-
     /** Internal field, handled by the VM */
-    private String next;
+    private VMPointer next;
 
     /**
      * Characters which make up the String.

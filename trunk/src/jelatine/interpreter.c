@@ -2828,7 +2828,7 @@ void interpreter(method_t *main_method)
         uint8_t dimensions = *(pc + 3);
 
         SAVE_STATE;
-        ref = gc_new_multiarray(cl, dimensions, sp - dimensions, true);
+        ref = gc_new_multiarray(cl, dimensions, sp - dimensions);
         *((uintptr_t *) (sp - dimensions)) = ref;
         sp = sp - dimensions + 1;
         pc += 4;

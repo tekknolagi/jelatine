@@ -48,10 +48,9 @@ typedef struct java_lang_Class_t java_lang_Class_t;
 /** Number of references in a java.lang.Class instance */
 #define JAVA_LANG_CLASS_REF_N (1)
 
-/** Size in words of the non-reference area of a java.lang.Class instance */
-#define JAVA_LANG_CLASS_NREF_WORDS \
-        (((sizeof(java_lang_Class_t) - offsetof(java_lang_Class_t, id)) \
-         + sizeof(jword_t) - 1) / sizeof(jword_t))
+/** Size in bytes of the non-reference area of a java.lang.Class instance */
+#define JAVA_LANG_CLASS_NREF_SIZE \
+        (sizeof(java_lang_Class_t) - offsetof(java_lang_Class_t, id))
 
 /** Turns a reference to a Java Class object into a C pointer */
 #define JAVA_LANG_CLASS_REF2PTR(r) \

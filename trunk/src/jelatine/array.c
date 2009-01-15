@@ -67,11 +67,11 @@ uint8_t prim_to_array_types[] = {
  * Array implementation                                                       *
  ******************************************************************************/
 
-/** Gets the size (in jwords) of the non-reference area of an array
+/** Gets the size (in bytes) of the non-reference area of an array
  * \param array A pointer to the array header
- * \returns The size (in jwords) of the array's non-reference area */
+ * \returns The size (in bytes) of the array's non-reference area */
 
-size_t array_get_nref_words(array_t *array)
+size_t array_get_nref_size(array_t *array)
 {
     class_t *cl = header_get_class(&(array->header));
     size_t size;
@@ -82,15 +82,15 @@ size_t array_get_nref_words(array_t *array)
         size = sizeof(array_t) - sizeof(header_t);
 
         if (cl->elem_type == PT_BOOL) {
-            size += size_ceil_div(array->length, 8);
+            size += size_div_inf(array->length, 8);
         } else {
             size += array->length
                     * array_elem_size(prim_to_array_type(cl->elem_type));
         }
     }
 
-    return size_ceil_div(size, sizeof(jword_t));
-} // array_get_nref_words()
+    return size;
+} // array_get_nref_size()
 
 /** Gets the number of references in an array
  * \param array A pointer to an array header

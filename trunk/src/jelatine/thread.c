@@ -41,8 +41,15 @@
  * information necessary to bootstrap the thread. */
 
 struct thread_payload_t {
-    thread_t *thread; /**< The thread's own structure */
-    method_t *run; /**< The run() method of the thread */
+    method_t *run; ///< The run() method of the thread
+    uintptr_t *ref; ///< A pointer to the thread object
+#if JEL_THREAD_POSIX
+    pthread_t pthread; ///< POSIX thread
+    pthread_cond_t pthread_cond; ///< POSIX condition variable
+#elif JEL_THREAD_PTH
+    pth_t pth; ///< GNU/Pth thread
+    pth_cond_t pth_cond; ///< GNU/Pth condition variable
+#endif
 };
 
 /** Typedef for the ::struct thread_payload_t type */
@@ -56,7 +63,7 @@ struct monitor_t {
     thread_t *owner; ///< Owner thread, NULL if the monitor is unlocked
     size_t count; ///< Number of times the monitor was acquired
 #if JEL_THREAD_POSIX
-    pthread_cond_t *pthread_cond;
+    pthread_cond_t *pthread_cond; ///< POSIX condition variable
 #elif JEL_THREAD_PTH
     pth_cond_t *pth_cond; ///< GNU/Pth condition variable
 #endif
@@ -674,12 +681,13 @@ void thread_pop_root( void )
 
 void thread_init(thread_t *thread)
 {
+    memset(thread, 0, sizeof(thread_t));
     thread_set_self(thread);
 
 #if JEL_THREAD_POSIX
-    // This is required for VM shutdown
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-    pthread_testcancel();
+    pthread_cond_init(&thread->pthread_cond, NULL);
+#elif JEL_THREAD_PTH
+    pth_cond_init(&thread->pth_cond);
 #endif
 } // thread_init()
 
@@ -688,50 +696,49 @@ void thread_init(thread_t *thread)
  * creating a new one
  * \param thread The main thread pre-allocated structure
  * \param run The main method
- * \param args The arguments array
+ * \param args A pointer to a reference to the arguments array
  * \returns The reference to an uncaught exception if the main method terminated
  * abruptly or JNULL */
 
-uintptr_t thread_create_main(thread_t *thread, method_t *run, uintptr_t args)
+uintptr_t thread_create_main(thread_t *thread, method_t *run, uintptr_t *args)
 {
-    java_lang_Thread_t *jthread;
     class_t *thread_cl = bcl_find_class_by_name("java/lang/Thread");
     size_t stack_size = opts_get_stack_size();
-    uintptr_t obj;
 
     /* Contrary to the startup of a 'regular' thread we do not initialize nor
      * register the thread as the main thread has already been initialized and
      * registered even though it is only partially initialized */
-    thread_push_root(&args);
-
-#if JEL_THREAD_POSIX
-    pthread_cond_init(&thread->pthread_sync, NULL);
-#elif JEL_THREAD_PTH
-    pth_cond_init(&thread->pth_sync);
-#endif
 
     // Build the stack
     thread->stack = gc_malloc(stack_size);
     thread->sp = thread->stack;
     thread->fp = (stack_frame_t *) ((char *) thread->stack + stack_size);
 
-    // HACK: Push the arguments on top of the stack
-    thread_pop_root();
-    *((uintptr_t *) thread->sp) = args;
-
     /* Create the first Java thread structure, since the first thread is not
      * created by VMThread.start() we have to do it by hand */
-    obj = gc_new(thread_cl);
-    jthread = JAVA_LANG_THREAD_REF2PTR(obj);
-    jthread->vmThread = (uintptr_t) thread;
-    jthread->priority = 5;
-    jthread->name = JAVA_LANG_STRING_PTR2REF(jstring_create_from_utf8("Thread-0"));
-    thread->obj = obj;
+    thread->obj = gc_new(thread_cl);
+    JAVA_LANG_THREAD_REF2PTR(thread->obj)->vmThread = (uintptr_t) thread;
+    JAVA_LANG_THREAD_REF2PTR(thread->obj)->priority = 5;
+    JAVA_LANG_THREAD_REF2PTR(thread->obj)->name =
+        JAVA_LANG_STRING_PTR2REF(jstring_create_from_utf8("Thread-0"));
+
+    // HACK: Push the arguments on top of the stack
+    *((uintptr_t *) thread->sp) = *args;
 
     // Run the new thread's code
     interpreter(run);
 
+    // Mark the thread as dead, none can join on it anymore after this point
+    tm_lock();
+#if JEL_THREAD_POSIX
+    pthread_cond_broadcast(&thread->pthread_cond);
+#elif JEL_THREAD_PTH
+    pth_cond_notify(&thread->pth_cond, true);
+#endif
     tm_unregister(thread);
+    JAVA_LANG_THREAD_REF2PTR(thread->obj)->vmThread = JNULL;
+    tm_unlock();
+
     gc_free(thread->roots.pointers);
     gc_free(thread->stack);
 
@@ -799,25 +806,45 @@ void thread_sleep(int64_t ms)
 
 static void *thread_start(void *arg)
 {
+    size_t stack_size = opts_get_stack_size();
     thread_payload_t *payload = (thread_payload_t *) arg;
-    thread_t *thread = payload->thread;
     method_t *run = payload->run;
+    uintptr_t *ref = payload->ref;
+    thread_t thread;
     int exception;
 
-    thread_init(thread); // Various infrastructure initialization
-    gc_free(payload); // Release the payload
+    // Initialize the new thread
+    thread_init(&thread);
+
+    // Build the stack
+    thread.stack = gc_malloc(stack_size);
+    thread.sp = thread.stack;
+    thread.fp = (stack_frame_t *) ((char *) thread.stack + stack_size);
+
+    // Create the temporary roots area
+    thread.roots.capacity = THREAD_TMP_ROOTS;
+    thread.roots.pointers = gc_malloc(THREAD_TMP_ROOTS * sizeof(uintptr_t *));
+
+    tm_lock();
+
+    // Link the java.lang.Thread object to the VM thread and register it
+    thread.obj = *ref;
+    JAVA_LANG_THREAD_REF2PTR(thread.obj)->vmThread = (uintptr_t) &thread;
+    JAVA_LANG_THREAD_REF2PTR(thread.obj)->priority = 5;
+    tm_register(&thread);
 
     // Inform the parent thread that we're starting execution
-    tm_lock();
 #if JEL_THREAD_POSIX
-    pthread_cond_signal(&thread->pthread_sync);
+    thread.pthread = payload->pthread;
+    pthread_cond_signal(&payload->pthread_cond);
 #elif JEL_THREAD_PTH
-    pth_cond_notify(&thread->pth_sync, false);
+    thread.pth = payload->pth;
+    pth_cond_notify(&payload->pth_cond, false);
 #endif
     tm_unlock();
 
     // HACK: Push the 'this' pointer on top of the stack
-    *((uintptr_t *) thread->stack) = thread->obj;
+    *((uintptr_t *) thread.stack) = thread.obj;
 
     c_try {
         interpreter(run); // Run the new thread's code
@@ -830,23 +857,35 @@ static void *thread_start(void *arg)
     // Mark the thread as dead, none can join on it anymore after this point
     tm_lock();
 #if JEL_THREAD_POSIX
-    pthread_cond_broadcast(&thread->pthread_sync);
+    pthread_cond_broadcast(&thread.pthread_cond);
 #elif JEL_THREAD_PTH
-    pth_cond_notify(&thread->pth_sync, true);
+    pth_cond_notify(&thread.pth_cond, true);
 #endif
-    tm_unregister(thread);
-    JAVA_LANG_THREAD_REF2PTR(thread->obj)->vmThread = JNULL;
+    tm_unregister(&thread);
+    JAVA_LANG_THREAD_REF2PTR(thread.obj)->vmThread = JNULL;
     tm_unlock();
 
-    if (thread->exception != JNULL) {
+    // Waith for the joining thread to wake up
+#if JEL_THREAD_POSIX
+    while (pthread_cond_destroy(&thread.pthread_cond) != 0) {
+        ;
+    }
+#elif JEL_THREAD_PTH
+    /* HACK, GROSS: This relies on internal information of GNU/Pth, we should
+     * find a better way for checking that there are no more waiters */
+    while (thread.pth_cond.cn_waiters != 0) {
+        pth_yield(NULL);
+    }
+#endif
+
+    if (thread.exception != JNULL) {
         // TODO: Print the exception and stack trace
         dbg_error("Uncaught exception");
         vm_fail();
     }
 
-    gc_free(thread->roots.pointers);
-    gc_free(thread->stack);
-    gc_free(thread);
+    gc_free(thread.roots.pointers);
+    gc_free(thread.stack);
 
 #if JEL_THREAD_POSIX
     pthread_exit(NULL);
@@ -859,81 +898,58 @@ static void *thread_start(void *arg)
 
 /** Creates a new thread executing the provided method
  * \param obj The java.lang.Thread object associated with this thread
- * \param run The first method executed by this thread
- * \returns A pointer to the newly created thread */
+ * \param run The first method executed by this thread */
 
-thread_t *thread_launch(uintptr_t ref, method_t *run)
+void thread_launch(uintptr_t *ref, method_t *run)
 {
-    thread_t *thread;
     thread_payload_t *payload;
-    size_t stack_size = opts_get_stack_size();
 #if JEL_THREAD_POSIX
     int res;
 #endif
 
-    // Create the VM thread object
-    thread_push_root(&ref);
-    thread = gc_malloc(sizeof(thread_t));
-
-#if JEL_THREAD_POSIX
-    pthread_cond_init(&thread->pthread_sync, NULL);
-#elif JEL_THREAD_PTH
-    pth_cond_init(&thread->pth_sync);
-#endif
-
-    // Build the stack
-    thread->stack = gc_malloc(stack_size);
-    thread->sp = thread->stack;
-    thread->fp = (stack_frame_t *) ((char *) thread->stack + stack_size);
-
-    // Create the temporary roots area
-    thread->roots.capacity = THREAD_TMP_ROOTS;
-    thread->roots.pointers = gc_malloc(THREAD_TMP_ROOTS * sizeof(uintptr_t *));
-
-    // Create the thread payload
-    payload = gc_malloc(sizeof(thread_payload_t));
-
-    // Register the thread
-    tm_register(thread);
-
-    // Link the java.lang.Thread object to the VM thread
-    thread_pop_root();
-    JAVA_LANG_THREAD_REF2PTR(ref)->vmThread = (uintptr_t) thread;
-    JAVA_LANG_THREAD_REF2PTR(ref)->priority = 5;
-    thread->obj = ref;
-
     // Prepare the thread payload
-    payload->thread = thread;
+    payload = gc_malloc(sizeof(thread_payload_t));
     payload->run = run;
+    payload->ref = ref;
+#if JEL_THREAD_POSIX
+    pthread_cond_init(&payload->pthread_cond, NULL);
+#elif JEL_THREAD_PTH
+    pth_cond_init(&payload->pth_cond);
+#endif
 
     // We take the global lock for we will be waiting for the new thread
     tm_lock();
 
 #if JEL_THREAD_POSIX
     // FIXME: Check if this call fails and shut down the machine 'cleanly'
-    res = pthread_create(&thread->pthread, NULL, thread_start, payload);
+    res = pthread_create(&payload->pthread, NULL, thread_start, payload);
 
     if (res) {
         dbg_error("Unable to create a new thread");
         vm_fail();
     }
 #elif JEL_THREAD_PTH
-    thread->pth = pth_spawn(PTH_ATTR_DEFAULT, thread_start, payload);
+    payload->pth = pth_spawn(PTH_ATTR_DEFAULT, thread_start, payload);
 
-    if (thread->pth == NULL) {
+    if (payload->pth == NULL) {
         dbg_error("Unable to create a new thread");
         vm_fail();
     }
 #endif
 
+    // Wait for the new thread
 #if JEL_THREAD_POSIX
-    pthread_cond_wait(&thread->pthread_sync, &tm.lock);
+    pthread_cond_wait(&payload->pthread_cond, &tm.lock);
 #else
-    pth_cond_await(&thread->pth_sync, &tm.lock, NULL);
+    pth_cond_await(&payload->pth_cond, &tm.lock, NULL);
 #endif
     tm_unlock();
 
-    return thread;
+    // Cleanup
+#if JEL_THREAD_POSIX
+    pthread_cond_destroy(&payload->pthread_cond);
+#endif // JEL_THREAD_POSIX
+    gc_free(payload);
 } // thread_launch()
 
 /** Interrupts a thread. This function is used for implementing the
@@ -996,12 +1012,12 @@ void thread_join(uintptr_t *thread)
 
         if (target != NULL) {
 #if JEL_THREAD_POSIX
-            self->pthread_int = &target->pthread_sync;
-            pthread_cond_wait(&target->pthread_sync, &tm.lock);
+            self->pthread_int = &target->pthread_cond;
+            pthread_cond_wait(&target->pthread_cond, &tm.lock);
             self->pthread_int = NULL;
 #elif JEL_THREAD_PTH
-            self->pth_int = &target->pth_sync;
-            pth_cond_await(&target->pth_sync, &tm.lock, NULL);
+            self->pth_int = &target->pth_cond;
+            pth_cond_await(&target->pth_cond, &tm.lock, NULL);
             self->pth_int = NULL;
 #endif
         }

@@ -250,16 +250,6 @@ static inline uint32_t class_get_nref_size(const class_t *cl)
     return cl->nref_size;
 } // class_get_nref_size()
 
-/** Gets the size (in jwords) of the non-reference area of the given
- * class' instances
- * \param cl A valid pointer to a class_t structure
- * \returns The size of the non-reference area of the class' instances */
-
-static inline uint32_t class_get_nref_words(const class_t *cl)
-{
-    return size_ceil_div(cl->nref_size, sizeof(jword_t));
-} // class_get_nref_words()
-
 /** Gets a pointer to the parent class of the passed one
  * \param cl A valid pointer to a class_t structure
  * \returns A pointer to the parent class */

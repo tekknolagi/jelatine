@@ -38,7 +38,7 @@ exception statement from your version. */
 
 package java.lang;
 
-import jelatine.VMThread;
+import jelatine.VMPointer;
 
 /**
  * Thread represents a single thread of execution in the VM. When an
@@ -97,7 +97,7 @@ public class Thread implements Runnable
     volatile int priority;
 
     /** The internal thread representation */
-    volatile VMThread vmThread;
+    volatile VMPointer vmThread;
 
     /** The next thread number to use. */
     private static int numAnonymousThreadsCreated = 0;
@@ -192,7 +192,7 @@ public class Thread implements Runnable
     {
         Thread current = currentThread();
 
-	// Use toString hack to detect null.
+        // Use toString hack to detect null.
         this.name = name.toString();
         this.runnable = target;
 
@@ -217,10 +217,7 @@ public class Thread implements Runnable
      *
      * @return the currently executing Thread
      */
-    public static Thread currentThread()
-    {
-        return VMThread.currentThread();
-    }
+    public native static Thread currentThread();
 
     /**
      * Yield to another thread. The Thread will not lose any locks it holds
@@ -228,10 +225,7 @@ public class Thread implements Runnable
      * next to run, and it could even be this one, but most VMs will choose
      * the highest priority thread that has been waiting longest.
      */
-    public static void yield()
-    {
-        VMThread.yield();
-    }
+    public native static void yield();
 
     /**
      * Suspend the current Thread's execution for the specified amount of
@@ -245,32 +239,18 @@ public class Thread implements Runnable
      * @throws IllegalArgumentException if ms is negative
      * @see #interrupt()
      */
-    public static void sleep(long ms) throws InterruptedException
-    {
-        // Check parameters
-        if (ms < 0)
-            throw new IllegalArgumentException();
-
-        // Really sleep
-        VMThread.sleep(ms);
-    }
+    public native static void sleep(long ms) throws InterruptedException;
 
     /**
      * Start this Thread, calling the run() method of the Runnable this Thread
      * was created with, or else the run() method of the Thread itself. This
      * is the only way to start a new thread; calling run by yourself will just
-     * stay in the same thread.
+     * stay in the same thread. This method implicitly sets vmThread.
      *
      * @throws IllegalThreadStateException if the thread has already started
      * @see #run()
      */
-    public synchronized void start()
-    {
-        if (vmThread != null)
-            throw new IllegalThreadStateException();
-
-        VMThread.start(this); // This sets vmThread
-    }
+    public synchronized native void start();
 
     /**
      * The method of Thread that will be run if there is no Runnable object
@@ -292,10 +272,7 @@ public class Thread implements Runnable
      *
      * <p>Otherwise, the interrupt status will be set.
      */
-    public synchronized void interrupt()
-    {
-        VMThread.interrupt(this);
-    }
+    public synchronized native void interrupt();
 
     /**
      * Determine whether this Thread is alive. A thread which is alive has
@@ -351,10 +328,7 @@ public class Thread implements Runnable
      *
      * @return the current number of active threads
      */
-    public static int activeCount()
-    {
-        return VMThread.activeCount();
-    }
+    public native static int activeCount();
 
     /**
      * Wait forever for the Thread in question to die.
@@ -362,10 +336,7 @@ public class Thread implements Runnable
      * @throws InterruptedException if the Thread is interrupted; it's
      *         <i>interrupted status</i> will be cleared
      */
-    public final void join() throws InterruptedException
-    {
-        VMThread.join(this);
-    }
+    public native final void join() throws InterruptedException;
 
     /**
      * Returns a string representation of this thread, including the

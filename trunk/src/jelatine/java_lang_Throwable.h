@@ -47,8 +47,8 @@ typedef struct java_lang_Throwable_t java_lang_Throwable_t;
 /** Number of references of a java.lang.Throwable instance */
 #define JAVA_LANG_THROWABLE_REF_N (1)
 
-/** Size in words of the non-reference area of a java.lang.Throwable instance */
-#define JAVA_LANG_THROWABLE_NREF_WORDS (0)
+/** Size in bytes of the non-reference area of a java.lang.Throwable instance */
+#define JAVA_LANG_THROWABLE_NREF_SIZE (0)
 
 /** Turns a reference to a Java Throwable object into a C pointer */
 #define JAVA_LANG_THROWABLE_REF2PTR(r) \

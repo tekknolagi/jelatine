@@ -71,13 +71,11 @@ typedef struct jelatine_VMResourceStream_t jelatine_VMResourceStream_t;
 /** Number of references in a jelatine.VMResourceStream instance */
 #define JELATINE_VMRESOURCESTREAM_REF_N (1)
 
-/** Size in words of the non-reference are in a jelatine.VMResourceStream
+/** Size in bytes of the non-reference are in a jelatine.VMResourceStream
  * instance */
-#define JELATINE_VMRESOURCESTREAM_NREF_WORDS \
-        ((sizeof(jelatine_VMResourceStream_t) \
-          - offsetof(jelatine_VMResourceStream_t, handle) \
-          + sizeof(jword_t) - 1) \
-         / sizeof(jword_t))
+#define JELATINE_VMRESOURCESTREAM_NREF_SIZE \
+        (sizeof(jelatine_VMResourceStream_t) \
+         - offsetof(jelatine_VMResourceStream_t, handle))
 
 /** Turns a reference to a Java VMResourceStream object into a C pointer */
 #define JELATINE_VMRESOURCESTREAM_REF2PTR(r) \

@@ -92,7 +92,7 @@ const_pool_t *cp_create(class_t *cl, class_file_t *cf)
     uintptr_t jstring;
 
     entries = cf_load_u2(cf);
-    tags = gc_malloc(size_ceil_div(entries, 2));
+    tags = gc_malloc(size_div_inf(entries, 2));
     data = gc_malloc(sizeof(jword_t) * entries);
 
     /* The first constant pool element is empty, we fill it with the class

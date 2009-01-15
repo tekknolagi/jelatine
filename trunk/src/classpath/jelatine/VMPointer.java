@@ -20,60 +20,18 @@
 
 package jelatine;
 
-import java.lang.Thread;
-
 /**
- * Internal VM class for handling methods from java.lang.Thread
+ * Internal VM placeholder class representing C pointers embedded into Java
+ * objects
  */
-public final class VMThread
+public final class VMPointer
 {
     /**
-     * This class cannot be instantiated, instances are created only by the JVM
-     * in the start() method
+     * This class cannot be instantiated as it would be meaningless to
      */
 
-    private VMThread()
+    private VMPointer()
     {
         ;
     }
-
-    /**
-     * Implements java.lang.Thread.currentThread()
-     * @returns A reference to the current thread
-     */
-    public native static Thread currentThread();
-
-    /**
-     * Implements java.lang.Thread.yield()
-     */
-    public native static void yield();
-
-    /**
-     * Implements java.lang.Thread.sleep()
-     * @param ms The number of milliseconds
-     */
-    public native static void sleep(long ms) throws InterruptedException;
-
-    /**
-     * Implements java.lang.Thread.start()
-     * @param thread The thread to be started
-     * @returns A new VMThread
-     */
-    public native static VMThread start(Thread thread);
-
-    /**
-     * Implements java.lang.Thread.activeCount()
-     * @returns The number of active threads in the system
-     */
-    public native static int activeCount();
-
-    /**
-     * Implements java.lang.Thread.join()
-     */
-    public native static void join(Thread thread) throws InterruptedException;
-
-    /**
-     * Implements java.lang.Thread.interrupt()
-     */
-    public native static void interrupt(Thread thread);
 }

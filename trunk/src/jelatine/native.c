@@ -113,6 +113,15 @@ static KNI_RETURNTYPE_LONG java_lang_System_currentTimeMillis( void );
 static KNI_RETURNTYPE_VOID java_lang_System_arraycopy( void );
 static KNI_RETURNTYPE_INT java_lang_System_identityHashCode( void );
 
+// java.lang.Thread methods
+static KNI_RETURNTYPE_OBJECT java_lang_Thread_currentThread( void );
+static KNI_RETURNTYPE_VOID java_lang_Thread_yield( void );
+static KNI_RETURNTYPE_VOID java_lang_Thread_sleep( void );
+static KNI_RETURNTYPE_VOID java_lang_Thread_start( void );
+static KNI_RETURNTYPE_INT java_lang_Thread_activeCount( void );
+static KNI_RETURNTYPE_VOID java_lang_Thread_join( void );
+static KNI_RETURNTYPE_VOID java_lang_Thread_interrupt( void );
+
 // java.lang.Throwable methods
 static KNI_RETURNTYPE_VOID java_lang_Throwable_printStackTrace( void );
 
@@ -134,15 +143,6 @@ static KNI_RETURNTYPE_BOOLEAN jelatine_VMResourceStream_open( void );
 static KNI_RETURNTYPE_INT jelatine_VMResourceStream_read( void );
 static KNI_RETURNTYPE_VOID jelatine_VMResourceStream_finalize( void );
 #endif // JEL_JARFILE_SUPPORT
-
-// jelatine.VMThread methods
-static KNI_RETURNTYPE_OBJECT jelatine_VMThread_currentThread( void );
-static KNI_RETURNTYPE_VOID jelatine_VMThread_yield( void );
-static KNI_RETURNTYPE_VOID jelatine_VMThread_sleep( void );
-static KNI_RETURNTYPE_OBJECT jelatine_VMThread_start( void );
-static KNI_RETURNTYPE_INT jelatine_VMThread_activeCount( void );
-static KNI_RETURNTYPE_VOID jelatine_VMThread_join( void );
-static KNI_RETURNTYPE_VOID jelatine_VMThread_interrupt( void );
 
 /** Names and descriptions of the native methods */
 
@@ -355,6 +355,50 @@ native_method_desc_t native_desc[] = {
         java_lang_System_identityHashCode
     },
 
+    // java.lang.Thread methods
+    {
+        "java/lang/Thread",
+        "currentThread",
+        "()Ljava/lang/Thread;",
+        java_lang_Thread_currentThread
+    },
+    {
+        "java/lang/Thread",
+        "yield",
+        "()V",
+        java_lang_Thread_yield
+    },
+    {
+        "java/lang/Thread",
+        "sleep",
+        "(J)V",
+        java_lang_Thread_sleep
+    },
+    {
+        "java/lang/Thread",
+        "start",
+        "()V",
+        java_lang_Thread_start
+    },
+    {
+        "java/lang/Thread",
+        "activeCount",
+        "()I",
+        java_lang_Thread_activeCount
+    },
+    {
+        "java/lang/Thread",
+        "join",
+        "()V",
+        java_lang_Thread_join
+    },
+    {
+        "java/lang/Thread",
+        "interrupt",
+        "()V",
+        java_lang_Thread_interrupt
+    },
+
     // java.lang.Throwable methods
     {
         "java/lang/Throwable",
@@ -417,50 +461,6 @@ native_method_desc_t native_desc[] = {
         jelatine_VMResourceStream_finalize
     },
 #endif // JEL_JARFILE_SUPPORT
-
-    // jelatine.VMThread methods
-    {
-        "jelatine/VMThread",
-        "currentThread",
-        "()Ljava/lang/Thread;",
-        jelatine_VMThread_currentThread
-    },
-    {
-        "jelatine/VMThread",
-        "yield",
-        "()V",
-        jelatine_VMThread_yield
-    },
-    {
-        "jelatine/VMThread",
-        "sleep",
-        "(J)V",
-        jelatine_VMThread_sleep
-    },
-    {
-        "jelatine/VMThread",
-        "start",
-        "(Ljava/lang/Thread;)Ljelatine/VMThread;",
-        jelatine_VMThread_start
-    },
-    {
-        "jelatine/VMThread",
-        "activeCount",
-        "()I",
-        jelatine_VMThread_activeCount
-    },
-    {
-        "jelatine/VMThread",
-        "join",
-        "(Ljava/lang/Thread;)V",
-        jelatine_VMThread_join
-    },
-    {
-        "jelatine/VMThread",
-        "interrupt",
-        "(Ljava/lang/Thread;)V",
-        jelatine_VMThread_interrupt
-    },
 
     { NULL, NULL, NULL, NULL } // Placeholder
 };
@@ -909,7 +909,7 @@ static KNI_RETURNTYPE_LONG java_lang_Runtime_totalMemory( void )
 
 static KNI_RETURNTYPE_VOID java_lang_Runtime_gc( void )
 {
-    gc_collect();
+    gc_collect(0);
     KNI_ReturnVoid();
 } // java_lang_Runtime_gc()
 
@@ -1107,6 +1107,102 @@ static KNI_RETURNTYPE_INT java_lang_System_identityHashCode( void )
     KNI_ReturnInt(hash);
 } // java_lang_System_identityHashCode()
 
+/** Implementation of java.lang.Thread.currentThread() */
+
+static KNI_RETURNTYPE_OBJECT java_lang_Thread_currentThread( void )
+{
+    KNI_StartHandles(1);
+    KNI_DeclareHandle(thread_ref);
+
+    *thread_ref = thread_self()->obj;
+    KNI_EndHandlesAndReturnObject(thread_ref);
+} // java_lang_Thread_currentThread()
+
+/** Implementation of java.lang.Thread.yield() */
+
+static KNI_RETURNTYPE_VOID java_lang_Thread_yield( void )
+{
+    thread_yield();
+    KNI_ReturnVoid();
+} // java_lang_Thread_yield()
+
+/** Implementation of java.lang.Thread.sleep() */
+
+static KNI_RETURNTYPE_VOID java_lang_Thread_sleep( void )
+{
+    jlong ms = KNI_GetParameterAsLong(1);
+
+    if (ms < 0) {
+        KNI_ThrowNew("java/lang/IllegalArgumentException", NULL);
+    } else {
+        thread_sleep(ms);
+    }
+
+    KNI_ReturnVoid();
+} // java_lang_Thread_sleep()
+
+/** Implementation of java.lang.Thread.start() */
+
+static KNI_RETURNTYPE_VOID java_lang_Thread_start( void )
+{
+#if !JEL_THREAD_NONE
+    class_t *cl;
+    method_t *run;
+
+    KNI_StartHandles(2);
+    KNI_DeclareHandle(thread_ref);
+
+    KNI_GetThisPointer(thread_ref);
+    cl = header_get_class((header_t *) *thread_ref);
+    run = mm_get(cl->method_manager, "run", "()V");
+    thread_launch(thread_ref, run);
+    KNI_EndHandles();
+#endif // !JEL_THREAD_NONE
+
+    KNI_ReturnVoid();
+} // java_lang_Thread_start()
+
+/** Implementation of java.lang.Thread.activeCount() */
+
+static KNI_RETURNTYPE_INT java_lang_Thread_activeCount( void )
+{
+    // Decrease thread number by one as the finalizer thread is for internal purpose
+    KNI_ReturnInt(tm_active());
+} // jelatine_Thread_activeCount()
+
+/** Implementation of java.lang.Thread.join() */
+
+static KNI_RETURNTYPE_VOID java_lang_Thread_join( void )
+{
+#if !JEL_THREAD_NONE
+    KNI_StartHandles(1);
+    KNI_DeclareHandle(thread_ref);
+
+    KNI_GetThisPointer(thread_ref);
+    thread_join(thread_ref);
+    KNI_EndHandles();
+#endif // !JEL_THREAD_NONE
+
+    KNI_ReturnVoid();
+} // java_lang_Thread_join()
+
+/** Implementation of java.lang.Thread.interrupt() */
+
+static KNI_RETURNTYPE_VOID java_lang_Thread_interrupt( void )
+{
+#if !JEL_THREAD_NONE
+    KNI_StartHandles(1);
+    KNI_DeclareHandle(thread_ref);
+
+    KNI_GetThisPointer(thread_ref);
+    thread_interrupt((thread_t *)
+                     (JAVA_LANG_THREAD_REF2PTR(*thread_ref)->vmThread));
+    KNI_EndHandles();
+#endif // !JEL_THREAD_NONE
+
+    KNI_ReturnVoid();
+} // java_lang_Thread_interrupt()
+
 /** Implementation of java.lang.Throwable.printStackTrace() */
 
 static KNI_RETURNTYPE_VOID java_lang_Throwable_printStackTrace( void )
@@ -1252,102 +1348,3 @@ static KNI_RETURNTYPE_VOID jelatine_VMResourceStream_finalize( void )
 } // jelatine_VMResourceStream_finalize()
 
 #endif // JEL_JARFILE_SUPPORT
-
-/** Implementation of jelatine.VMThread.currentThread() */
-
-static KNI_RETURNTYPE_OBJECT jelatine_VMThread_currentThread( void )
-{
-    KNI_StartHandles(1);
-    KNI_DeclareHandle(thread_ref);
-
-    *thread_ref = thread_self()->obj;
-    KNI_EndHandlesAndReturnObject(thread_ref);
-} // jelatine_VMThread_currentThread()
-
-/** Implementation of jelatine.VMThread.yield() */
-
-static KNI_RETURNTYPE_VOID jelatine_VMThread_yield( void )
-{
-    thread_yield();
-    KNI_ReturnVoid();
-} // jelatine_VMThread_yield()
-
-/** Implementation of jelatine.VMThread.sleep() */
-
-static KNI_RETURNTYPE_VOID jelatine_VMThread_sleep( void )
-{
-    thread_sleep(KNI_GetParameterAsLong(1));
-    KNI_ReturnVoid();
-} // jelatine_VMThread_sleep()
-
-/** Implementation of jelatine.VMThread.start() */
-
-static KNI_RETURNTYPE_OBJECT jelatine_VMThread_start( void )
-{
-#if !JEL_THREAD_NONE
-    thread_t *new_thread;
-    java_lang_Thread_t *jthread;
-    class_t *cl;
-    method_t *run;
-
-    KNI_StartHandles(2);
-    KNI_DeclareHandle(thread_ref);
-    KNI_DeclareHandle(vmthread);
-
-    KNI_GetParameterAsObject(1, thread_ref);
-    jthread = JAVA_LANG_THREAD_REF2PTR(*thread_ref);
-    cl = header_get_class(&(jthread->header));
-    run = mm_get(cl->method_manager, "run", "()V");
-    new_thread = thread_launch(*thread_ref, run);
-    // FIXME: We should never stuff a C pointer inside an object reference
-    *vmthread = (uintptr_t) new_thread;
-    KNI_EndHandlesAndReturnObject(vmthread);
-#else
-    KNI_StartHandles(1);
-    KNI_DeclareHandle(thread_ref);
-    KNI_EndHandlesAndReturnObject(thread_ref);
-#endif // !JEL_THREAD_NONE
-} // jelatine_VMThread_start()
-
-/** Implementation of jelatine.VMThread.activeCount() */
-
-static KNI_RETURNTYPE_INT jelatine_VMThread_activeCount( void )
-{
-    // Decrease thread number by one as the finalizer thread is for internal purpose
-    KNI_ReturnInt(tm_active());
-} // jelatine_VMThread_activeCount()
-
-/** Implementation of jelatine.VMThread.join() */
-
-static KNI_RETURNTYPE_VOID jelatine_VMThread_join( void )
-{
-#if !JEL_THREAD_NONE
-    KNI_StartHandles(1);
-    KNI_DeclareHandle(thread_ref);
-
-    KNI_GetParameterAsObject(1, thread_ref);
-    thread_join(thread_ref);
-    KNI_EndHandles();
-    KNI_ReturnVoid();
-#else
-    KNI_ReturnVoid();
-#endif // !JEL_THREAD_NONE
-} // jelatine_VMThread_join()
-
-/** Implementation of jelatine.VMThread.interrupt() */
-
-static KNI_RETURNTYPE_VOID jelatine_VMThread_interrupt( void )
-{
-#if !JEL_THREAD_NONE
-    KNI_StartHandles(1);
-    KNI_DeclareHandle(thread_ref);
-
-    KNI_GetParameterAsObject(1, thread_ref);
-    thread_interrupt((thread_t *)
-                     (JAVA_LANG_THREAD_REF2PTR(*thread_ref)->vmThread));
-    KNI_EndHandles();
-    KNI_ReturnVoid();
-#else
-    KNI_ReturnVoid();
-#endif // !JEL_THREAD_NONE
-} // jelatine_VMThread_interrupt()

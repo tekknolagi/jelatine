@@ -22,6 +22,7 @@ package jelatine;
 
 import java.io.InputStream;
 import java.lang.String;
+import jelatine.VMPointer;
 
 /**
  * Internal VM class used for handling System's standard error and output
@@ -30,7 +31,7 @@ import java.lang.String;
 public class VMResourceStream extends InputStream
 {
     /** Internal field handled by the VM */
-    private Object handle;
+    private VMPointer handle;
 
     /** Name of the resource */
     private String resource;
