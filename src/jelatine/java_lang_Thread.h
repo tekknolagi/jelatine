@@ -67,11 +67,9 @@ typedef struct java_lang_Thread_t java_lang_Thread_t;
 /** Number of references in a java.lang.Thread instance */
 #define JAVA_LANG_THREAD_REF_N (2)
 
-/** Size in words of the non-reference area of a java.lang.Thread instance */
-#define JAVA_LANG_THREAD_NREF_WORDS \
-        ((sizeof(java_lang_Thread_t) - offsetof(java_lang_Thread_t, vmThread) \
-          + sizeof(jword_t) - 1) \
-         / sizeof(jword_t))
+/** Size in bytes of the non-reference area of a java.lang.Thread instance */
+#define JAVA_LANG_THREAD_NREF_SIZE \
+        (sizeof(java_lang_Thread_t) - offsetof(java_lang_Thread_t, vmThread))
 
 /** Turns a reference to a Java thread into a C pointer */
 #define JAVA_LANG_THREAD_REF2PTR(r) \

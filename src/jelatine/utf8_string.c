@@ -389,7 +389,7 @@ size_t string_manager_size( void )
 
         while (str != NULL) {
             size += offsetof(utf8_string_t, data)
-                    + size_ceil_round(strlen(str->data) + 1, sizeof(jword_t))
+                    + size_ceil(strlen(str->data) + 1, sizeof(jword_t))
                     + sizeof(jword_t);
             str = str->next;
         }

@@ -127,7 +127,6 @@ void vm_run(const char *classpath, const char *bootclasspath, char *main,
 
     // The main thread is initialized early because we need it for exceptions
     tm_init();
-    memset(&main_thread, 0, sizeof(thread_t));
     thread_init(&main_thread);
     tm_register(&main_thread);
 
@@ -181,9 +180,10 @@ void vm_run(const char *classpath, const char *bootclasspath, char *main,
          * by VMThread.start() we have to do it by hand */
         ref = gc_new(thread_cl);
         JAVA_LANG_THREAD_REF2PTR(ref)->priority = 5;
+        thread_push_root(&ref);
         // After this call has returned the finalizer thread will be running
-        thread_launch(ref, method);
-
+        thread_launch(&ref, method);
+        thread_pop_root();
 #endif // JEL_FINALIZER
 
         cl = bcl_resolve_class_by_name(NULL, main_class);
@@ -216,10 +216,9 @@ void vm_run(const char *classpath, const char *bootclasspath, char *main,
                 JAVA_LANG_STRING_PTR2REF(jstring_create_literal(jargv[i]));
         }
 
-        thread_pop_root();
-
         // Launch the main thread
-        ref = thread_create_main(&main_thread, method, (uintptr_t) args);
+        ref = thread_create_main(&main_thread, method, &args);
+        thread_pop_root();
 
         if (ref != JNULL) {
             // TODO: Print the type of the unknown exception and its contents

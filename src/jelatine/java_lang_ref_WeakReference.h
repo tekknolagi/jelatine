@@ -49,13 +49,11 @@ typedef struct java_lang_ref_WeakReference_t java_lang_ref_WeakReference_t;
 /** Number of references of a java.lang.ref.WeakReference instance */
 #define JAVA_LANG_REF_WEAKREFERENCE_REF_N (0)
 
-/** Size in words of the non-reference area of a java.lang.ref.WeakReference
+/** Size in bytes of the non-reference area of a java.lang.ref.WeakReference
  * instance */
-#define JAVA_LANG_REF_WEAKREFERENCE_NREF_WORDS \
-        ((sizeof(java_lang_ref_WeakReference_t) \
-          - offsetof(java_lang_ref_WeakReference_t, referent) \
-          + sizeof(jword_t) - 1) \
-         / sizeof(jword_t))
+#define JAVA_LANG_REF_WEAKREFERENCE_NREF_SIZE \
+        (sizeof(java_lang_ref_WeakReference_t) \
+         - offsetof(java_lang_ref_WeakReference_t, referent))
 
 /** Turns a reference to a Java WeakReference object into a C pointer */
 #define JAVA_LANG_REF_WEAKREFERENCE_REF2PTR(r) \

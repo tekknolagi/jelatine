@@ -45,7 +45,7 @@ struct class_t;
 extern void gc_init(size_t);
 extern void gc_teardown( void );
 extern void gc_enable(bool);
-extern void gc_collect( void );
+extern void gc_collect(size_t);
 extern size_t gc_free_memory( void );
 extern size_t gc_total_memory( void );
 
@@ -55,7 +55,7 @@ extern void gc_mark_reference(uintptr_t);
 extern uintptr_t gc_new(struct class_t *);
 extern uintptr_t gc_new_array_nonref(array_type_t, int32_t);
 extern uintptr_t gc_new_array_ref(struct class_t *, int32_t);
-extern uintptr_t gc_new_multiarray(struct class_t *, uint8_t, jword_t *, bool);
+extern uintptr_t gc_new_multiarray(struct class_t *, uint8_t, jword_t *);
 
 // Finalization
 #if JEL_FINALIZER

@@ -107,7 +107,6 @@ static void load_field_attributes(class_t *, class_file_t *,
 static void load_field_attribute_ConstantValue(class_t *, class_file_t *,
                                                field_attributes_t *);
 static void layout_fields(class_t *);
-static void type_specific_layout(class_t *);
 static field_t *resolve_instance_field(class_t *, uint16_t);
 static static_field_t *resolve_static_field(class_t *, uint16_t);
 
@@ -369,13 +368,13 @@ class_t *bcl_preload_class(const char *name)
         } else {
             if (id == JAVA_LANG_STRING) {
                 cl->ref_n = JAVA_LANG_STRING_REF_N;
-                cl->nref_size = JAVA_LANG_STRING_NREF_WORDS * sizeof(jword_t);
+                cl->nref_size = JAVA_LANG_STRING_NREF_SIZE;
             } else if (id == JAVA_LANG_CLASS) {
                 cl->ref_n = JAVA_LANG_CLASS_REF_N;
-                cl->nref_size = JAVA_LANG_CLASS_NREF_WORDS * sizeof(jword_t);
+                cl->nref_size = JAVA_LANG_CLASS_NREF_SIZE;
             } else if (id == JAVA_LANG_THREAD) {
                 cl->ref_n = JAVA_LANG_THREAD_REF_N;
-                cl->nref_size = JAVA_LANG_THREAD_NREF_WORDS * sizeof(jword_t);
+                cl->nref_size = JAVA_LANG_THREAD_NREF_SIZE;
             }
 
             cl->id = id;
@@ -842,7 +841,6 @@ static void derive_class(class_t *cl, class_file_t *cf)
     // Load and layout the fields
     load_fields(cl, cf);
     layout_fields(cl);
-    type_specific_layout(cl);
 
     /* Load the methods and create the dispatch tables, also check if the class
      * declares a finalize() method */
@@ -1889,7 +1887,18 @@ static void layout_fields(class_t *cl)
         switch (curr->descriptor[0]) {
             case '[':
             case 'L':
-                ref_n++;
+                if (strcmp(curr->descriptor, "Ljelatine/VMPointer;") == 0) {
+#if SIZEOF_VOID_P == 2
+                    short_size += 2;
+#elif SIZEOF_VOID_P == 4
+                    int_size += 4;
+#else // SIZEOF_VOID_P == 8
+                    long_size += 8;
+#endif
+                } else {
+                    ref_n++;
+                }
+
                 break;
 
             case 'B':
@@ -1930,11 +1939,11 @@ static void layout_fields(class_t *cl)
     new_ref_n = par_ref_n + ref_n;
 
     if (long_size != 0) {
-        par_nref_size = size_ceil_round(par_nref_size, sizeof(jword_t));
+        par_nref_size = size_ceil(par_nref_size, sizeof(jword_t));
     } else if (int_size != 0) {
-        par_nref_size = size_ceil_round(par_nref_size, 4);
+        par_nref_size = size_ceil(par_nref_size, 4);
     } else if (short_size != 0) {
-        par_nref_size = size_ceil_round(par_nref_size, 2);
+        par_nref_size = size_ceil(par_nref_size, 2);
     }
 
     new_nref_size = par_nref_size + long_size + int_size + short_size
@@ -1945,8 +1954,7 @@ static void layout_fields(class_t *cl)
     cl->nref_size = new_nref_size;
 
     // If the class exceeds the limits of the VM exit gracefully
-    if (new_nref_size
-        > 32767 - size_ceil_round(sizeof(header_t), sizeof(jword_t)))
+    if (new_nref_size > 32767 - size_ceil(sizeof(header_t), sizeof(jword_t)))
     {
         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                 "Number of non-reference fields exceed the VM limits");
@@ -1956,8 +1964,7 @@ static void layout_fields(class_t *cl)
     }
 
     ref_offset = par_ref_n;
-    long_offset = par_nref_size
-                  + size_ceil_round(sizeof(header_t), sizeof(jword_t));
+    long_offset = par_nref_size + size_ceil(sizeof(header_t), sizeof(jword_t));
     int_offset = long_offset + long_size;
     short_offset = int_offset + int_size;
     byte_offset = short_offset + short_size;
@@ -1971,8 +1978,21 @@ static void layout_fields(class_t *cl)
         switch (curr->descriptor[0]) {
             case '[':
             case 'L':
-                curr->offset = -((ref_offset + 1) * sizeof(uintptr_t));
-                ref_offset++;
+                if (strcmp(curr->descriptor, "Ljelatine/VMPointer;") == 0) {
+#if SIZEOF_VOID_P == 2
+                    curr->offset = short_offset;
+                    short_offset += 2;
+#elif SIZEOF_VOID_P == 4
+                    curr->offset = int_offset;
+                    int_offset += 4;
+#else // SIZEOF_VOID_P == 8
+                    curr->offset = long_offset;
+                    long_offset += 8;
+#endif
+                } else {
+                    curr->offset = -((ref_offset + 1) * sizeof(uintptr_t));
+                    ref_offset++;
+                }
                 break;
 
             case 'B':
@@ -2016,42 +2036,16 @@ static void layout_fields(class_t *cl)
         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                 "Number of bit-sized fields exceeds the VM limits");
     }
-} // layout_fields()
 
-/** Adjusts the layout of specific objects which do not comply with the
- * generic object layout rules (for example String or WeakReference)
- * \param cl A pointer to the class structure */
-
-static void type_specific_layout(class_t *cl)
-{
-    if (strcmp(cl->name, "java/lang/Thread") == 0) {
-        fm_layout_java_lang_Thread(cl->field_manager);
-        cl->ref_n = JAVA_LANG_THREAD_REF_N;
-        cl->nref_size = JAVA_LANG_THREAD_NREF_WORDS * sizeof(jword_t);
-    } else if (strcmp(cl->name, "java/lang/String") == 0) {
-        fm_layout_java_lang_String(cl->field_manager);
-        cl->ref_n = JAVA_LANG_STRING_REF_N;
-        cl->nref_size = JAVA_LANG_STRING_NREF_WORDS * sizeof(jword_t);
-    } else if (strcmp(cl->name, "java/lang/ref/Reference") == 0) {
-        fm_layout_java_lang_ref_Reference(cl->field_manager);
-        cl->ref_n = JAVA_LANG_REF_REFERENCE_REF_N;
-        cl->nref_size = JAVA_LANG_REF_REFERENCE_NREF_WORDS * sizeof(jword_t);
-    } else if (strcmp(cl->name, "java/lang/ref/WeakReference") == 0) {
-        fm_layout_java_lang_ref_WeakReference(cl->field_manager);
-        cl->ref_n = JAVA_LANG_REF_WEAKREFERENCE_REF_N;
-        cl->nref_size = JAVA_LANG_REF_WEAKREFERENCE_NREF_WORDS * sizeof(jword_t);
-    } else if (strcmp(cl->name, "java/lang/Throwable") == 0) {
-        fm_layout_java_lang_Throwable(cl->field_manager);
-        cl->ref_n = JAVA_LANG_THROWABLE_REF_N;
-        cl->nref_size = JAVA_LANG_THROWABLE_NREF_WORDS * sizeof(jword_t);
-#if JEL_JARFILE_SUPPORT
-    } else if (strcmp(cl->name, "jelatine/VMResourceStream") == 0) {
-        fm_layout_jelatine_VMResourceStream(cl->field_manager);
-        cl->ref_n = JELATINE_VMRESOURCESTREAM_REF_N;
-        cl->nref_size = JELATINE_VMRESOURCESTREAM_NREF_WORDS * sizeof(jword_t);
-#endif // JEL_JARFILE_SUPPORT
+    // HACK: The java.lang.ref.Reference class needs manual patching
+    if (strcmp(cl->name, "java/lang/ref/Reference") == 0) {
+        assert(strcmp(cl->field_manager->instance_fields[0].name, "referent")
+               == 0);
+        cl->field_manager->instance_fields[0].offset = sizeof(header_t);
+        cl->ref_n = 0;
+        cl->nref_size = sizeof(uintptr_t);
     }
-} // type_specific_layout()
+} // layout_fields()
 
 /*******************************************************************************
  * Bytecode resolution methods                                                 *

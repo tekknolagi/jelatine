@@ -36,7 +36,9 @@ void header_create_gc_counter(header_t *header)
 {
     class_t *cl = header_get_class(header);
 
-    *header = (header_get_class(header)->id << 16) | (1 << HEADER_MARK_SHIFT);
+    *header = (header_get_class(header)->id << 16)
+              | (1 << HEADER_JAVA_OBJECT_SHIFT)
+              | (1 << HEADER_MARK_SHIFT);
 
     // Reference arrays have an external counter
     if (class_is_array(cl) && cl->elem_type == PT_REFERENCE) {
@@ -44,14 +46,14 @@ void header_create_gc_counter(header_t *header)
     }
 } // header_create_gc_counter()
 
-/** Restores a header to its runtime form, removing the gc counter and
- * restoring the class pointer
+/** Restores a header to its runtime form, removing the gc counter, clearing
+ * its mark bit and restoring the class pointer
  * \param header A pointer to a header
  * \param ct A pointer to the header class */
 
 void header_restore(header_t *header, class_t *cl)
 {
-    *header = (uintptr_t) cl | (*header & (1 << HEADER_MARK_SHIFT));
+    *header = (uintptr_t) cl | (1 << HEADER_JAVA_OBJECT_SHIFT);
 
     if (class_is_array(cl) && cl->elem_type == PT_REFERENCE) {
         ((ref_array_t *) header)->count = 0;
@@ -65,12 +67,12 @@ void header_restore(header_t *header, class_t *cl)
 
 uint32_t header_get_count(const header_t *header, bool array)
 {
-    const header_t mask = (header_t) 0xffff >> HEADER_JRESERVED;
+    const header_t mask = (header_t) 0xffff >> HEADER_RESERVED;
 
     if (array) {
         return ((ref_array_t *) header)->count;
     } else {
-        return (*header >> HEADER_JRESERVED) & mask;
+        return (*header >> HEADER_RESERVED) & mask;
     }
 } // header_get_count()
 
@@ -81,13 +83,13 @@ uint32_t header_get_count(const header_t *header, bool array)
 
 void header_set_count(header_t *header, uint32_t count, bool array)
 {
-    const header_t mask = ((1 << HEADER_JRESERVED) - 1) | 0xffff0000;
+    const header_t mask = ((1 << HEADER_RESERVED) - 1) | 0xffff0000;
 
     if (array) {
         ((ref_array_t *) header)->count = count;
     } else {
-        assert(count < 1 << (16 - HEADER_JRESERVED));
-        *header = (*header & mask) | (count << HEADER_JRESERVED);
+        assert(count < (1 << (16 - HEADER_RESERVED)));
+        *header = (*header & mask) | (count << HEADER_RESERVED);
     }
 } // header_set_count()
 

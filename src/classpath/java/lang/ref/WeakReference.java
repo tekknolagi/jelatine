@@ -37,6 +37,8 @@ exception statement from your version. */
 
 package java.lang.ref;
 
+import jelatine.VMPointer;
+
 /**
  * A weak reference will be cleared, if the object is only weakly
  * reachable.  It is useful for lookup tables, where you aren't
@@ -59,7 +61,7 @@ public class WeakReference extends Reference
      * Next object in the weak reference list, this field is handled in a
      * special way by the garbage-collector
      */
-    private Object next;
+    private VMPointer next;
 
     /**
      * Adds a weak reference to the internal list

@@ -7,7 +7,7 @@ GNU Classpath is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2, or (at your option)
 any later version.
- 
+
 GNU Classpath is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -37,6 +37,8 @@ exception statement from your version. */
 
 
 package java.lang.ref;
+
+import jelatine.VMPointer;
 
 /**
  * This is the base class of all references.  A reference allows
@@ -85,7 +87,7 @@ public abstract class Reference
     /**
      * Creates a new reference that is not registered to any queue.
      * Since it is package private, it is not possible to overload this
-     * class in a different package.  
+     * class in a different package.
      * @param ref the object we refer to.
      */
     Reference(Object ref)
@@ -96,7 +98,7 @@ public abstract class Reference
     /**
      * Clears the reference, so that it doesn't refer to its object
      * anymore.  For soft and weak references this is called by the
-     * garbage collector.  For phantom references you should call 
+     * garbage collector.  For phantom references you should call
      * this when enqueuing the reference.
      */
     public void clear()
@@ -106,7 +108,7 @@ public abstract class Reference
 
     /**
      * Returns the object, this reference refers to.
-     * @return the object, this reference refers to, or null if the 
+     * @return the object, this reference refers to, or null if the
      * reference was cleared.
      */
     public Object get()

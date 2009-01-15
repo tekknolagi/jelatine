@@ -181,14 +181,6 @@ extern field_manager_t *fm_create(uint32_t, uint32_t);
 extern void fm_add_instance(field_manager_t *, char *, char *, uint16_t);
 void fm_add_static(field_manager_t *, char *, char *, uint16_t, const_pool_t *,
                    uint16_t);
-extern void fm_layout_java_lang_Thread(field_manager_t *);
-extern void fm_layout_java_lang_String(field_manager_t *);
-extern void fm_layout_java_lang_ref_Reference(field_manager_t *);
-extern void fm_layout_java_lang_ref_WeakReference(field_manager_t *);
-extern void fm_layout_java_lang_Throwable(field_manager_t *);
-#if JEL_JARFILE_SUPPORT
-extern void fm_layout_jelatine_VMResourceStream(field_manager_t *);
-#endif // JEL_JARFILE_SUPPORT
 extern field_t *fm_get_instance(field_manager_t *, const char *, const char *);
 extern static_field_t *fm_get_static(field_manager_t *, const char *,
                                      const char *);

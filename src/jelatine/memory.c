@@ -47,27 +47,30 @@ struct finalizable_t {
 /** Typedef for the ::struct finalizable_t */
 typedef struct finalizable_t finalizable_t;
 
-/** Represents a free chunk of memory */
+/** Represents a free chunk of memory belonging to the small bin */
 
-struct chunk_t {
-    struct chunk_t *next; /**<  Next chunk in the list */
+struct small_chunk_t {
+    struct small_chunk_t *next;
+};
+
+/** Typedef for the ::struct small_chunk_t */
+typedef struct small_chunk_t small_chunk_t;
+
+/** Represents a free chunk of memory belonging to the large bin */
+
+struct large_chunk_t {
+    struct large_chunk_t *next; /**<  Next chunk in the list */
     size_t size; /**<  Size of the chunk in bytes */
 };
 
-/** Typedef for the ::struct chunk_t */
-typedef struct chunk_t chunk_t;
-
-/** Size in words of a chunk_t structure */
-#define CHUNK_SIZE ((sizeof(chunk_t) + sizeof(jword_t) - 1) / sizeof(jword_t))
-
-/** Minimum chunk size in words */
-#define MIN_BIN_SIZE (CHUNK_SIZE)
-
-/** Maximum small chunk size in words */
-#define MAX_BIN_SIZE (17)
+/** Typedef for the ::struct large_chunk_t */
+typedef struct large_chunk_t large_chunk_t;
 
 /** Defines the number of entries in the chunk-bin */
-#define BIN_ENTRIES (MAX_BIN_SIZE - MIN_BIN_SIZE + 1)
+#define BIN_ENTRIES (16)
+
+/** Defines the size of the largest chunk belonging to the small bin */
+#define BIN_MAX_SIZE (BIN_ENTRIES * sizeof(jword_t))
 
 /** Initial fraction of the provided heap to use */
 #define HEAP_INIT_FRACTION (16)
@@ -83,20 +86,19 @@ typedef struct chunk_t chunk_t;
 
 struct heap_t {
     bool collect; ///< True if the collector can run
-    size_t size; ///< Current heap size (in jwords)
-    size_t max_size; ///< Maximum heap size (in jwords)
+    size_t size; ///< Current heap size (in bytes)
+    size_t max_size; ///< Maximum heap size (in bytes)
 
     void *memory; ///< Generic heap used by the VM
-    jword_t *start; ///< First word of the heap
-    jword_t *end; ///< First word after the end of the heap
+    uintptr_t start; ///< First word of the heap
+    uintptr_t end; ///< First word after the end of the heap
 
     uint8_t *bitmap; ///< Memory bitmap
 
     java_lang_ref_WeakReference_t *weakref_list; ///< Weak references list
 
-    chunk_t *last_chunk; ///< Last chunk, adjacent to the heap boundary
-    chunk_t *large_bin; ///< Bin used for storing large free chunks
-    chunk_t *bin[BIN_ENTRIES]; ///< Bin used for storing small free chunks
+    large_chunk_t *large_bin; ///< Bin used for storing large free chunks
+    small_chunk_t *bin[BIN_ENTRIES]; ///< Bin used for storing small free chunks
 
 #if JEL_FINALIZER
     finalizable_t *finalizable; ///< List of finalizer objects still alive
@@ -120,20 +122,20 @@ static uintptr_t gc_alloc(size_t);
 static void purge_bin( void );
 static void mark( void );
 static void mark_finalizable( void );
-static void sweep( void );
+static void sweep(size_t);
 static void purge_weakref_list( void );
-static void grow(size_t);
+static void gc_grow(uintptr_t, size_t);
 
 // Bitmap management functions
 
-static inline void bitmap_set(uint8_t *, size_t);
-static inline void bitmap_clear(uint8_t *, size_t);
-static inline bool bitmap_get(uint8_t *, size_t);
+static inline void bitmap_set(uintptr_t);
+static inline void bitmap_clear(uintptr_t);
+static inline bool bitmap_get(uintptr_t);
 
 // Chunk management functions
 
-static chunk_t *get_chunk(size_t);
-static void put_chunk(chunk_t *);
+static uintptr_t get_chunk(size_t);
+static void put_chunk(uintptr_t, size_t);
 
 #ifndef NDEBUG
 void print_bin( void );
@@ -163,7 +165,6 @@ static heap_t heap;
 
 void gc_init(size_t size)
 {
-    chunk_t *new_chunk;
     void *unified_heap;
     uint8_t *bitmap;
     size_t init_size;
@@ -175,14 +176,14 @@ void gc_init(size_t size)
     /* Truncate the size to a multiple of 4 or 8 bytes, so we won't bother about
      * alignment problems, we assume that malloc() will already return a
      * properly aligned block */
-    size = size_ceil_round(size, sizeof(jword_t));
+    size = size_ceil(size, sizeof(jword_t));
     heap_size = (size * sizeof(jword_t) * 8) / ((sizeof(jword_t) * 8) + 1);
-    heap_size = heap_size / sizeof(jword_t);
-    init_size = heap_size / HEAP_INIT_FRACTION;
+    heap_size = size_floor(heap_size, sizeof(jword_t));
+    init_size = size_ceil(heap_size / HEAP_INIT_FRACTION, sizeof(jword_t));
 
     unified_heap = malloc(size);
     memset(unified_heap, 0, size);
-    bitmap = ((uint8_t *) unified_heap) + (heap_size * sizeof(jword_t));
+    bitmap = (uint8_t *) unified_heap + heap_size;
 
     if (unified_heap == NULL) {
         dbg_error("Out of memory, cannot allocate the unified heap.");
@@ -193,19 +194,16 @@ void gc_init(size_t size)
     heap.size = init_size;
     heap.max_size = heap_size;
     heap.memory = unified_heap;
-    heap.start = (jword_t *) unified_heap;
-    heap.end = ((jword_t *) unified_heap) + init_size;
+    heap.start = (uintptr_t) unified_heap;
+    heap.end = (uintptr_t) unified_heap + init_size;
     heap.weakref_list = NULL;
     heap.bitmap = bitmap;
-    heap.last_chunk = NULL;
     heap.large_bin = NULL;
 
-    memset(heap.bin, 0, sizeof(chunk_t *) * BIN_ENTRIES);
+    memset(heap.bin, 0, sizeof(small_chunk_t *) * BIN_ENTRIES);
 
     // Initialize the first free chunk
-    new_chunk = (chunk_t *) unified_heap;
-    new_chunk->size = init_size;
-    put_chunk(new_chunk);
+    put_chunk((uintptr_t) unified_heap, init_size);
 
     /* Disable the collector, we will re-enable it once all the other global
      * structures have been initialized */
@@ -260,22 +258,21 @@ uintptr_t gc_new(class_t *cl)
     tm_lock();
 
 #if SIZEOF_VOID_P == (SIZEOF_JWORD_T / 2)
-    ref_n = size_ceil_div(class_get_ref_n(cl), 2);
+    ref_n = size_ceil(class_get_ref_n(cl), 2);
 #else
     ref_n = class_get_ref_n(cl);
 #endif
 
-    size = ref_n + HEADER_SIZE
-           + size_ceil_div(class_get_nref_size(cl), sizeof(jword_t));
+    size = (ref_n * sizeof(uintptr_t)) + sizeof(header_t)
+           + size_ceil(class_get_nref_size(cl), sizeof(jword_t));
 
-    // A class without fields could cause trouble...
-    size = (size < MIN_BIN_SIZE) ? MIN_BIN_SIZE : size;
+    assert((size >= sizeof(jword_t)) && (size % sizeof(jword_t) == 0));
 
     ptr = gc_alloc(size);
     ptr += ref_n * sizeof(uintptr_t); // Point to the header
-    bitmap_set(heap.bitmap, (jword_t *) ptr - heap.start);
+    bitmap_set(ptr);
     header = (header_t *) ptr;
-    *header = header_create_java(cl);
+    *header = header_create_object(cl);
 
 #if JEL_PRINT
     if (opts_get_print_memory()) {
@@ -296,20 +293,24 @@ uintptr_t gc_new(class_t *cl)
 uintptr_t gc_new_array_nonref(array_type_t type, int32_t count)
 {
     class_t *cl = bcl_get_class_by_id(type);
-    size_t size = count * array_elem_size(type);
+    size_t size;
     array_t *array;
     uintptr_t ptr;
 
     if (type == T_BOOLEAN) {
-        size = size_ceil_div(size, 8);
+        size = size_div_inf(count, 8);
+    } else {
+        size = count * array_elem_size(type);
     }
 
-    size = size_ceil_div(size + sizeof(array_t), sizeof(jword_t));
+    size = size_ceil(sizeof(array_t) + size, sizeof(jword_t));
+    tm_lock();
     ptr = gc_alloc(size);
-    bitmap_set(heap.bitmap, (jword_t *) ptr - heap.start);
+    bitmap_set(ptr);
     array = (array_t *) ptr;
-    array->header = header_create_java(cl);
+    array->header = header_create_object(cl);
     array->length = count;
+    tm_unlock();
 
     return ptr;
 } // gc_new_array_nonref()
@@ -326,31 +327,30 @@ uintptr_t gc_new_array_ref(class_t *cl, int32_t count)
     size_t size;
 
 #if SIZEOF_VOID_P == (SIZEOF_JWORD_T / 2)
-    size = size_ceil_div(count, 2);
+    size = size_ceil(count, 2) * sizeof(uintptr_t);
 #else
-    size = count;
+    size = count * sizeof(uintptr_t);
 #endif // SIZEOF_VOID_P == (SIZEOF_JWORD_T / 2)
 
-    ptr = gc_alloc(REF_ARRAY_SIZE + size);
-    ptr += size * sizeof(uintptr_t);
-    bitmap_set(heap.bitmap, (jword_t *) ptr - heap.start);
+    tm_lock();
+    ptr = gc_alloc(sizeof(ref_array_t) + size);
+    ptr += size;
+    bitmap_set(ptr);
     array = (ref_array_t *) ptr;
-    array->header = header_create_java(cl);
+    array->header = header_create_object(cl);
     array->length = count;
+    tm_unlock();
 
-    return (uintptr_t) array;
+    return ptr;
 } // gc_new_array_ref()
 
 /** Helper function used for creating multi-dimensional arrays
  * \param cl A pointer to the corresponding class
  * \param dimensions The number of dimensions to be created
  * \param counts A pointer to the element counts
- * \param mark True if the newly allocated array should be pushed among the
- * temporary roots, false otherwise
  * \returns A pointer to the newly created array */
 
-uintptr_t gc_new_multiarray(class_t *cl, uint8_t dimensions, jword_t *counts,
-                            bool mark)
+uintptr_t gc_new_multiarray(class_t *cl, uint8_t dimensions, jword_t *counts)
 {
     /* This array is initialized so that the array types correspond to the
      * basic types of the array elements */
@@ -377,18 +377,14 @@ uintptr_t gc_new_multiarray(class_t *cl, uint8_t dimensions, jword_t *counts,
         ref = gc_new_array_ref(cl, count);
         references = array_ref_get_data((array_t *) ref);
 
-        if (mark) {
-            thread_push_root(&ref);
-        }
+        thread_push_root(&ref);
 
         for (i = 0; i < count; i++) {
             references[-i] = gc_new_multiarray(cl->elem_class, dimensions - 1,
-                                               counts + 1, false);
+                                               counts + 1);
         }
 
-        if (mark) {
-            thread_pop_root();
-        }
+        thread_pop_root();
 
         return ref;
     }
@@ -460,9 +456,35 @@ void gc_register_weak_ref(java_lang_ref_WeakReference_t *ref)
     tm_unlock();
 } // gc_register_weak_ref()
 
-/** Launches the garbage collector on the provided heap structure */
+/** Grow the heap by size bytes (if possible).
+ *
+ * A new chunk will be added to the chunk bin holding the new memory area
+ * starting from \a end. \a end might be different from the current heap end so
+ * that the last free chunk can be grown directly
+ * \param end A pointer to the last free chunk of memory
+ * \param size The amount of bytes to be added to the heap */
 
-void gc_collect( void )
+void gc_grow(uintptr_t end, size_t size)
+{
+    if (heap.size + size > heap.max_size) {
+        heap.end = heap.start + heap.max_size;
+    } else {
+        heap.end += size;
+    }
+
+    heap.size = heap.end - heap.start;
+
+    if (heap.end - end) {
+        put_chunk(end, heap.end - end);
+    }
+} // gc_grow()
+
+/** Launches the garbage collector on the provided heap structure
+ * \param grow If non null, specifies the amount of bytes of the next
+ * allocation, the heap will be grown after the collection to accomodate it if
+ * not enough free space was reclaimed */
+
+void gc_collect(size_t grow)
 {
     tm_lock();
 
@@ -474,7 +496,6 @@ void gc_collect( void )
 
     if (heap.collect != false) {
         tm_stop_the_world(); // Wait for all threads to stop
-        purge_bin(); // Turn free areas into fake dead objects
 
         // Mark garbage collected objects
         mark();
@@ -484,8 +505,12 @@ void gc_collect( void )
         purge_weakref_list();
         jsm_purge();
         tm_purge();
+        purge_bin();
 
-        sweep();
+        sweep(grow);
+    } else {
+        // Just grow the heap
+        gc_grow(heap.end, grow);
     }
 
     tm_unlock();
@@ -497,7 +522,8 @@ void gc_collect( void )
 
 size_t gc_free_memory( void )
 {
-    chunk_t *chunk;
+    small_chunk_t *schunk;
+    large_chunk_t *lchunk;
     size_t size;
     uint32_t i;
 
@@ -505,23 +531,23 @@ size_t gc_free_memory( void )
     size = 0;
 
     for (i = 0; i < BIN_ENTRIES; i++) {
-        chunk = heap.bin[i];
+        schunk = heap.bin[i];
 
-        while (chunk != NULL) {
-            size += chunk->size;
-            chunk = chunk->next;
+        while (schunk != NULL) {
+            size += (i + 1) * sizeof(jword_t);
+            schunk = schunk->next;
         }
     }
 
-    chunk = heap.large_bin;
+    lchunk = heap.large_bin;
 
-    while (chunk != NULL) {
-        size += chunk->size;
-        chunk = chunk->next;
+    while (lchunk != NULL) {
+        size += lchunk->size;
+        lchunk = lchunk->next;
     }
 
     tm_unlock();
-    return size * sizeof(jword_t);
+    return size;
 } // gc_free_memory()
 
 /** Helper function used for implementing Runtime.totalMemory(), returns
@@ -530,7 +556,7 @@ size_t gc_free_memory( void )
 
 size_t gc_total_memory( void )
 {
-    return heap.size * sizeof(jword_t);
+    return heap.size;
 } // gc_total_memory()
 
 /** Check if a reference is a pointer and recursively mark it if it is
@@ -545,15 +571,13 @@ void gc_mark_potential(uintptr_t ref)
     }
 
     // If it exceeds the heap bounds this is not a reference to a Java object
-    if ((ref < (uintptr_t) heap.start)
-            || (ref >= (uintptr_t) heap.end))
-    {
+    if ((ref < heap.start) || (ref >= heap.end)) {
         return;
     }
 
     /* If the corresponding entry in the bitmap is not marked then this is not
      * a reference to a Java (or C) object */
-    if (! bitmap_get(heap.bitmap, ((jword_t *) ref) - heap.start)) {
+    if (!bitmap_get(ref)) {
         return;
     }
 
@@ -636,7 +660,7 @@ void gc_mark_reference(uintptr_t ref)
 
     header = (header_t *) ref;
 
-    if (header_is_cobject(header) || header_is_marked(header)) {
+    if (!header_is_object(header) || header_is_marked(header)) {
         return;
     }
 
@@ -671,7 +695,7 @@ void gc_mark_reference(uintptr_t ref)
 
             tmp_header = (header_t *) tmp;
 
-            if (! header_is_marked(tmp_header)) {
+            if (!header_is_marked(tmp_header)) {
                 /* This object is not marked, mark it, push the previous object
                  * and set this one as the current */
                 *((uintptr_t *) curr - count - 1) = prev;
@@ -722,40 +746,21 @@ void gc_mark_reference(uintptr_t ref)
 
 static uintptr_t gc_alloc(size_t size)
 {
-    chunk_t *chunk = get_chunk(size);
-    chunk_t *new_chunk;
-    uintptr_t ptr;
+    uintptr_t ptr = get_chunk(size);
 
-    if (chunk == NULL) {
+    if (ptr == 0) {
         // get_chunk() failed... collect and retry
-        gc_collect();
-        chunk = get_chunk(size);
+        gc_collect(size);
+        ptr = get_chunk(size);
 
-        if (chunk == NULL) {
-            grow(size);
-            chunk = get_chunk(size);
-
-            if (chunk == NULL) {
-                dbg_error("Out of memory. Try giving the VM a larger heap "
-                          "with the --size <size_in_bytes> option.");
-                vm_fail();
-            }
+        if (ptr == 0) {
+            dbg_error("Out of memory. Try giving the VM a larger heap with the"
+                      " --size <size_in_bytes> option.");
+            vm_fail();
         }
     }
 
-    ptr = (uintptr_t) chunk;
-
-    if (chunk->size - size >= CHUNK_SIZE) {
-        new_chunk = (chunk_t *) (ptr + size * sizeof(jword_t));
-        new_chunk->size = chunk->size - size;
-        put_chunk(new_chunk);
-    } else {
-        // We're wasting memory here
-        memset((jword_t *) (ptr + size * sizeof(jword_t)), 0,
-               sizeof(jword_t) * (chunk->size - size));
-    }
-
-    memset((jword_t *) ptr, 0, size * sizeof(jword_t));
+    memset((jword_t *) ptr, 0, size);
     return ptr;
 } // gc_alloc()
 
@@ -766,49 +771,35 @@ static uintptr_t gc_alloc(size_t size)
  * other potentially free chunks surrounding them */
 
 static void purge_bin( void ) {
-    chunk_t *temp;
+    small_chunk_t *schunk;
+    large_chunk_t *lchunk;
     char *free_space;
-    jword_t *start = heap.start;
-    uint8_t *bitmap = heap.bitmap;
     size_t free_size;
-    header_t header;
 
     // Empty the fixed-size bins
 
     for (size_t i = 0; i < BIN_ENTRIES; i++) {
-        temp = heap.bin[i];
+        schunk = heap.bin[i];
         heap.bin[i] = NULL;
 
-        while (temp != NULL) {
-            free_space = (char *) temp;
-            free_size = temp->size;
-            temp = temp->next;
-
-            // Create a fake, fred C object so that the GC will reclaim it
-            header = header_create_c(free_size - HEADER_SIZE);
-            // HACK: We use memcpy() to a char * to avoid aliasing problems
-            memcpy(free_space, &header, sizeof(header_t));
-            bitmap_set(bitmap, (jword_t *) free_space - start);
+        while (schunk != NULL) {
+            free_space = (char *) schunk;
+            free_size = (i + 1) * sizeof(jword_t);
+            schunk = schunk->next;
+            memset(free_space, 0, free_size); // Clear the fred space
         }
     }
 
     // Empty the large bin
-    temp = heap.large_bin;
+    lchunk = heap.large_bin;
     heap.large_bin = NULL;
 
-    while (temp != NULL) {
-        free_space = (char *) temp;
-        free_size = temp->size;
-        temp = temp->next;
-
-        // Create a fake, fred C object so that the GC will reclaim it
-        header = header_create_c(free_size - HEADER_SIZE);
-        // HACK: We use memcpy() to a char * to avoid aliasing problems
-        memcpy(free_space, &header, sizeof(header_t));
-        bitmap_set(bitmap, (jword_t *) free_space - start);
+    while (lchunk != NULL) {
+        free_space = (char *) lchunk;
+        free_size = lchunk->size;
+        lchunk = lchunk->next;
+        memset(free_space, 0, free_size); // Clear the fred space
     }
-
-    heap.last_chunk = NULL; // Clear the last chunk
 } // purge_bin()
 
 /** Executes the 'mark' phase of the garbage collector
@@ -881,60 +872,65 @@ static void mark_finalizable( void )
 /** Scans the heap for live objects and reclaims dead ones replenishing
  * the free list */
 
-static void sweep( void )
+static void sweep(size_t size)
 {
     class_t *cl;
     header_t *header;
-    size_t nref_words, ref_n, fred_space;
-    size_t in_use = 0;
+    uintptr_t scan = heap.start;
+    uintptr_t start; // Start of a new object
+    uintptr_t end = heap.start; // End of the previous object
     size_t reclaimed = 0;
-    size_t wasted = 0;
-    jword_t *dead = NULL;
-    jword_t *end = heap.end;
-    jword_t *scan = heap.start;
-    jword_t *start = heap.start;
-    chunk_t *chunk;
-    uint8_t *bitmap = heap.bitmap;
+    size_t in_use = 0;
+    size_t max_size = 0;
+    size_t nref_size, ref_n;
     bool is_java;
 #if JEL_POINTER_REVERSAL
     uint32_t id;
 #endif // JEL_POINTER_REVERSAL
 
-    while (scan < end) {
-        if (! bitmap_get(bitmap, scan - start)) {
-            scan++;
-            continue;
+    while (scan < heap.end) {
+        if ((*((uintptr_t *) scan) & ((1 << HEADER_RESERVED) - 1)) == 0) {
+            scan += sizeof(jword_t);
+
+            if (scan >= heap.end) {
+                break;
+            } else {
+                continue;
+            }
         }
 
         header = (header_t *) scan; // We found a header
 
-        if (header_is_cobject(header)) {
-            is_java = false;
-            ref_n = 0;
-            nref_words = header_get_size(header) / sizeof(jword_t);
-        } else {
+        if (header_is_object(header)) {
+            assert(bitmap_get(scan));
             is_java = true;
 
 #if JEL_POINTER_REVERSAL
             if (header_is_marked(header)) {
                 id = header_get_class_index(header);
                 header_restore(header, bcl_get_class_by_id(id));
+                header_set_mark(header);
             }
 #endif // JEL_POINTER_REVERSAL
 
             cl = header_get_class(header);
 
             if (class_is_array(cl)) {
-                nref_words = array_get_nref_words((array_t *) header);
+                nref_size = array_get_nref_size((array_t *) header);
                 ref_n = array_get_ref_n((array_t *) header);
             } else {
-                nref_words = class_get_nref_words(cl);
+                nref_size = class_get_nref_size(cl);
                 ref_n = class_get_ref_n(cl);
             }
+        } else {
+            is_java = false;
+            ref_n = 0;
+            nref_size = header_get_size(header);
         }
 
+        nref_size = size_ceil(nref_size, sizeof(jword_t));
 #if SIZEOF_VOID_P == (SIZEOF_JWORD_T / 2)
-        ref_n = size_ceil_div(ref_n, 2);
+        ref_n = size_ceil(ref_n, 2);
 #endif // SIZEOF_VOID_P == (SIZEOF_JWORD_T / 2)
 
         if (header_is_marked(header)) {
@@ -942,105 +938,53 @@ static void sweep( void )
                 header_clear_mark(header);
             }
 
-            if (dead != NULL) {
-                // Create a new free chunk if possible
-                fred_space = (scan - ref_n) - dead;
+            start = scan - ref_n * sizeof(uintptr_t);
 
-                if (fred_space >= CHUNK_SIZE) {
-                    chunk = (chunk_t *) dead;
-                    chunk->size = fred_space;
-                    put_chunk(chunk);
-                    reclaimed += fred_space * sizeof(jword_t);
-                } else {
-                    // Clear the wasted space
-                    memset(dead, 0, fred_space * sizeof(jword_t));
-                    wasted += fred_space * sizeof(jword_t);
+            /* If there was some free space between the previous object and
+             * this one reclaim it */
+            if (start - end >= sizeof(jword_t)) {
+                if (start - end > max_size) {
+                    max_size = start - end;
                 }
 
-                dead = NULL;
+                put_chunk(end, start - end);
+                reclaimed += start - end;
             }
 
             // Skip to the next object
-            scan += HEADER_SIZE + nref_words;
-            in_use += (ref_n + HEADER_SIZE + nref_words) * sizeof(jword_t);
+            scan += sizeof(header_t) + nref_size;
+            end = scan;
+            in_use += ref_n * sizeof(uintptr_t) + sizeof(header_t) + nref_size;
         } else {
-            // If this is a dead object remove it from the bitmap
-            bitmap_clear(bitmap, scan - start);
-
-            if (dead == NULL) {
-                dead = scan - ref_n;
-            }
-
-            scan += HEADER_SIZE + nref_words;
+            // This is a dead object remove it from the bitmap
+            assert(header_is_object(header));
+            bitmap_clear(scan);
+            scan += sizeof(header_t) + nref_size;
         }
     }
 
-    // Add the last free chunk
-    if (dead != NULL) {
-        // Create a new free chunk if possible
-        fred_space = end - dead;
-
-        if (fred_space >= CHUNK_SIZE) {
-            chunk = (chunk_t *) dead;
-            chunk->size = fred_space;
-            put_chunk(chunk);
-            reclaimed += fred_space * sizeof(jword_t);
-        } else {
-            // Clear the wasted space
-            memset(dead, 0, fred_space * sizeof(jword_t));
-            wasted += fred_space * sizeof(jword_t);
-        }
+    if (heap.end - end > max_size) {
+        max_size = heap.end - end;
     }
 
     // Check if we have fred enough memory, otherwise we grow the heap
-    if (reclaimed < (in_use >> 1)) {
-        grow(((in_use >> 1) - reclaimed) / sizeof(jword_t));
+    if ((max_size < size) || (reclaimed < in_use / 2)) {
+        if ((reclaimed < in_use / 2) && (max_size >= size)) {
+            size = size_ceil(in_use / 2 - reclaimed, sizeof(jword_t));
+        }
+
+        gc_grow(end, size);
+    } else if (heap.end - end) {
+        put_chunk(end, heap.end - end);
     }
 
 #if JEL_PRINT
     if (opts_get_print_memory()) {
-       fprintf(stderr,
-               "GARBAGE COLLECTION in_use = %zu reclaimed = %zu wasted = %zu\n",
-               in_use, reclaimed, wasted);
+       fprintf(stderr, "GARBAGE COLLECTION in_use = %zu reclaimed = %zu\n",
+               in_use, reclaimed);
     }
 #endif // JEL_PRINT
 } // sweep()
-
-/** Tries to grow the heap by the specified amount
- * \param size The number of jwords requested */
-
-void grow(size_t size)
-{
-    chunk_t *chunk;
-
-    if ((heap.size + size) > heap.max_size) {
-        size = heap.max_size - heap.size;
-    }
-
-    chunk = heap.last_chunk;
-
-    if ((chunk != NULL) && (chunk->size > MAX_BIN_SIZE)) {
-        chunk->size += size;
-        heap.size += size;
-        heap.end += size;
-    } else {
-        if (chunk == NULL) {
-            // The last chunk will be replaced by a new one
-            heap.last_chunk = NULL;
-        }
-
-        if (size < CHUNK_SIZE) {
-            return;
-        }
-
-        chunk = (chunk_t *) heap.end;
-        chunk->size = size;
-        heap.size += size;
-        heap.end += size;
-
-        put_chunk(chunk);
-    }
-} // grow()
 
 /** Allocates a chunk of memory for holding C objects, throws an
  * exception upon failure, the returned memory has already been zeroed
@@ -1060,46 +1004,43 @@ void *gc_malloc(size_t size)
     uintptr_t ptr;
     header_t *header;
 
-    size = size_ceil_div(size, sizeof(jword_t)) + HEADER_SIZE; // Round the size
+    size = size_ceil(size, sizeof(jword_t)) + sizeof(header_t);
     tm_lock();
     ptr = gc_alloc(size);
     header = (header_t *) ptr;
-    *header = header_create_c(size - HEADER_SIZE);
-    header_set_mark(header);
-    bitmap_set(heap.bitmap, (jword_t *) ptr - heap.start);
+    *header = header_create_c(size - sizeof(header_t));
 
 #if JEL_PRINT
     if (opts_get_print_memory()) {
        fprintf(stderr, "MALLOC PTR: %p SIZE: %zu bytes\n",
-               (void *) (ptr + sizeof(jword_t)),
-               (size - HEADER_SIZE) * sizeof(jword_t));
+               (void *) (ptr + sizeof(jword_t)), size - sizeof(header_t));
     }
 #endif // JEL_PRINT
 
     tm_unlock();
 
-    return (void *) (ptr + HEADER_SIZE * sizeof(jword_t));
+    return (void *) (ptr + sizeof(header_t));
 } // gc_malloc()
 
-/** Frees a previously allocated C object.
- * gc_free() doesn't acquire the VM lock as it does not access shared structures
+/** Frees a previously allocated C object
  * \param ptr A pointer to the object to be fred */
 
 void gc_free(void *ptr)
 {
     assert(ptr != NULL);
 
-    header_t *header = (header_t *) ((uintptr_t) ptr
-                                     - HEADER_SIZE * sizeof(jword_t));
+    tm_lock();
+    header_t *header = (header_t *) ((uintptr_t) ptr - sizeof(header_t));
 
 #ifdef JEL_PRINT
     if (opts_get_print_memory()) {
        fprintf(stderr, "FREE PTR: %p SIZE = %zu bytes\n",
-               ptr, header_get_size(header) * sizeof(jword_t));
+               ptr, header_get_size(header));
     }
 #endif // JEL_VERBOSE_GC
 
-    header_clear_mark(header);
+    put_chunk((uintptr_t) header, header_get_size(header) + sizeof(header_t));
+    tm_unlock();
 } // gc_free()
 
 /** Purges the weak reference list by cleaning all the weak references
@@ -1141,91 +1082,77 @@ static void purge_weakref_list( void )
 } // heap_purge_weakref_list()
 
 /** Set an entry in the bitmap to 1
- * \param bitmap A pointer to the memory bitmap
- * \param offset An offset from the base address */
+ * \param ptr A pointer in the garbage collected heap */
 
-static inline void bitmap_set(uint8_t *bitmap, size_t offset)
+static inline void bitmap_set(uintptr_t ptr)
 {
-    bitmap[offset >> 3] |= 1 << (offset & 0x7);
+    uintptr_t offset = (ptr - heap.start) / sizeof(jword_t);
+
+    heap.bitmap[offset >> 3] |= 1 << (offset & 0x7);
 } // bitmap_set()
 
 /** Clear an entry in the bitmap
- * \param bitmap A pointer to the memory bitmap
- * \param offset An offset from the base address */
+ * \param ptr A pointer in the garbage collected heap */
 
-static inline void bitmap_clear(uint8_t *bitmap, size_t offset)
+static inline void bitmap_clear(uintptr_t ptr)
 {
-    bitmap[offset >> 3] &= ~(1 << (offset & 0x7));
+    uintptr_t offset = (ptr - heap.start) / sizeof(jword_t);
+
+    heap.bitmap[offset >> 3] &= ~(1 << (offset & 0x7));
 } // bitmap_clear()
 
 /** Read an entry of the bitmap
- * \param bitmap A pointer to the memory bitmap
- * \param offset An offset from the base address */
+ * \param ptr A pointer in the garbage collected heap */
 
-static inline bool bitmap_get(uint8_t *bitmap, size_t offset)
+static inline bool bitmap_get(uintptr_t ptr)
 {
-    uint8_t value;
+    uintptr_t offset = (ptr - heap.start) / sizeof(jword_t);
 
-    value = bitmap[offset >> 3] >> (offset & 0x7);
-
-    return (value & 1);
+    return (heap.bitmap[offset >> 3] >> (offset & 0x7)) & 1;
 } // bitmap_get()
 
 /** Pulls a chunk from the bin
  * \param size The minimum size (in words) requested
  * \returns A chunk if one large enough is avaible, otherwise NULL */
 
-static chunk_t *get_chunk(size_t size)
+static uintptr_t get_chunk(size_t size)
 {
-    assert(size >= MIN_BIN_SIZE);
-
-    chunk_t *best = NULL;
-    chunk_t *curr, *prev;
+    small_chunk_t *schunk;
+    large_chunk_t *lchunk, *curr, *prev;
+    uintptr_t res;
     uint32_t id;
 
-    if (size <= MAX_BIN_SIZE) {
+    if (size <= BIN_MAX_SIZE) {
         // Try finding an exact match
-        id = size - MIN_BIN_SIZE;
+        id = (size / sizeof(jword_t)) - 1;
 
         if (heap.bin[id] != NULL) {
             // We got an exact match, remove it and return it
-            best = heap.bin[id];
-            heap.bin[id] = best->next;
-
-            if (best == heap.last_chunk) {
-                heap.last_chunk = NULL;
-            }
-
-            return best;
+            schunk = heap.bin[id];
+            heap.bin[id] = schunk->next;
+            return (uintptr_t) schunk;
         }
 
         // Try finding a larger chunk
         if (heap.large_bin != NULL) {
-            // We found a larger block, return it
-            best = heap.large_bin;
-            heap.large_bin = best->next;
-
-            if (best == heap.last_chunk) {
-                heap.last_chunk = NULL;
-            }
-
-            return best;
+            // We found a larger block, chop it and return the relevant part
+            lchunk = heap.large_bin;
+            heap.large_bin = lchunk->next;
+            res = (uintptr_t) lchunk;
+            put_chunk(res + size, lchunk->size - size);
+            return res;
         }
 
-        /* Try finding a fitting chunk in the small bin even if it
-         * means potentially wasting memory */
+        // Try finding a fitting chunk in the small bin
         id++;
 
         while (id < BIN_ENTRIES) {
             if (heap.bin[id] != NULL) {
-                best = heap.bin[id];
-                heap.bin[id] = best->next;
-
-                if (best == heap.last_chunk) {
-                    heap.last_chunk = NULL;
-                }
-
-                return best;
+                schunk = heap.bin[id];
+                heap.bin[id] = schunk->next;
+                res = (uintptr_t) schunk;
+                put_chunk(res + size, (id + 1) * sizeof(jword_t) - size);
+                return res;
             } else {
                 id++;
             }
@@ -1243,11 +1170,13 @@ static chunk_t *get_chunk(size_t size)
                     heap.large_bin = curr->next;
                 }
 
-                if (curr == heap.last_chunk) {
-                    heap.last_chunk = NULL;
+                res = (uintptr_t) curr;
+
+                if (curr->size > size) {
+                    put_chunk(res + size, curr->size - size);
                 }
 
-                return curr;
+                return res;
             } else {
                 prev = curr;
                 curr = curr->next;
@@ -1255,31 +1184,31 @@ static chunk_t *get_chunk(size_t size)
         }
     }
 
-    return NULL;
+    return 0;
 } // get_chunk()
 
-/** Puts a chunk in the bin
- * \param chunk A pointer to the chunk to be put in the bin */
+/** Put a free memory chunk in the bin
+ * \param chunk A pointer to the memory chunk to be put in the bin
+ * \param size The size of the chunk */
 
-static void put_chunk(chunk_t *chunk)
+static void put_chunk(uintptr_t chunk, size_t size)
 {
     uint32_t id;
-    size_t size = chunk->size;
+    small_chunk_t *schunk;
+    large_chunk_t *lchunk;
 
-    assert(size >= MIN_BIN_SIZE);
+    assert(size % sizeof(jword_t) == 0);
 
-    if (size <= MAX_BIN_SIZE) {
-        id = size - MIN_BIN_SIZE;
-        chunk->next = heap.bin[id];
-        heap.bin[id] = chunk;
+    if (size <= BIN_MAX_SIZE) {
+        id = (size / sizeof(jword_t)) - 1;
+        schunk = (small_chunk_t *) chunk;
+        schunk->next = heap.bin[id];
+        heap.bin[id] = schunk;
     } else {
-        chunk->next = heap.large_bin;
-        heap.large_bin = chunk;
-    }
-
-    if (heap.last_chunk == NULL) {
-        if ((((jword_t *) chunk) + chunk->size) == heap.end)
-            heap.last_chunk = chunk;
+        lchunk = (large_chunk_t *) chunk;
+        lchunk->next = heap.large_bin;
+        lchunk->size = size;
+        heap.large_bin = lchunk;
     }
 } // put_chunk()
 
@@ -1289,27 +1218,30 @@ static void put_chunk(chunk_t *chunk)
 
 void print_bin( void )
 {
-    chunk_t *temp;
+    large_chunk_t *lchunk;
+    small_chunk_t *schunk;
 
     fprintf(stderr, "print_bin()\n");
 
-    for (size_t i = 0, j = 0; i < BIN_ENTRIES; i++) {
-        temp = heap.bin[i];
+    for (size_t i = 0, j; i < BIN_ENTRIES; i++) {
+        schunk = heap.bin[i];
+        j = 0;
 
-        while (temp != NULL) {
+        while (schunk != NULL) {
             j++;
-            temp = temp->next;
+            schunk = schunk->next;
         }
 
-       fprintf(stderr, "heap->bin[size = %zu words] = %zu\n", i + 2, j);
+        fprintf(stderr, "heap->bin[size = %zu] = %zu\n",
+                (i + 1) * sizeof(jword_t), j);
     }
 
     fprintf(stderr, "heap->large_bin = \n");
-    temp = heap.large_bin;
+    lchunk = heap.large_bin;
 
-    while (temp != NULL) {
-        fprintf(stderr, "\tsize = %zu\n", temp->size);
-        temp = temp->next;
+    while (lchunk != NULL) {
+        fprintf(stderr, "\tsize = %zu\n", lchunk->size);
+        lchunk = lchunk->next;
     }
 
    fprintf(stderr, "\n");

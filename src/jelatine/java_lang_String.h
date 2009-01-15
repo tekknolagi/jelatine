@@ -83,10 +83,8 @@ typedef struct java_lang_String_t java_lang_String_t;
 #define JAVA_LANG_STRING_REF_N (1)
 
 /** Size in words of the non-reference area of a java.lang.String instance */
-#define JAVA_LANG_STRING_NREF_WORDS \
-        ((sizeof(java_lang_String_t) - offsetof(java_lang_String_t, next) \
-          + sizeof(jword_t) - 1) \
-         / sizeof(jword_t))
+#define JAVA_LANG_STRING_NREF_SIZE \
+        (sizeof(java_lang_String_t) - offsetof(java_lang_String_t, next))
 
 /** Turns a reference to a Java string into a C pointer */
 #define JAVA_LANG_STRING_REF2PTR(r) \

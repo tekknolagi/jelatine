@@ -118,9 +118,9 @@ class_names = \
     jelatine.VMCalendar \
     jelatine.VMFinalizer \
     jelatine.VMOutputStream \
+    jelatine.VMPointer \
     jelatine.VMResourceStream \
-    jelatine.VMTimeZone \
-    jelatine.VMThread
+    jelatine.VMTimeZone
 
 # Built classes
 
@@ -228,9 +228,9 @@ jelatine_classes = \
     jelatine/VMCalendar.class \
     jelatine/VMFinalizer.class \
     jelatine/VMOutputStream.class \
+    jelatine/VMPointer.class \
     jelatine/VMResourceStream.class \
-    jelatine/VMTimeZone.class \
-    jelatine/VMThread.class
+    jelatine/VMTimeZone.class
 
 all_classes = \
     $(java_io_classes) \
@@ -347,9 +347,9 @@ prev_jelatine_classes = \
     output/jelatine/VMCalendar.class \
     output/jelatine/VMFinalizer.class \
     output/jelatine/VMOutputStream.class \
+    output/jelatine/VMPointer.class \
     output/jelatine/VMResourceStream.class \
-    output/jelatine/VMTimeZone.class \
-    output/jelatine/VMThread.class
+    output/jelatine/VMTimeZone.class
 
 prev_all_classes = \
     $(prev_java_io_classes) \

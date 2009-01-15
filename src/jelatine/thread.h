@@ -83,11 +83,11 @@ struct thread_t {
 
 #if JEL_THREAD_POSIX
     pthread_t pthread; ///< Embedded POSIX thread
-    pthread_cond_t pthread_sync; ///< Synchronization condition
+    pthread_cond_t pthread_cond; ///< Synchronization condition
     pthread_cond_t *pthread_int; ///< Condition on which this thread is waiting
 #elif JEL_THREAD_PTH
     pth_t pth; ///< Embedded GNU/Pth thread
-    pthread_cond_t pth_sync; ///< Synchronization condition
+    pth_cond_t pth_cond; ///< Synchronization condition
     pth_cond_t *pth_int; ///< Condition on which this thread is waiting
 #endif
     bool interrupted; ///< True if this thread was interrupted
@@ -140,12 +140,12 @@ extern thread_t *thread_self( void ) ATTRIBUTE_CONST;
 extern void thread_push_root(uintptr_t *);
 extern void thread_pop_root( void );
 extern void thread_init(thread_t *);
-extern uintptr_t thread_create_main(thread_t *, method_t *, uintptr_t);
+extern uintptr_t thread_create_main(thread_t *, method_t *, uintptr_t *);
 extern void thread_sleep(int64_t);
 
 #if JEL_THREAD_POSIX || JEL_THREAD_PTH
 
-extern thread_t *thread_launch(uintptr_t, method_t *);
+extern void thread_launch(uintptr_t *, method_t *);
 extern void thread_interrupt(thread_t *);
 extern void thread_yield( void );
 extern void thread_join(uintptr_t *);
@@ -154,9 +154,9 @@ extern bool thread_notify(thread_t *, uintptr_t, bool);
 
 #else // JEL_THREAD_NONE
 
-static inline thread_t *thread_launch(uintptr_t ref, method_t *run)
+static inline void thread_launch(uintptr_t ref, method_t *run)
 {
-    return NULL;
+    return;
 } // thread_launch()
 
 static inline void thread_yield( void ) {}
