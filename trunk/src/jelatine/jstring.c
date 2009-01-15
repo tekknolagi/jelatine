@@ -119,8 +119,7 @@ void jsm_set_classes(class_t *str_cl, class_t *char_array_cl)
 
 void jsm_teardown( void )
 {
-    gc_free(jsm.buckets);
-    gc_free(jsm.lit_buckets);
+    ; // Nothing currently
 } // jsm_teardown()
 
 /** Marks the Java literals present in the manager. This function doesn't

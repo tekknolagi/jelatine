@@ -38,8 +38,7 @@ struct java_lang_Thread_t {
     uintptr_t runnable; ///< Reference to the thread's Runnable object
     header_t header; ///< Header of the object
     uintptr_t vmThread; ///< Reference to an internal representation
-    int8_t priority; ///< Priority of this thread
-    volatile int8_t interrupted; ///< The interrupted status of this thread
+    int32_t priority; ///< Priority of this thread
 };
 
 /** Typedef for ::struct java_lang_Thread_t */
@@ -63,11 +62,6 @@ typedef struct java_lang_Thread_t java_lang_Thread_t;
 /** Precomputed offset of the 'priority' field of a java.lang.Thread instance */
 #define JAVA_LANG_THREAD_PRIORITY_OFFSET \
         (offsetof(java_lang_Thread_t, priority) \
-         - offsetof(java_lang_Thread_t, header))
-
-/** Precomputed offset of the 'priority' field of a java.lang.Thread instance */
-#define JAVA_LANG_THREAD_INTERRUPTED_OFFSET \
-        (offsetof(java_lang_Thread_t, interrupted) \
          - offsetof(java_lang_Thread_t, header))
 
 /** Number of references in a java.lang.Thread instance */

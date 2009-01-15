@@ -83,9 +83,14 @@ struct thread_t {
 
 #if JEL_THREAD_POSIX
     pthread_t pthread; ///< Embedded POSIX thread
+    pthread_cond_t pthread_sync; ///< Synchronization condition
+    pthread_cond_t *pthread_int; ///< Condition on which this thread is waiting
 #elif JEL_THREAD_PTH
     pth_t pth; ///< Embedded GNU/Pth thread
+    pthread_cond_t pth_sync; ///< Synchronization condition
+    pth_cond_t *pth_int; ///< Condition on which this thread is waiting
 #endif
+    bool interrupted; ///< True if this thread was interrupted
 
 #if JEL_PRINT
     size_t call_depth; ///< Depth of the current function call
@@ -136,13 +141,14 @@ extern void thread_push_root(uintptr_t *);
 extern void thread_pop_root( void );
 extern void thread_init(thread_t *);
 extern uintptr_t thread_create_main(thread_t *, method_t *, uintptr_t);
-extern void thread_sleep(uint64_t);
+extern void thread_sleep(int64_t);
 
 #if JEL_THREAD_POSIX || JEL_THREAD_PTH
 
 extern thread_t *thread_launch(uintptr_t, method_t *);
+extern void thread_interrupt(thread_t *);
 extern void thread_yield( void );
-extern void thread_join(thread_t *);
+extern void thread_join(uintptr_t *);
 extern bool thread_wait(thread_t *, uintptr_t, uint64_t, uint32_t);
 extern bool thread_notify(thread_t *, uintptr_t, bool);
 
@@ -168,12 +174,6 @@ static inline bool thread_notify(thread_t *thread, uintptr_t ref,
     return true;
 } // thread_notify()
 
-#endif
-
-#if JEL_THREAD_POSIX
-extern void memory_barrier( void );
-#else // JEL_THREAD_PTH || JEL_THREAD_NONE
-static inline void memory_barrier( void ) {}
 #endif
 
 #endif // JELATINE_THREAD_H

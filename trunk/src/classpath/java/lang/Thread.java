@@ -94,14 +94,11 @@ public class Thread implements Runnable
     volatile String name;
 
     /** The thread priority, 1 to 10. */
-    volatile byte priority;
+    volatile int priority;
 
     /** The internal thread representation */
     volatile VMThread vmThread;
 
-    /** The interrupted status of this thread */
-    volatile byte interrupted;
-    
     /** The next thread number to use. */
     private static int numAnonymousThreadsCreated = 0;
 
@@ -202,7 +199,7 @@ public class Thread implements Runnable
         priority = current.priority;
 
     }
-    
+
     /**
      * Generate a name for an anonymous thread.
      */
@@ -272,7 +269,7 @@ public class Thread implements Runnable
         if (vmThread != null)
             throw new IllegalThreadStateException();
 
-        vmThread = VMThread.start(this);
+        VMThread.start(this); // This sets vmThread
     }
 
     /**
@@ -297,7 +294,7 @@ public class Thread implements Runnable
      */
     public synchronized void interrupt()
     {
-        interrupted = 1;
+        VMThread.interrupt(this);
     }
 
     /**
@@ -326,7 +323,7 @@ public class Thread implements Runnable
         if (priority < MIN_PRIORITY || priority > MAX_PRIORITY)
             throw new IllegalArgumentException();
 
-        this.priority = (byte) priority;
+        this.priority = priority;
     }
 
     /**
@@ -336,7 +333,7 @@ public class Thread implements Runnable
      */
     public final synchronized int getPriority()
     {
-        return (int) priority;
+        return priority;
     }
 
     /**
@@ -350,12 +347,9 @@ public class Thread implements Runnable
     }
 
     /**
-     * Get the number of active threads in the current Thread's ThreadGroup.
-     * This implementation calls
-     * <code>currentThread().getThreadGroup().activeCount()</code>.
+     * Returns the current number of active threads in the virtual machine
      *
-     * @return the number of active threads in the current ThreadGroup
-     * @see ThreadGroup#activeCount()
+     * @return the current number of active threads
      */
     public static int activeCount()
     {
@@ -370,8 +364,7 @@ public class Thread implements Runnable
      */
     public final void join() throws InterruptedException
     {
-        if (vmThread != null)
-            VMThread.join(this);
+        VMThread.join(this);
     }
 
     /**

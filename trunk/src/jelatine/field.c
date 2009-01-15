@@ -356,13 +356,11 @@ void fm_layout_java_lang_Thread(field_manager_t *fm)
     assert(strcmp(fields[1].name, "name") == 0);
     assert(strcmp(fields[2].name, "priority") == 0);
     assert(strcmp(fields[3].name, "vmThread") == 0);
-    assert(strcmp(fields[4].name, "interrupted") == 0);
 
     fields[0].offset = JAVA_LANG_THREAD_RUNNABLE_OFFSET;
     fields[1].offset = JAVA_LANG_THREAD_NAME_OFFSET;
     fields[2].offset = JAVA_LANG_THREAD_PRIORITY_OFFSET;
     fields[3].offset = JAVA_LANG_THREAD_VMTHREAD_OFFSET;
-    fields[4].offset = JAVA_LANG_THREAD_INTERRUPTED_OFFSET;
 } // fm_layout_java_lang_Thread()
 
 /** Implements type-specific layout for instances of the java.lang.String class

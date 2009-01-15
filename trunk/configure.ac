@@ -277,6 +277,8 @@ AS_IF([test "x$fp_support" = xyes],
 
 # Other libraries
 AC_SEARCH_LIBS([iconv], [iconv]) # Needed on some hosts for the preverifier
+AC_SEARCH_LIBS([clock_gettime], [rt], ,
+               [AC_MSG_ERROR([clock_gettime() is required])])
 
 ################################################################################
 # Check for header files                                                       #
@@ -385,7 +387,6 @@ AC_FUNC_MALLOC
 AC_FUNC_MEMCMP
 AC_FUNC_VPRINTF
 AC_CHECK_FUNC([vsnprintf], , [AC_MSG_ERROR([snprintf() is required])])
-AC_CHECK_FUNC([gettimeofday], , [AC_MSG_ERROR([gettimeofday() is required])])
 AC_CHECK_FUNC([memcpy], , [AC_LIBOBJ([memcpy])])
 AC_CHECK_FUNC([memmove], , [AC_LIBOBJ([memmove])])
 ACX_FUNC_VA_COPY
