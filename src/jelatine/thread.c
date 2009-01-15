@@ -25,6 +25,7 @@
 
 #include "class.h"
 #include "interpreter.h"
+#include "kni.h"
 #include "loader.h"
 #include "memory.h"
 #include "thread.h"
@@ -175,8 +176,6 @@ void tm_teardown( void )
     pth_key_delete(self);
     pth_kill();
 #endif
-
-    gc_free(tm.buckets);
 } // tm_teardown()
 
 /** Register a new thread in the thread manager
@@ -184,11 +183,9 @@ void tm_teardown( void )
 
 void tm_register(thread_t *thread)
 {
-    tm_lock();
     thread->next = tm.queue;
     tm.queue = thread;
     tm.active++;
-    tm_unlock();
 } // tm_register()
 
 /** Unregister a dying thread
@@ -198,7 +195,6 @@ void tm_unregister(thread_t *thread)
 {
     thread_t *prev, *curr;
 
-    tm_lock();
     prev = NULL;
     curr = tm.queue;
 
@@ -214,8 +210,6 @@ void tm_unregister(thread_t *thread)
     }
 
     tm.active--;
-    JAVA_LANG_THREAD_REF2PTR(thread->obj)->vmThread = JNULL;
-    tm_unlock();
 } // tm_unregister_thread()
 
 /** Returns the number of active threads in the system
@@ -223,7 +217,11 @@ void tm_unregister(thread_t *thread)
 
 uint32_t tm_active( void )
 {
+#if JEL_FINALIZER
+    return tm.active - 1;
+#else
     return tm.active;
+#endif // JEL_FINALIZER
 } // tm_active()
 
 /** Marks all the references reacheable from the threads */
@@ -478,20 +476,6 @@ void tm_stop_the_world( void )
 
 #endif // JEL_THREAD_POSIX || JEL_THREAD_PTH
 
-/** Portable memory barrier, implemented only when real threads are used */
-
-#if JEL_THREAD_POSIX
-
-void memory_barrier( void )
-{
-    pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-
-    pthread_mutex_lock(&lock);
-    pthread_mutex_unlock(&lock);
-} // memory_barrier()
-
-#endif // JEL_THREAD_POSIX
-
 /******************************************************************************
  * Monitors                                                                   *
  ******************************************************************************/
@@ -720,6 +704,12 @@ uintptr_t thread_create_main(thread_t *thread, method_t *run, uintptr_t args)
      * registered even though it is only partially initialized */
     thread_push_root(&args);
 
+#if JEL_THREAD_POSIX
+    pthread_cond_init(&thread->pthread_sync, NULL);
+#elif JEL_THREAD_PTH
+    pth_cond_init(&thread->pth_sync);
+#endif
+
     // Build the stack
     thread->stack = gc_malloc(stack_size);
     thread->sp = thread->stack;
@@ -748,50 +738,55 @@ uintptr_t thread_create_main(thread_t *thread, method_t *run, uintptr_t args)
     return thread->exception;
 } // thread_create_main()
 
-#if JEL_THREAD_PTH
-
-/** Callback function used to check if a sleeping/waiting thread has been
- * interrupted
- * \param arg A pointer to the sleeping thread
- * \returns TRUE if the thread was interrupted, false otherwise */
-
-static int thread_interrupted(void *arg)
-{
-    thread_t *thread = arg;
-
-    if (JAVA_LANG_THREAD_REF2PTR(thread->obj)->interrupted) {
-        return TRUE;
-    } else {
-        return FALSE;
-    }
-} // thread_sleep_interrupted()
-
-#endif // JEL_THREAD_PTH
-
 /** Implements the functionality required by the java.lang.Thread.sleep()
  * method, waiting for the number of milliseconds specified by \a ms
  * \param ms The number of milliseconds to wait */
 
-void thread_sleep(uint64_t ms)
+void thread_sleep(int64_t ms)
 {
+    thread_t *self = thread_self();
+
+    tm_lock();
+
+    if (self->interrupted) {
+        self->interrupted = false;
+        KNI_ThrowNew("java/lang/InterruptedException", NULL);
+    } else {
 #if JEL_THREAD_PTH
-    pth_event_t ev, time, interrupt;
+        pth_event_t ev;
+        pth_cond_t cond = PTH_COND_INIT; // Dummy condition variable
 
-    time = pth_event(PTH_EVENT_TIME,
-                     pth_timeout(ms / (int64_t) 1000,
-                                 (ms % (int64_t) 1000) * (int64_t) 1000000));
-    interrupt = pth_event(PTH_EVENT_FUNC, thread_interrupted,
-                          thread_self(), pth_time(1, 0));
-    ev = pth_event_concat(time, interrupt, NULL);
-    pth_wait(ev);
-    pth_event_free(ev, PTH_FREE_ALL);
+        ev = pth_event(PTH_EVENT_TIME,
+                       pth_timeout(ms / (int64_t) 1000,
+                                   (ms % (int64_t) 1000) * (int64_t) 1000));
+        self->pth_int = &cond;
+        pth_cond_await(&cond, &tm.lock, ev);
+        self->pth_int = NULL;
+        pth_event_free(ev, PTH_FREE_ALL);
+#elif JEL_THREAD_POSIX
+        struct timespec req;
+        pthread_cond_t cond = PTHREAD_COND_INITIALIZER; // Dummy condition variable
+
+        clock_gettime(CLOCK_REALTIME, &req);
+        req.tv_sec += ms / (int64_t) 1000;
+        req.tv_nsec += (ms % (int64_t) 1000) * (int64_t) 1000000;
+        self->pthread_int = &cond;
+        pthread_cond_timedwait(&cond, &tm.lock, &req);
+        self->pthread_int = NULL;
 #else
-    struct timespec req;
+        struct timespec req;
 
-    req.tv_sec = ms / (int64_t) 1000;
-    req.tv_nsec = (ms % (int64_t) 1000) * (int64_t) 1000000;
-    nanosleep(&req, NULL);
+        req.tv_sec = ms / (int64_t) 1000;
+        req.tv_nsec = (ms % (int64_t) 1000) * (int64_t) 1000000;
+        nanosleep(&req, NULL);
 #endif
+        if (self->interrupted) {
+            self->interrupted = false;
+            KNI_ThrowNew("java/lang/InterruptedException", NULL);
+        }
+    }
+
+    tm_unlock();
 } // thread_sleep()
 
 #if JEL_THREAD_POSIX || JEL_THREAD_PTH
@@ -809,13 +804,17 @@ static void *thread_start(void *arg)
     method_t *run = payload->run;
     int exception;
 
+    thread_init(thread); // Various infrastructure initialization
     gc_free(payload); // Release the payload
 
-    // Wait for the parent thread to initialize the vmThread field
-    while (JAVA_LANG_THREAD_REF2PTR(thread->obj)->vmThread == JNULL)
-        ;
-
-    thread_init(thread); // Various infrastructure initialization
+    // Inform the parent thread that we're starting execution
+    tm_lock();
+#if JEL_THREAD_POSIX
+    pthread_cond_signal(&thread->pthread_sync);
+#elif JEL_THREAD_PTH
+    pth_cond_notify(&thread->pth_sync, false);
+#endif
+    tm_unlock();
 
     // HACK: Push the 'this' pointer on top of the stack
     *((uintptr_t *) thread->stack) = thread->obj;
@@ -828,13 +827,23 @@ static void *thread_start(void *arg)
         vm_fail();
     }
 
+    // Mark the thread as dead, none can join on it anymore after this point
+    tm_lock();
+#if JEL_THREAD_POSIX
+    pthread_cond_broadcast(&thread->pthread_sync);
+#elif JEL_THREAD_PTH
+    pth_cond_notify(&thread->pth_sync, true);
+#endif
+    tm_unregister(thread);
+    JAVA_LANG_THREAD_REF2PTR(thread->obj)->vmThread = JNULL;
+    tm_unlock();
+
     if (thread->exception != JNULL) {
         // TODO: Print the exception and stack trace
         dbg_error("Uncaught exception");
         vm_fail();
     }
 
-    tm_unregister(thread);
     gc_free(thread->roots.pointers);
     gc_free(thread->stack);
     gc_free(thread);
@@ -866,6 +875,12 @@ thread_t *thread_launch(uintptr_t ref, method_t *run)
     thread_push_root(&ref);
     thread = gc_malloc(sizeof(thread_t));
 
+#if JEL_THREAD_POSIX
+    pthread_cond_init(&thread->pthread_sync, NULL);
+#elif JEL_THREAD_PTH
+    pth_cond_init(&thread->pth_sync);
+#endif
+
     // Build the stack
     thread->stack = gc_malloc(stack_size);
     thread->sp = thread->stack;
@@ -891,6 +906,9 @@ thread_t *thread_launch(uintptr_t ref, method_t *run)
     payload->thread = thread;
     payload->run = run;
 
+    // We take the global lock for we will be waiting for the new thread
+    tm_lock();
+
 #if JEL_THREAD_POSIX
     // FIXME: Check if this call fails and shut down the machine 'cleanly'
     res = pthread_create(&thread->pthread, NULL, thread_start, payload);
@@ -908,8 +926,39 @@ thread_t *thread_launch(uintptr_t ref, method_t *run)
     }
 #endif
 
+#if JEL_THREAD_POSIX
+    pthread_cond_wait(&thread->pthread_sync, &tm.lock);
+#else
+    pth_cond_await(&thread->pth_sync, &tm.lock, NULL);
+#endif
+    tm_unlock();
+
     return thread;
 } // thread_launch()
+
+/** Interrupts a thread. This function is used for implementing the
+ * java.lang.Thread.interrupt() method and can interrupt immediately the
+ * java.lang.Object.wait() and java.lang.Thread.sleep() methods but only
+ * asynchronously the java.lang.Thread.join() method
+ * \param thread A pointer to the thread to be interrupted */
+
+void thread_interrupt(thread_t *thread)
+{
+    tm_lock();
+    thread->interrupted = true;
+
+#if JEL_THREAD_POSIX
+    if (thread->pthread_int) {
+        pthread_cond_signal(thread->pthread_int);
+    }
+#elif JEL_THREAD_PTH
+    if (thread->pth_int) {
+        pth_cond_notify(thread->pth_int, false);
+    }
+#endif
+
+    tm_unlock();
+} // thread_interrupt()
 
 /** Causes the currently executing thread object to temporarily pause and allow
  * other threads to execute */
@@ -928,40 +977,39 @@ void thread_yield( void )
 } // thread_yield()
 
 /** Joins on the passed thread
- * \param thread The thread the function will join on */
+ * \param thread A pointer to the reference to the Java thread the function
+ * will join on */
 
-void thread_join(thread_t *thread)
+
+void thread_join(uintptr_t *thread)
 {
-#if JEL_THREAD_POSIX
-    pthread_t pthread;
-#else // JEL_THREAD_PTH
-    pth_t pth;
-#endif
-    thread_t *temp;
+    thread_t *self = thread_self();
+    thread_t *target;
 
     tm_lock();
-    temp = tm.queue;
 
-    while (temp) {
-        if (temp == thread) {
-#if JEL_THREAD_POSIX
-            pthread = thread->pthread;
-#else // JEL_THREAD_PTH
-            pth = thread->pth;
-#endif
+    if (self->interrupted) {
+        self->interrupted = false;
+        KNI_ThrowNew("java/lang/InterruptedException", NULL);
+    } else {
+        target = (thread_t *) JAVA_LANG_THREAD_REF2PTR(*thread)->vmThread;
 
-            tm_unlock();
-            thread_self()->safe++;
+        if (target != NULL) {
 #if JEL_THREAD_POSIX
-            pthread_join(pthread, NULL);
-#else // JEL_THREAD_PTH
-            pth_join(pth, NULL);
+            self->pthread_int = &target->pthread_sync;
+            pthread_cond_wait(&target->pthread_sync, &tm.lock);
+            self->pthread_int = NULL;
+#elif JEL_THREAD_PTH
+            self->pth_int = &target->pth_sync;
+            pth_cond_await(&target->pth_sync, &tm.lock, NULL);
+            self->pth_int = NULL;
 #endif
-            thread_self()->safe--;
-            return;
         }
 
-        temp = temp->next;
+        if (self->interrupted) {
+            self->interrupted = false;
+            KNI_ThrowNew("java/lang/InterruptedException", NULL);
+        }
     }
 
     tm_unlock();
@@ -981,6 +1029,7 @@ void thread_join(thread_t *thread)
 bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
                  uint32_t nanos)
 {
+    thread_t *self = thread_self();
     monitor_t *entry;
     size_t hash;
     bool res = false;
@@ -997,6 +1046,14 @@ bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
 
     if (entry) {
         if ((entry->owner == thread) && (entry->count == 1)) {
+            // Handle a pending interrupt
+            if (self->interrupted) {
+                self->interrupted = false;
+                KNI_ThrowNew("java/lang/InterruptedException", NULL);
+                tm_unlock();
+                return true;
+            }
+
             // Release the lock and wait
             entry->owner = NULL;
             entry->count = 0;
@@ -1007,36 +1064,48 @@ bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
                 pthread_cond_init(entry->pthread_cond, NULL);
             }
 
+            self->pthread_int = entry->pthread_cond;
+
             if ((millis == 0) && (nanos == 0)) {
                 pthread_cond_wait(entry->pthread_cond, &tm.lock);
             } else {
-                struct timespec ts;
+                struct timespec req;
 
-                ts.tv_sec = millis / (uint64_t) 1000;
-                ts.tv_nsec = (millis % (uint64_t) 1000) + nanos;
-                pthread_cond_timedwait(entry->pthread_cond, &tm.lock, &ts);
+                clock_gettime(CLOCK_REALTIME, &req);
+                req.tv_sec += millis / (uint64_t) 1000;
+                req.tv_nsec += (millis % (uint64_t) 1000) + nanos;
+                pthread_cond_timedwait(entry->pthread_cond, &tm.lock, &req);
             }
+
+            self->pthread_int = NULL;
+
 #elif JEL_THREAD_PTH
             if (entry->pth_cond == NULL) {
                 entry->pth_cond = gc_malloc(sizeof(pth_cond_t));
                 pth_cond_init(entry->pth_cond);
             }
 
+            self->pth_int = entry->pth_cond;
+
             if ((millis == 0) && (nanos == 0)) {
                 pth_cond_await(entry->pth_cond, &tm.lock, NULL);
             } else {
-                pth_event_t ev, time, interrupt;
+                pth_event_t ev;
 
-                time = pth_event(PTH_EVENT_TIME,
-                                 pth_timeout(millis / (int64_t) 1000,
-                                             millis % (int64_t) 1000 + nanos));
-                interrupt = pth_event(PTH_EVENT_FUNC, thread_interrupted,
-                                      thread_self(), pth_time(1, 0));
-                ev = pth_event_concat(time, interrupt, NULL);
+                ev = pth_event(PTH_EVENT_TIME,
+                               pth_timeout(millis / (int64_t) 1000,
+                                           millis % (int64_t) 1000 + nanos));
                 pth_cond_await(entry->pth_cond, &tm.lock, ev);
                 pth_event_free(ev, PTH_FREE_ALL);
             }
+
+            self->pth_int = NULL;
 #endif
+
+            if (self->interrupted) {
+                self->interrupted = false;
+                KNI_ThrowNew("java/lang/InterruptedException", NULL);
+            }
 
             // Re-acquire the monitor
             tm_unlock();

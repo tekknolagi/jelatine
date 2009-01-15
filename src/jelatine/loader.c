@@ -205,8 +205,6 @@ void bcl_teardown( void )
         zzip_dir_close(bcl.boot_classpath_jar);
     }
 #endif // JEL_JARFILE_SUPPORT
-
-    gc_free(bcl.class_table);
 } // bcl_teardown()
 
 /** Returns a pointer to the class corresponding to the given id

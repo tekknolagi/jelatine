@@ -104,19 +104,7 @@ void string_manager_init(size_t log2cap, size_t load)
 
 void string_manager_teardown( void )
 {
-    utf8_string_t *next, *curr;
-
-    for (size_t i = 0; i < sm.capacity; i++) {
-        curr = sm.buckets[i];
-
-        while (curr != NULL) {
-            next = curr->next;
-            gc_free(curr);
-            curr = next;
-        }
-    }
-
-    gc_free(sm.buckets);
+    ; // Nothing currently
 } // string_manager_teardown()
 
 /** Rehashes the string manager pointed by \a sm

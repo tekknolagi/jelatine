@@ -71,4 +71,9 @@ public final class VMThread
      * Implements java.lang.Thread.join()
      */
     public native static void join(Thread thread) throws InterruptedException;
+
+    /**
+     * Implements java.lang.Thread.interrupt()
+     */
+    public native static void interrupt(Thread thread);
 }

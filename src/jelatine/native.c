@@ -142,6 +142,7 @@ static KNI_RETURNTYPE_VOID jelatine_VMThread_sleep( void );
 static KNI_RETURNTYPE_OBJECT jelatine_VMThread_start( void );
 static KNI_RETURNTYPE_INT jelatine_VMThread_activeCount( void );
 static KNI_RETURNTYPE_VOID jelatine_VMThread_join( void );
+static KNI_RETURNTYPE_VOID jelatine_VMThread_interrupt( void );
 
 /** Names and descriptions of the native methods */
 
@@ -453,6 +454,12 @@ native_method_desc_t native_desc[] = {
         "join",
         "(Ljava/lang/Thread;)V",
         jelatine_VMThread_join
+    },
+    {
+        "jelatine/VMThread",
+        "interrupt",
+        "(Ljava/lang/Thread;)V",
+        jelatine_VMThread_interrupt
     },
 
     { NULL, NULL, NULL, NULL } // Placeholder
@@ -868,12 +875,6 @@ static KNI_RETURNTYPE_VOID java_lang_Object__wait( void )
 
     if (!thread_wait(self, *this_ref, millis, nanos)) {
         KNI_ThrowNew("java/lang/IllegalMonitorStateException", NULL);
-    } else {
-        // FIXME: Do we need to lock the object?
-        if (JAVA_LANG_THREAD_REF2PTR(self->obj)->interrupted) {
-            JAVA_LANG_THREAD_REF2PTR(self->obj)->interrupted = false;
-            KNI_ThrowNew("java/lang/InterruptedException", NULL);
-        }
     }
 
     KNI_EndHandles();
@@ -931,13 +932,12 @@ static KNI_RETURNTYPE_OBJECT java_lang_String_intern( void )
 
 static KNI_RETURNTYPE_LONG java_lang_System_currentTimeMillis( void )
 {
-    struct timeval now;
-    int64_t ret;
+    struct timespec now;
+    jlong ret;
 
-    gettimeofday(&now, NULL);
-
-    ret = (int64_t) now.tv_sec * 1000;
-    ret += (int64_t) now.tv_usec / 1000;
+    clock_gettime(CLOCK_REALTIME, &now);
+    ret = (jlong) now.tv_sec * (jlong) 1000;
+    ret += (jlong) now.tv_nsec / (jlong) 1000000;
     KNI_ReturnLong(ret);
 } // java_lang_System_currentTimeMillis()
 
@@ -1276,16 +1276,7 @@ static KNI_RETURNTYPE_VOID jelatine_VMThread_yield( void )
 
 static KNI_RETURNTYPE_VOID jelatine_VMThread_sleep( void )
 {
-    thread_t *self = thread_self();
-
     thread_sleep(KNI_GetParameterAsLong(1));
-
-    // FIXME: Do we need to lock the object?
-    if (JAVA_LANG_THREAD_REF2PTR(self->obj)->interrupted) {
-        JAVA_LANG_THREAD_REF2PTR(self->obj)->interrupted = false;
-        KNI_ThrowNew("java/lang/InterruptedException", NULL);
-    }
-
     KNI_ReturnVoid();
 } // jelatine_VMThread_sleep()
 
@@ -1323,7 +1314,7 @@ static KNI_RETURNTYPE_OBJECT jelatine_VMThread_start( void )
 static KNI_RETURNTYPE_INT jelatine_VMThread_activeCount( void )
 {
     // Decrease thread number by one as the finalizer thread is for internal purpose
-    KNI_ReturnInt(tm_active() - 1);
+    KNI_ReturnInt(tm_active());
 } // jelatine_VMThread_activeCount()
 
 /** Implementation of jelatine.VMThread.join() */
@@ -1331,23 +1322,32 @@ static KNI_RETURNTYPE_INT jelatine_VMThread_activeCount( void )
 static KNI_RETURNTYPE_VOID jelatine_VMThread_join( void )
 {
 #if !JEL_THREAD_NONE
-    thread_t *self = thread_self();
-
     KNI_StartHandles(1);
     KNI_DeclareHandle(thread_ref);
 
     KNI_GetParameterAsObject(1, thread_ref);
-    thread_join((thread_t *) (JAVA_LANG_THREAD_REF2PTR(*thread_ref)->vmThread));
-
-    // FIXME: Do we need to lock the object?
-    if (JAVA_LANG_THREAD_REF2PTR(self->obj)->interrupted) {
-        JAVA_LANG_THREAD_REF2PTR(self->obj)->interrupted = false;
-        KNI_ThrowNew("java/lang/InterruptedException", NULL);
-    }
-
+    thread_join(thread_ref);
     KNI_EndHandles();
     KNI_ReturnVoid();
 #else
     KNI_ReturnVoid();
 #endif // !JEL_THREAD_NONE
 } // jelatine_VMThread_join()
+
+/** Implementation of jelatine.VMThread.interrupt() */
+
+static KNI_RETURNTYPE_VOID jelatine_VMThread_interrupt( void )
+{
+#if !JEL_THREAD_NONE
+    KNI_StartHandles(1);
+    KNI_DeclareHandle(thread_ref);
+
+    KNI_GetParameterAsObject(1, thread_ref);
+    thread_interrupt((thread_t *)
+                     (JAVA_LANG_THREAD_REF2PTR(*thread_ref)->vmThread));
+    KNI_EndHandles();
+    KNI_ReturnVoid();
+#else
+    KNI_ReturnVoid();
+#endif // !JEL_THREAD_NONE
+} // jelatine_VMThread_interrupt()
