@@ -905,6 +905,9 @@ void thread_launch(uintptr_t *ref, method_t *run)
     thread_payload_t *payload;
 #if JEL_THREAD_POSIX
     int res;
+    pthread_attr_t attr;
+#elif JEL_THREAD_PTH
+    pth_attr_t attr;
 #endif
 
     // Prepare the thread payload
@@ -920,21 +923,31 @@ void thread_launch(uintptr_t *ref, method_t *run)
     // We take the global lock for we will be waiting for the new thread
     tm_lock();
 
+    // FIXME: Check if thread creation fails and shut down the machine 'cleanly'
 #if JEL_THREAD_POSIX
-    // FIXME: Check if this call fails and shut down the machine 'cleanly'
-    res = pthread_create(&payload->pthread, NULL, thread_start, payload);
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+    res = pthread_create(&payload->pthread, &attr, thread_start, payload);
 
     if (res) {
         dbg_error("Unable to create a new thread");
         vm_fail();
     }
+    
+    pthread_attr_destroy(&attr);
 #elif JEL_THREAD_PTH
-    payload->pth = pth_spawn(PTH_ATTR_DEFAULT, thread_start, payload);
+    attr = pth_attr_new();
+    pth_attr_set(attr, PTH_ATTR_JOINABLE, FALSE);
+
+    payload->pth = pth_spawn(attr, thread_start, payload);
 
     if (payload->pth == NULL) {
         dbg_error("Unable to create a new thread");
         vm_fail();
     }
+
+    pth_attr_destroy(attr);
 #endif
 
     // Wait for the new thread
