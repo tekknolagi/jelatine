@@ -1888,13 +1888,11 @@ static void layout_fields(class_t *cl)
             case '[':
             case 'L':
                 if (strcmp(curr->descriptor, "Ljelatine/VMPointer;") == 0) {
-#if SIZEOF_VOID_P == 2
-                    short_size += 2;
-#elif SIZEOF_VOID_P == 4
-                    int_size += 4;
-#else // SIZEOF_VOID_P == 8
+#if SIZEOF_VOID_P == 8
                     long_size += 8;
-#endif
+#else // SIZEOF_VOID_P == 4 || SIZEOF_VOID_P == 2
+                    int_size += 4;
+#endif // SIZEOF_VOID_P == 8
                 } else {
                     ref_n++;
                 }
@@ -1979,16 +1977,13 @@ static void layout_fields(class_t *cl)
             case '[':
             case 'L':
                 if (strcmp(curr->descriptor, "Ljelatine/VMPointer;") == 0) {
-#if SIZEOF_VOID_P == 2
-                    curr->offset = short_offset;
-                    short_offset += 2;
-#elif SIZEOF_VOID_P == 4
-                    curr->offset = int_offset;
-                    int_offset += 4;
-#else // SIZEOF_VOID_P == 8
+#if SIZEOF_VOID_P == 8
                     curr->offset = long_offset;
                     long_offset += 8;
-#endif
+#else // SIZEOF_VOID_P == 4 || SIZEOF_VOID_P == 2
+                    curr->offset = int_offset;
+                    int_offset += 4;
+#endif // SIZEOF_VOID_P == 8
                 } else {
                     curr->offset = -((ref_offset + 1) * sizeof(uintptr_t));
                     ref_offset++;

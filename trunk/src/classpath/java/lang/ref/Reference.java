@@ -38,8 +38,6 @@ exception statement from your version. */
 
 package java.lang.ref;
 
-import jelatine.VMPointer;
-
 /**
  * This is the base class of all references.  A reference allows
  * refering to an object without preventing the garbage collector to
