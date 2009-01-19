@@ -119,11 +119,11 @@ typedef struct heap_t heap_t;
  ******************************************************************************/
 
 static uintptr_t gc_alloc(size_t);
-static void purge_bin( void );
-static void mark( void );
-static void mark_finalizable( void );
-static void sweep(size_t);
-static void purge_weakref_list( void );
+static void gc_purge_bin( void );
+static void gc_mark( void );
+static void gc_mark_finalizable( void );
+static void gc_sweep(size_t);
+static void gc_purge_weakref_list( void );
 static void gc_grow(uintptr_t, size_t);
 
 // Bitmap management functions
@@ -498,19 +498,18 @@ void gc_collect(size_t grow)
         tm_stop_the_world(); // Wait for all threads to stop
 
         // Mark garbage collected objects
-        mark();
-        mark_finalizable();
+        gc_mark();
+        gc_mark_finalizable();
 
         // Mark and purge of non-garbage collected structures
-        purge_weakref_list();
+        gc_purge_weakref_list();
         jsm_purge();
         tm_purge();
-        purge_bin();
+        gc_purge_bin();
 
-        sweep(grow);
+        gc_sweep(grow);
     } else {
-        // Just grow the heap
-        gc_grow(heap.end, grow);
+        gc_grow(heap.end, grow); // Just grow the heap
     }
 
     tm_unlock();
@@ -559,7 +558,7 @@ size_t gc_total_memory( void )
     return heap.size;
 } // gc_total_memory()
 
-/** Check if a reference is a pointer and recursively mark it if it is
+/** Check if a reference is a pointer and recursively gc_mark it if it is
  * \param ref A reference to a Java object */
 
 void gc_mark_potential(uintptr_t ref)
@@ -582,7 +581,7 @@ void gc_mark_potential(uintptr_t ref)
     }
 
     /* If we got here then we have something that may be a pointer and actually
-     * points to something, let's mark it */
+     * points to something, let's gc_mark it */
     gc_mark_reference(ref);
 } // gc_mark_potential()
 
@@ -696,8 +695,8 @@ void gc_mark_reference(uintptr_t ref)
             tmp_header = (header_t *) tmp;
 
             if (!header_is_marked(tmp_header)) {
-                /* This object is not marked, mark it, push the previous object
-                 * and set this one as the current */
+                /* This object is not marked, gc_mark it, push the previous
+                 * object and set this one as the current */
                 *((uintptr_t *) curr - count - 1) = prev;
                 prev = curr;
                 curr = tmp;
@@ -770,7 +769,7 @@ static uintptr_t gc_alloc(size_t size)
  * garbage collector can reclaim the space they hold and aggregate them with
  * other potentially free chunks surrounding them */
 
-static void purge_bin( void ) {
+static void gc_purge_bin( void ) {
     small_chunk_t *schunk;
     large_chunk_t *lchunk;
     char *free_space;
@@ -800,11 +799,11 @@ static void purge_bin( void ) {
         lchunk = lchunk->next;
         memset(free_space, 0, free_size); // Clear the fred space
     }
-} // purge_bin()
+} // gc_purge_bin()
 
-/** Executes the 'mark' phase of the garbage collector
+/** Executes the 'gc_mark' phase of the garbage collector
  *
- * The mark phase consists in scanning the root objects (threads and stacks
+ * The gc_mark phase consists in scanning the root objects (threads and stacks
  * basically) for references to objects in the heap. Each of these object is
  * then marked as live and its references explored in turn and so on until all
  * the live objects are found and marked. The recursive descent algorythm uses
@@ -812,19 +811,19 @@ static void purge_bin( void ) {
  * the gc is thus completely self-contained and cannot fail due to a stack
  * overflow */
 
-static void mark( void )
+static void gc_mark( void )
 {
     bcl_mark();
     jsm_mark();
     tm_mark();
-} // mark()
+} // gc_mark()
 
-/** After the mark phase executed checks the finalizable obejcts. The ones which
+/** After the gc_mark phase executed checks the finalizable obejcts. The ones which
  * haven't been marked and thus are dead are 'resurrected' by marking them and
  * moved to the list of objects to be finalized. Once the finalizer thread has
  * processed them they will be lost forever */
 
-static void mark_finalizable( void )
+static void gc_mark_finalizable( void )
 {
 #if JEL_FINALIZER
     finalizable_t *curr = heap.finalizable;
@@ -867,12 +866,12 @@ static void mark_finalizable( void )
         curr = curr->next;
     }
 #endif // JEL_FINALIZER
-} // mark_finalizable()
+} // gc_mark_finalizable()
 
 /** Scans the heap for live objects and reclaims dead ones replenishing
  * the free list */
 
-static void sweep(size_t size)
+static void gc_sweep(size_t size)
 {
     class_t *cl;
     header_t *header;
@@ -984,7 +983,7 @@ static void sweep(size_t size)
                in_use, reclaimed);
     }
 #endif // JEL_PRINT
-} // sweep()
+} // gc_sweep()
 
 /** Allocates a chunk of memory for holding C objects, throws an
  * exception upon failure, the returned memory has already been zeroed
@@ -1047,7 +1046,7 @@ void gc_free(void *ptr)
  * which point to weakly reachable (or non-reachable) objects and removing all
  * the non-reachable weak references */
 
-static void purge_weakref_list( void )
+static void gc_purge_weakref_list( void )
 {
     java_lang_ref_WeakReference_t *curr, *prev, list;
     header_t *referent;
