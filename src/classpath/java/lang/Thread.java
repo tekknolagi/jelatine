@@ -93,11 +93,11 @@ public class Thread implements Runnable
     /** The thread name, non-null. */
     volatile String name;
 
-    /** The thread priority, 1 to 10. */
-    volatile int priority;
-
     /** The internal thread representation */
     volatile VMPointer vmThread;
+
+    /** The thread priority, 1 to 10. */
+    volatile int priority;
 
     /** The next thread number to use. */
     private static int numAnonymousThreadsCreated = 0;
@@ -280,7 +280,7 @@ public class Thread implements Runnable
      *
      * @return whether this Thread is alive
      */
-    public final boolean isAlive()
+    public final synchronized boolean isAlive()
     {
         return vmThread != null;
     }

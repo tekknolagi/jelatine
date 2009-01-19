@@ -34,26 +34,14 @@
 struct java_lang_ref_WeakReference_t {
     header_t header; ///< Parent class instance
     uintptr_t referent; ///< Referent of this weak reference
+#if SIZEOF_VOID_P == 2
+    uint16_t padding; ///< Padding needed on machines with 16-bit pointers
+#endif // SIZEOF_VOID_P == 2
     struct java_lang_ref_WeakReference_t *next; ///< Next in the list
 };
 
 /** Typedef for ::struct java_lang_ref_WeakReference */
 typedef struct java_lang_ref_WeakReference_t java_lang_ref_WeakReference_t;
-
-/** Precomputed offset of the 'next' field of a java.lang.ref.WeakReference
- * instance */
-#define JAVA_LANG_REF_WEAKREFERENCE_NEXT_OFFSET \
-    (offsetof(java_lang_ref_WeakReference_t, next) \
-    - offsetof(java_lang_ref_WeakReference_t, header))
-
-/** Number of references of a java.lang.ref.WeakReference instance */
-#define JAVA_LANG_REF_WEAKREFERENCE_REF_N (0)
-
-/** Size in bytes of the non-reference area of a java.lang.ref.WeakReference
- * instance */
-#define JAVA_LANG_REF_WEAKREFERENCE_NREF_SIZE \
-        (sizeof(java_lang_ref_WeakReference_t) \
-         - offsetof(java_lang_ref_WeakReference_t, referent))
 
 /** Turns a reference to a Java WeakReference object into a C pointer */
 #define JAVA_LANG_REF_WEAKREFERENCE_REF2PTR(r) \

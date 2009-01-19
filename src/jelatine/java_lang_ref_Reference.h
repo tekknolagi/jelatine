@@ -39,21 +39,6 @@ struct java_lang_ref_Reference_t {
 /** Typedef for ::struct java_lang_ref_Reference_t */
 typedef struct java_lang_ref_Reference_t java_lang_ref_Reference_t;
 
-/** Precomputed offset of the 'referent' field of a java.lang.ref.Reference
- * instance */
-#define JAVA_LANG_REF_REFERENCE_REFERENT_OFFSET \
-        (offsetof(java_lang_ref_Reference_t, referent) \
-         - offsetof(java_lang_ref_Reference_t, header))
-
-/** Number of references of a java.lang.ref.Reference instance */
-#define JAVA_LANG_REF_REFERENCE_REF_N (0)
-
-/** Size in bytes of the non-reference area of a java.lang.ref.Reference
- * instance */
-#define JAVA_LANG_REF_REFERENCE_NREF_SIZE \
-        (sizeof(java_lang_ref_Reference_t) \
-         - offsetof(java_lang_ref_Reference_t, referent))
-
 /** Turns a reference to a Java Reference object into a C pointer */
 #define JAVA_LANG_REF_REFERENCE_REF2PTR(r) \
         ((java_lang_ref_Reference_t *) \

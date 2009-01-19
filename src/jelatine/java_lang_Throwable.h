@@ -38,18 +38,6 @@ struct java_lang_Throwable_t {
 /** Typedef for ::struct java_lang_Throwable_t */
 typedef struct java_lang_Throwable_t java_lang_Throwable_t;
 
-/** Precomputed offset of the 'detailMessage' field of a java.lang.Throwable
- * instance */
-#define JAVA_LANG_THROWABLE_DETAILMESSAGE_OFFSET \
-        ((ptrdiff_t) offsetof(java_lang_Throwable_t, detailMessage) \
-         - (ptrdiff_t) offsetof(java_lang_Throwable_t, header))
-
-/** Number of references of a java.lang.Throwable instance */
-#define JAVA_LANG_THROWABLE_REF_N (1)
-
-/** Size in bytes of the non-reference area of a java.lang.Throwable instance */
-#define JAVA_LANG_THROWABLE_NREF_SIZE (0)
-
 /** Turns a reference to a Java Throwable object into a C pointer */
 #define JAVA_LANG_THROWABLE_REF2PTR(r) \
         ((java_lang_Throwable_t *) ((r) \

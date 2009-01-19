@@ -38,31 +38,14 @@ struct java_lang_Thread_t {
     uintptr_t runnable; ///< Reference to the thread's Runnable object
     header_t header; ///< Header of the object
     uintptr_t vmThread; ///< Reference to an internal representation
+#if (SIZEOF_VOID_P == 2)
+    uint16_t padding; ///< Padding needed on machines with 16-bit pointers
+#endif
     int32_t priority; ///< Priority of this thread
 };
 
 /** Typedef for ::struct java_lang_Thread_t */
 typedef struct java_lang_Thread_t java_lang_Thread_t;
-
-/** Precomputed offset of the 'name' field of java.lang.Thread instance */
-#define JAVA_LANG_THREAD_NAME_OFFSET \
-        ((ptrdiff_t) offsetof(java_lang_Thread_t, name) \
-         - (ptrdiff_t) offsetof(java_lang_Thread_t, header))
-
-/** Precomputed offset of the 'runnable' field of a java.lang.Thread instance */
-#define JAVA_LANG_THREAD_RUNNABLE_OFFSET \
-        ((ptrdiff_t) offsetof(java_lang_Thread_t, runnable) \
-         - (ptrdiff_t) offsetof(java_lang_Thread_t, header))
-
-/** Precomputed offset of the 'vmThread' field of a java.lang.Thread instance */
-#define JAVA_LANG_THREAD_VMTHREAD_OFFSET \
-        (offsetof(java_lang_Thread_t, vmThread) \
-         - offsetof(java_lang_Thread_t, header))
-
-/** Precomputed offset of the 'priority' field of a java.lang.Thread instance */
-#define JAVA_LANG_THREAD_PRIORITY_OFFSET \
-        (offsetof(java_lang_Thread_t, priority) \
-         - offsetof(java_lang_Thread_t, header))
 
 /** Number of references in a java.lang.Thread instance */
 #define JAVA_LANG_THREAD_REF_N (2)

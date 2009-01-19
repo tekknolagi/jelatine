@@ -44,38 +44,14 @@ struct jelatine_VMResourceStream_t {
     uintptr_t resource; ///< A Java String holding the name of the resource
     header_t header; ///< The object header
     ZZIP_FILE *handle; ///< A pointer to the JAR (ZIP) file structure
+#if SIZEOF_VOID_P == 2
+    uint16_t padding; ///< Padding needed on machines with 16-bit pointers
+#endif // SIZEOF_VOID_P == 2
     int32_t available; ///< Number of bytes available
 };
 
 /** Typedef for ::struct jelatine_VMResourceStream */
 typedef struct jelatine_VMResourceStream_t jelatine_VMResourceStream_t;
-
-/** Precomputed offset of the 'resource' field of a jelatine.VMResourceStream
- * instance */
-#define JELATINE_VMRESOURCESTREAM_RESOURCE_OFFSET \
-    ((ptrdiff_t) offsetof(jelatine_VMResourceStream_t, resource) \
-    - (ptrdiff_t) offsetof(jelatine_VMResourceStream_t, header))
-
-/** Precomputed offset of the 'handle' field of a jelatine.VMResourceStream
- * instance */
-#define JELATINE_VMRESOURCESTREAM_HANDLE_OFFSET \
-    ((ptrdiff_t) offsetof(jelatine_VMResourceStream_t, handle) \
-    - (ptrdiff_t) offsetof(jelatine_VMResourceStream_t, header))
-
-/** Precomputed offset of the 'available' field of a jelatine.VMResourceStream
- * instance */
-#define JELATINE_VMRESOURCESTREAM_AVAILABLE_OFFSET \
-    ((ptrdiff_t) offsetof(jelatine_VMResourceStream_t, available) \
-    - (ptrdiff_t) offsetof(jelatine_VMResourceStream_t, header))
-
-/** Number of references in a jelatine.VMResourceStream instance */
-#define JELATINE_VMRESOURCESTREAM_REF_N (1)
-
-/** Size in bytes of the non-reference are in a jelatine.VMResourceStream
- * instance */
-#define JELATINE_VMRESOURCESTREAM_NREF_SIZE \
-        (sizeof(jelatine_VMResourceStream_t) \
-         - offsetof(jelatine_VMResourceStream_t, handle))
 
 /** Turns a reference to a Java VMResourceStream object into a C pointer */
 #define JELATINE_VMRESOURCESTREAM_REF2PTR(r) \

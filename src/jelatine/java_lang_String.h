@@ -53,32 +53,6 @@ struct java_lang_String_t {
 /** Typedef for ::struct java_lang_String_t */
 typedef struct java_lang_String_t java_lang_String_t;
 
-/** Precomputed offset of the 'value' field of a java.lang.String instance */
-#define JAVA_LANG_STRING_VALUE_OFFSET \
-        ((ptrdiff_t) offsetof(java_lang_String_t, value) \
-         - (ptrdiff_t) offsetof(java_lang_String_t, header))
-
-/** Precomputed offset of the 'next' field of a java.lang.String instance */
-#define JAVA_LANG_STRING_NEXT_OFFSET \
-        (offsetof(java_lang_String_t, next) \
-         - offsetof(java_lang_String_t, header))
-
-/** Precomputed offset of the 'count' field of a java.lang.String instance */
-#define JAVA_LANG_STRING_COUNT_OFFSET \
-        (offsetof(java_lang_String_t, count) \
-         - offsetof(java_lang_String_t, header))
-
-/** Precomputed offset of the 'cachedHashCode' field of a java.lang.String
- * instance */
-#define JAVA_LANG_STRING_CACHEDHASHCODE_OFFSET \
-        (offsetof(java_lang_String_t, cachedHashCode) \
-         - offsetof(java_lang_String_t, header))
-
-/** Precomputed offset of the 'offset' field of a java.lang.String instance */
-#define JAVA_LANG_STRING_OFFSET_OFFSET \
-        (offsetof(java_lang_String_t, offset) \
-         - offsetof(java_lang_String_t, header))
-
 /** Number of references in a java.lang.String instance */
 #define JAVA_LANG_STRING_REF_N (1)
 
