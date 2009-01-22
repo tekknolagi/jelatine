@@ -213,13 +213,8 @@ field_manager_t *fm_create(uint32_t ic, uint32_t sc)
     fm->reserved_static = sc;
 #endif // !NDEBUG
 
-    if (ic != 0) {
-        fm->instance_fields = gc_malloc(sizeof(field_t) * ic);
-    }
-
-    if (sc != 0) {
-        fm->static_fields = gc_malloc(sc * sizeof(static_field_t));
-    }
+    fm->instance_fields = gc_malloc(ic * sizeof(field_t));
+    fm->static_fields = gc_malloc(sc * sizeof(static_field_t));
 
     return fm;
 } // fm_create()

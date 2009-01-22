@@ -1680,12 +1680,8 @@ static exception_handler_t *load_exception_handlers(class_t *cl,
     cf_seek(cf, method->code_length + 2, SEEK_CUR);
 
     // Load the exception handlers and resolve the relevant classes
-    if (method->exception_table_length == 0) {
-        handlers = NULL;
-    } else {
-        handlers = gc_malloc(sizeof(exception_handler_t)
-                             * method->exception_table_length);
-    }
+    handlers = gc_malloc(sizeof(exception_handler_t)
+                         * method->exception_table_length);
 
     for (size_t i = 0; i < method->exception_table_length; i++) {
         handlers[i].start_pc = cf_load_u2(cf) + offset;

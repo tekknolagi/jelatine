@@ -223,9 +223,9 @@ char *utf8_intern(const char *src, size_t len)
     while (str != NULL) {
         if (strcmp(str->data, src) == 0) {
             break;
+        } else {
+            str = str->next;
         }
-
-        str = str->next;
     }
 
     if (str == NULL) {

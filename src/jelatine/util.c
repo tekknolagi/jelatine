@@ -387,10 +387,8 @@ void c_clear_exception( void )
 {
     thread_t *self = thread_self();
 
-    if (self->c_exception.description != NULL) {
-        gc_free(self->c_exception.description);
-        self->c_exception.description = NULL;
-    }
+    gc_free(self->c_exception.description);
+    self->c_exception.description = NULL;
 } // c_clear_exception()
 
 /** Print the exception of type \a exc currently held by the calling thread

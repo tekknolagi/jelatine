@@ -1007,20 +1007,21 @@ static void gc_sweep(size_t size)
 /** Allocates a chunk of memory for holding C objects, throws an
  * exception upon failure, the returned memory has already been zeroed
  *
- * Contrary to the behaviour of the ANSI library malloc() function an allocation
- * of 0 bytes is considered an error, if debugging is on this will trigger an
- * assertion. The allocation size is rounded to a multiple of 4 or 8 bytes
- * depending on the target
+ * If the allocation size is zero the function will return a NULL pointer.
+ * The allocation size is rounded to a multiple of 4 or 8 bytes depending on
+ * the target
  *
  * \param size The size in bytes of the chunk to be allocated
  * \returns A pointer to the newly allocated memory */
 
 void *gc_malloc(size_t size)
 {
-    assert(size != 0);
-
     uintptr_t ptr;
     header_t *header;
+
+    if (size == 0) {
+        return NULL;
+    }
 
     size = size_ceil(size, sizeof(jword_t)) + sizeof(header_t);
     tm_lock();
@@ -1040,12 +1041,17 @@ void *gc_malloc(size_t size)
     return (void *) (ptr + sizeof(header_t));
 } // gc_malloc()
 
-/** Frees a previously allocated C object
+/** Frees a previously allocated C object.
+ *
+ * If \a ptr is NULL no action is taken
+ *
  * \param ptr A pointer to the object to be fred */
 
 void gc_free(void *ptr)
 {
-    assert(ptr != NULL);
+    if (ptr == NULL) {
+        return;
+    }
 
     tm_lock();
     header_t *header = (header_t *) ((uintptr_t) ptr - sizeof(header_t));
