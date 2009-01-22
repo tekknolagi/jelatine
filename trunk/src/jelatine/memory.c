@@ -1089,11 +1089,11 @@ void *gc_palloc(size_t size)
 
 void gc_free(void *ptr)
 {
-    assert(((uintptr_t) ptr >= heap.start) && ((uintptr_t) ptr < heap.perm));
-
     if (ptr == NULL) {
         return;
     }
+
+    assert(((uintptr_t) ptr >= heap.start) && ((uintptr_t) ptr < heap.perm));
 
     tm_lock();
     header_t *header = (header_t *) ((uintptr_t) ptr - sizeof(header_t));
