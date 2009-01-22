@@ -206,15 +206,15 @@ void *sfield_get_data_ptr(static_field_t *field)
 
 field_manager_t *fm_create(uint32_t ic, uint32_t sc)
 {
-    field_manager_t *fm = gc_malloc(sizeof(field_manager_t));
+    field_manager_t *fm = gc_palloc(sizeof(field_manager_t));
 
 #ifndef NDEBUG
     fm->reserved_instance = ic;
     fm->reserved_static = sc;
 #endif // !NDEBUG
 
-    fm->instance_fields = gc_malloc(ic * sizeof(field_t));
-    fm->static_fields = gc_malloc(sc * sizeof(static_field_t));
+    fm->instance_fields = gc_palloc(ic * sizeof(field_t));
+    fm->static_fields = gc_palloc(sc * sizeof(static_field_t));
 
     return fm;
 } // fm_create()

@@ -97,12 +97,12 @@ void init_dummy_methods( void )
 
 method_manager_t *mm_create(uint32_t count)
 {
-    method_manager_t *mm = gc_malloc(sizeof(method_manager_t));
+    method_manager_t *mm = gc_palloc(sizeof(method_manager_t));
 
 #ifndef NDEBUG
     mm->reserved = count;
 #endif // !NDEBUG
-    mm->methods = gc_malloc(count * sizeof(method_t));
+    mm->methods = gc_palloc(count * sizeof(method_t));
 
     return mm;
 } // mm_create()

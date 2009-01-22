@@ -92,6 +92,7 @@ struct heap_t {
     void *memory; ///< Generic heap used by the VM
     uintptr_t start; ///< First word of the heap
     uintptr_t end; ///< First word after the end of the heap
+    uintptr_t perm; ///< First word of the permanent allocation area
 
     uint8_t *bitmap; ///< Memory bitmap
 
@@ -196,6 +197,7 @@ void gc_init(size_t size)
     heap.memory = unified_heap;
     heap.start = (uintptr_t) unified_heap;
     heap.end = (uintptr_t) unified_heap + init_size;
+    heap.perm = heap.start + heap_size;
     heap.weakref_list = NULL;
     heap.bitmap = bitmap;
     heap.large_bin = NULL;
@@ -479,17 +481,14 @@ void gc_register_weak_ref(java_lang_ref_WeakReference_t *ref)
 
 void gc_grow(uintptr_t end, size_t size)
 {
-    if (heap.size + size > heap.max_size) {
-        heap.end = heap.start + heap.max_size;
+    if (heap.end + size > heap.perm) {
+        heap.end = heap.perm;
     } else {
         heap.end += size;
     }
 
     heap.size = heap.end - heap.start;
-
-    if (heap.end - end) {
-        put_chunk(end, heap.end - end);
-    }
+    put_chunk(end, heap.end - end);
 } // gc_grow()
 
 /** Launches the garbage collector on the provided heap structure
@@ -1005,7 +1004,7 @@ static void gc_sweep(size_t size)
 } // gc_sweep()
 
 /** Allocates a chunk of memory for holding C objects, throws an
- * exception upon failure, the returned memory has already been zeroed
+ * exception upon failure, the returned memory has already been zeroed.
  *
  * If the allocation size is zero the function will return a NULL pointer.
  * The allocation size is rounded to a multiple of 4 or 8 bytes depending on
@@ -1041,6 +1040,47 @@ void *gc_malloc(size_t size)
     return (void *) (ptr + sizeof(header_t));
 } // gc_malloc()
 
+/** Allocates a chunk of permanent memory for holding C objects, throws an
+ * exception upon failure, the returned memory has already been zeroed.
+ *
+ * The memory allocated with this function cannot be fred with gc_free()
+ *
+ * \param size The size in bytes of the chunk to be allocated
+ * \returns A pointer to the newly allocated memory */
+
+void *gc_palloc(size_t size)
+{
+    uintptr_t ptr = 0;
+
+    if (size == 0) {
+        return NULL;
+    }
+
+    size = size_ceil(size, sizeof(jword_t));
+    tm_lock();
+
+    if (heap.perm - size >= heap.end) {
+        heap.perm -= size;
+        ptr = heap.perm;
+        memset((jword_t *) ptr, 0, size);
+    }
+
+    tm_unlock();
+
+    // Fallback to a normal allocation if we're out of permanent space
+    if (ptr == 0) {
+        ptr = (uintptr_t) gc_malloc(size);
+    }
+
+#if JEL_PRINT
+    if (opts_get_print_memory()) {
+       fprintf(stderr, "PALLOC PTR: %p SIZE: %zu bytes\n", (void *) ptr, size);
+    }
+#endif // JEL_PRINT
+
+    return (void *) ptr;
+} // gc_palloc()
+
 /** Frees a previously allocated C object.
  *
  * If \a ptr is NULL no action is taken
@@ -1049,6 +1089,8 @@ void *gc_malloc(size_t size)
 
 void gc_free(void *ptr)
 {
+    assert(((uintptr_t) ptr >= heap.start) && ((uintptr_t) ptr < heap.perm));
+
     if (ptr == NULL) {
         return;
     }
@@ -1150,26 +1192,6 @@ static uintptr_t get_chunk(size_t size)
         // Try finding an exact match
         id = (size / sizeof(jword_t)) - 1;
 
-        if (heap.bin[id] != NULL) {
-            // We got an exact match, remove it and return it
-            schunk = heap.bin[id];
-            heap.bin[id] = schunk->next;
-            return (uintptr_t) schunk;
-        }
-
-        // Try finding a larger chunk
-        if (heap.large_bin != NULL) {
-            // We found a larger block, chop it and return the relevant part
-            lchunk = heap.large_bin;
-            heap.large_bin = lchunk->next;
-            res = (uintptr_t) lchunk;
-            put_chunk(res + size, lchunk->size - size);
-            return res;
-        }
-
-        // Try finding a fitting chunk in the small bin
-        id++;
-
         while (id < BIN_ENTRIES) {
             if (heap.bin[id] != NULL) {
                 schunk = heap.bin[id];
@@ -1180,6 +1202,16 @@ static uintptr_t get_chunk(size_t size)
             } else {
                 id++;
             }
+        }
+
+        // Try finding a larger chunk
+        if (heap.large_bin != NULL) {
+            // We found a larger block, chop it and return the relevant part
+            lchunk = heap.large_bin;
+            heap.large_bin = lchunk->next;
+            res = (uintptr_t) lchunk;
+            put_chunk(res + size, lchunk->size - size);
+            return res;
         }
     } else {
         // Find an appropriate block in the large chunk list
@@ -1195,10 +1227,7 @@ static uintptr_t get_chunk(size_t size)
                 }
 
                 res = (uintptr_t) curr;
-
-                if (curr->size > size) {
-                    put_chunk(res + size, curr->size - size);
-                }
+                put_chunk(res + size, curr->size - size);
 
                 return res;
             } else {
@@ -1213,7 +1242,8 @@ static uintptr_t get_chunk(size_t size)
 
 /** Put a free memory chunk in the bin
  * \param chunk A pointer to the memory chunk to be put in the bin
- * \param size The size of the chunk */
+ * \param size The size of the chunk, can be zero in which case the function
+ * won't do anything */
 
 static void put_chunk(uintptr_t chunk, size_t size)
 {
@@ -1223,7 +1253,9 @@ static void put_chunk(uintptr_t chunk, size_t size)
 
     assert(size % sizeof(jword_t) == 0);
 
-    if (size <= BIN_MAX_SIZE) {
+    if (size == 0) {
+        return;
+    } else if (size <= BIN_MAX_SIZE) {
         id = (size / sizeof(jword_t)) - 1;
         schunk = (small_chunk_t *) chunk;
         schunk->next = heap.bin[id];
