@@ -112,20 +112,15 @@ void im_flatten(interface_manager_t *im)
     ll_iterator_t itr;
     class_t **interfaces;
 
-    if (count != 0) {
-        itr = ll_itr(im->ll);
-        interfaces = gc_malloc(sizeof(class_t *) * count);
+    itr = ll_itr(im->ll);
+    interfaces = gc_malloc(sizeof(class_t *) * count);
 
-        while (ll_itr_has_next(itr)) {
-            interfaces[i] = (class_t *) ll_itr_get_next(&itr);
-            i++;
-        }
-
-        im->interfaces = interfaces;
-    } else {
-        im->interfaces = NULL;
+    while (ll_itr_has_next(itr)) {
+        interfaces[i] = (class_t *) ll_itr_get_next(&itr);
+        i++;
     }
 
+    im->interfaces = interfaces;
     im->entries = count;
     ll_dispose(im->ll);
     im->ll = NULL;

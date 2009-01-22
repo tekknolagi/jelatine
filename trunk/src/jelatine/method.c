@@ -102,13 +102,7 @@ method_manager_t *mm_create(uint32_t count)
 #ifndef NDEBUG
     mm->reserved = count;
 #endif // !NDEBUG
-    mm->entries = 0;
-
-    if (count != 0) {
-        mm->methods = gc_malloc(count * sizeof(method_t));
-    } else {
-        mm->methods = NULL;
-    }
+    mm->methods = gc_malloc(count * sizeof(method_t));
 
     return mm;
 } // mm_create()
@@ -529,10 +523,7 @@ void method_link_native(method_t *method, char *class_name)
 void method_purge(method_t *method)
 {
     gc_free(method->code);
-
-    if (method->exception_table_length != 0) {
-        gc_free(method->data.handlers);
-    }
+    gc_free(method->data.handlers);
 } // method_purge()
 
 

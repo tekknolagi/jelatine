@@ -107,25 +107,15 @@ const_pool_t *cp_create(class_t *cl, class_file_t *cf)
         switch (tag) {
             case CONSTANT_Utf8:
                 len =  cf_load_u2(cf);
+                str = (char *) gc_malloc(len + 1);
 
-                if (len != 0) {
-                    str = (char *) gc_malloc(len + 1);
-
-                    for (size_t j = 0; j < len; j++) {
-                        str[j] = cf_load_u1(cf);
-                    }
-
-                    str[len] = 0;
-                } else {
-                    str = NULL;
+                for (size_t j = 0; j < len; j++) {
+                    str[j] = cf_load_u1(cf);
                 }
 
                 utf8_str = utf8_intern(str, len);
                 cp_data_set_ptr(data, i, utf8_str);
-
-                if (str != NULL) {
-                     gc_free(str);
-                }
+                gc_free(str);
 
                 break;
 
