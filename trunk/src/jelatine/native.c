@@ -945,16 +945,13 @@ static KNI_RETURNTYPE_LONG java_lang_System_currentTimeMillis( void )
 
 static KNI_RETURNTYPE_VOID java_lang_System_arraycopy( void )
 {
-    class_t *src_type;
-    class_t *dest_type;
-    array_t *src_array;
-    array_t *dest_array;
-    uint32_t src_elem_type;
-    uint32_t dest_elem_type;
+    class_t *src_type, *dest_type;
+    array_t *src_array, *dest_array;
+    uint32_t src_elem_type, dest_elem_type;
+    uint8_t *src_data, *dest_data;
 
-    int32_t srcOffset;
-    int32_t destOffset;
-    int32_t len;
+    int32_t srcOffset, destOffset, len;
+    size_t scaled_src_offset, scaled_dest_offset, scaled_length;
 
     KNI_StartHandles(2);
     KNI_DeclareHandle(src_ref);
@@ -1002,90 +999,42 @@ static KNI_RETURNTYPE_VOID java_lang_System_arraycopy( void )
         goto end;
     }
 
-    if (src_elem_type != PT_REFERENCE) {
-        size_t scaled_src_offset, scaled_dest_offset, scaled_length;
-        uint8_t *src_data = array_get_data(src_array);
-        uint8_t *dest_data = array_get_data(dest_array);
-
-        switch (src_elem_type) {
-            case PT_BYTE:
-                scaled_src_offset = srcOffset;
-                scaled_dest_offset = destOffset;
-                scaled_length = len;
-                break;
-
-            case PT_BOOL: /* Special case */
-                if ((src_array == dest_array) && (srcOffset < destOffset)) {
-                    srcOffset += len - 1;
-                    destOffset += len - 1;
-
-                    for (size_t i = 0; i < len; i++) {
-                        uint8_t temp;
-                        uint8_t ntemp;
-
-                        temp = src_data[srcOffset >> 3] >> (srcOffset & 0x7);
-                        ntemp = temp ^ 0x1;
-                        dest_data[destOffset >> 3] |= temp
-                                                      << (destOffset & 0x7);
-                        dest_data[destOffset >> 3] &= ~(ntemp
-                                                        << (destOffset & 0x7));
-                        srcOffset--;
-                        destOffset--;
-                    }
-                } else {
-                    for (size_t i = 0; i < len; i++) {
-                        uint8_t temp;
-                        uint8_t ntemp;
-
-                        temp = src_data[srcOffset >> 3] >> (srcOffset & 0x7);
-                        ntemp = temp ^ 0x1;
-                        dest_data[destOffset >> 3] |= temp
-                                                      << (destOffset & 0x7);
-                        dest_data[destOffset >> 3] &= ~(ntemp
-                                                        << (destOffset & 0x7));
-                        srcOffset++;
-                        destOffset++;
-                    }
-                }
-
-                goto end;
-
-            case PT_CHAR:
-            case PT_SHORT:
-                scaled_src_offset = srcOffset * 2;
-                scaled_dest_offset = destOffset * 2;
-                scaled_length = len * 2;
-                break;
-
-            case PT_INT:
-#if JEL_FP_SUPPORT
-            case PT_FLOAT:
-#endif // JEL_FP_SUPPORT
-                scaled_src_offset = srcOffset * 4;
-                scaled_dest_offset = destOffset * 4;
-                scaled_length = len * 4;
-                break;
-
-            case PT_LONG:
-#if JEL_FP_SUPPORT
-            case PT_DOUBLE:
-#endif // JEL_FP_SUPPORT
-                scaled_src_offset = srcOffset * 8;
-                scaled_dest_offset = destOffset * 8;
-                scaled_length = len * 8;
-                break;
-
-            default:
-                scaled_src_offset = 0;
-                scaled_dest_offset = 0;
-                scaled_length = 0;
-                dbg_unreachable();
-        }
-
-        memmove(dest_data + scaled_dest_offset, src_data + scaled_src_offset,
-                scaled_length);
-    } else {
+    if (src_elem_type == PT_REFERENCE) {
         arraycopy_ref(src_array, srcOffset, dest_array, destOffset, len);
+    } else {
+        src_data = array_get_data(src_array);
+        dest_data = array_get_data(dest_array);
+
+        if (src_elem_type == PT_BOOL) {
+            size_t direction = 1;
+
+            if ((src_array == dest_array) && (srcOffset < destOffset)) {
+                srcOffset += len - 1;
+                destOffset += len - 1;
+                direction = -1;
+            }
+
+            for (size_t i = 0; i < len; i++) {
+                uint8_t temp;
+                uint8_t ntemp;
+
+                temp = src_data[srcOffset >> 3] >> (srcOffset & 0x7);
+                ntemp = temp ^ 0x1;
+                dest_data[destOffset >> 3] |= temp << (destOffset & 0x7);
+                dest_data[destOffset >> 3] &= ~(ntemp << (destOffset & 0x7));
+                srcOffset += direction;
+                destOffset += direction;
+            }
+        } else {
+            size_t elem = array_elem_size(prim_to_array_type(src_elem_type));
+
+            scaled_src_offset = srcOffset * elem;
+            scaled_dest_offset = destOffset * elem;
+            scaled_length = len * elem;
+
+            memmove(dest_data + scaled_dest_offset,
+                    src_data + scaled_src_offset, scaled_length);
+        }
     }
 
 end:
