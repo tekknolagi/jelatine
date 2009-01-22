@@ -68,6 +68,7 @@ extern void gc_register_weak_ref(java_lang_ref_WeakReference_t *);
 
 // Unmanaged allocations
 extern void *gc_malloc(size_t);
+extern void *gc_palloc(size_t);
 extern void gc_free(void *);
 
 #endif // !JELATINE_MEMORY_H

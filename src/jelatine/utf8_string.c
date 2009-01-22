@@ -229,7 +229,7 @@ char *utf8_intern(const char *src, size_t len)
     }
 
     if (str == NULL) {
-        str = gc_malloc(sizeof(utf8_string_t) + len + 1);
+        str = gc_palloc(sizeof(utf8_string_t) + len + 1);
         memcpy(str->data, src, len);
         // No zero termination as the memory has already been cleared
         str->next = sm.buckets[hash];

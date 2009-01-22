@@ -83,11 +83,9 @@ static char *bootstrap_classes[] =
 
 interface_manager_t *im_create( void )
 {
-    interface_manager_t *im = gc_malloc(sizeof(interface_manager_t));
+    interface_manager_t *im = gc_palloc(sizeof(interface_manager_t));
 
     im->ll = ll_create();
-    im->entries = 0;
-    im->interfaces = NULL;
 
     return im;
 } // im_create()
@@ -113,7 +111,7 @@ void im_flatten(interface_manager_t *im)
     class_t **interfaces;
 
     itr = ll_itr(im->ll);
-    interfaces = gc_malloc(sizeof(class_t *) * count);
+    interfaces = gc_palloc(sizeof(class_t *) * count);
 
     while (ll_itr_has_next(itr)) {
         interfaces[i] = (class_t *) ll_itr_get_next(&itr);

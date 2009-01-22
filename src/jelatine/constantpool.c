@@ -92,8 +92,8 @@ const_pool_t *cp_create(class_t *cl, class_file_t *cf)
     uintptr_t jstring;
 
     entries = cf_load_u2(cf);
-    tags = gc_malloc(size_div_inf(entries, 2));
-    data = gc_malloc(sizeof(jword_t) * entries);
+    tags = gc_palloc(size_div_inf(entries, 2));
+    data = gc_palloc(sizeof(jword_t) * entries);
 
     /* The first constant pool element is empty, we fill it with the class
      * pointer */
@@ -235,7 +235,7 @@ const_pool_t *cp_create(class_t *cl, class_file_t *cf)
         }
     }
 
-    cp = gc_malloc(sizeof(const_pool_t));
+    cp = gc_palloc(sizeof(const_pool_t));
     cp->entries = entries;
     cp->tags = tags;
     cp->data = data;

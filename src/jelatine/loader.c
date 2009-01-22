@@ -353,7 +353,7 @@ class_t *bcl_preload_class(const char *name)
     cl = bcl_find_class_by_name(name);
 
     if (cl == NULL) {
-        cl = gc_malloc(sizeof(class_t));
+        cl = gc_palloc(sizeof(class_t));
         id = class_bootstrap_id(name);
 
         if (id < 0) {
@@ -1404,7 +1404,7 @@ static void create_dispatch_table(class_t *cl)
         }
     }
 
-    new_dtable = gc_malloc(sizeof(method_t *) * new_count);
+    new_dtable = gc_palloc(sizeof(method_t *) * new_count);
 
     // Copy the old method table in the new one
     if (cl->parent != NULL) {
@@ -1457,8 +1457,8 @@ static void create_interface_dispatch_table(class_t *cl)
         return;
     }
 
-    new_itable = gc_malloc(sizeof(method_t *) * new_itable_count);
-    new_inames = gc_malloc(sizeof(uint16_t) * new_itable_count);
+    new_itable = gc_palloc(sizeof(method_t *) * new_itable_count);
+    new_inames = gc_palloc(sizeof(uint16_t) * new_itable_count);
     j = 0;
     i_itr = interface_itr(cl->interface_manager);
 
