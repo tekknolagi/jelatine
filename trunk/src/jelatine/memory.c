@@ -276,7 +276,7 @@ uintptr_t gc_new(class_t *cl)
 
 #if JEL_PRINT
     if (opts_get_print_memory()) {
-        fprintf(stderr, "NEW PTR: %p SIZE: %zu\n", header, size);
+        fprintf(stderr, "NEW PTR: %p SIZE: %zu\n", (void *) ptr, size);
     }
 #endif // JEL_PRINT
 
@@ -312,6 +312,12 @@ uintptr_t gc_new_array_nonref(array_type_t type, int32_t count)
     array->length = count;
     tm_unlock();
 
+#if JEL_PRINT
+    if (opts_get_print_memory()) {
+        fprintf(stderr, "NEW PTR: %p SIZE: %zu\n", (void *) ptr, size);
+    }
+#endif // JEL_PRINT
+
     return ptr;
 } // gc_new_array_nonref()
 
@@ -340,6 +346,13 @@ uintptr_t gc_new_array_ref(class_t *cl, int32_t count)
     array->header = header_create_object(cl);
     array->length = count;
     tm_unlock();
+
+#if JEL_PRINT
+    if (opts_get_print_memory()) {
+        fprintf(stderr, "NEW PTR: %p SIZE: %zu\n", (void *) ptr,
+                sizeof(ref_array_t) + size);
+    }
+#endif // JEL_PRINT
 
     return ptr;
 } // gc_new_array_ref()
