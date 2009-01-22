@@ -92,7 +92,7 @@ extern void sort_asc_uint16_ptrs(uint16_t *, void **, uint32_t);
 /** Divides x by y rounding towards infinity
  * \param x The dividend
  * \param y The divisor
- * \param x / y rounded towards infinity */
+ * \returns x / y rounded towards infinity */
 
 static inline size_t size_div_inf(size_t x, size_t y)
 {
@@ -102,7 +102,7 @@ static inline size_t size_div_inf(size_t x, size_t y)
 /** Rounds x towards the smallest number larger than x and divisible by y
  * \param x The dividend
  * \param y The divisor
- * \param the smallest number larger than x and divisible by y */
+ * \returns the smallest number larger than x and divisible by y */
 
 static inline size_t size_ceil(size_t x, size_t y)
 {
@@ -112,12 +112,22 @@ static inline size_t size_ceil(size_t x, size_t y)
 /** Rounds x towards the largest number smaller than x and divisible by y
  * \param x The dividend
  * \param y The divisor
- * \param the largest number smaller than x and divisible by y */
+ * \returns the largest number smaller than x and divisible by y */
 
 static inline size_t size_floor(size_t x, size_t y)
 {
     return (x / y) * y;
 } // size_floor()
+
+/** Returns the maximum value between \a x and \a y
+ * \param x The first value
+ * \param y The second value
+ * \returns The maximum value between \a x and \a y */
+
+static inline size_t size_max(size_t x, size_t y)
+{
+    return (x > y) ? x : y;
+} // size_max()
 
 /** Loads a 16-bit integer from a potentially unaligned location
  * \param src A potentially unaligned pointer to a 16-bit integer
