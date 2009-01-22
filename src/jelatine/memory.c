@@ -882,7 +882,10 @@ static void gc_mark_finalizable( void )
 } // gc_mark_finalizable()
 
 /** Scans the heap for live objects and reclaims dead ones replenishing
- * the free list */
+ * the free list
+ * \param size The size of the allocation which triggered the collection, if
+ * no chunk of free space larger or equal to this value is fred the heap must
+ * be grown of at least this value */
 
 static void gc_sweep(size_t size)
 {
@@ -979,15 +982,18 @@ static void gc_sweep(size_t size)
         max_size = heap.end - end;
     }
 
+    reclaimed += heap.end - end;
+
     // Check if we have fred enough memory, otherwise we grow the heap
-    if ((max_size < size) || (reclaimed < in_use / 2)) {
-        if ((reclaimed < in_use / 2) && (max_size >= size)) {
-            size = size_ceil(in_use / 2 - reclaimed, sizeof(jword_t));
+    if ((max_size > size) && (reclaimed > in_use / 2)) {
+        put_chunk(end, heap.end - end);
+    } else {
+        if (reclaimed < in_use / 2) {
+            size = size_max(size, in_use / 2 - reclaimed);
+            size = size_ceil(size, sizeof(jword_t));
         }
 
         gc_grow(end, size);
-    } else if (heap.end - end) {
-        put_chunk(end, heap.end - end);
     }
 
 #if JEL_PRINT
