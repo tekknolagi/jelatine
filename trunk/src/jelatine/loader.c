@@ -406,6 +406,7 @@ static class_file_t *open_class_file(class_t *cl)
 
     if ((strncmp(cl->name, "java/", 5) == 0)
         || (strncmp(cl->name, "javac/", 6) == 0)
+        || (strncmp(cl->name, "javax/", 6) == 0)
         || (strncmp(cl->name, "jelatine/", 9) == 0))
     {
 #if JEL_JARFILE_SUPPORT

@@ -20,12 +20,14 @@
 
 package javax.microedition.io;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.lang.String;
+
+import jelatine.cldc.io.Protocol;
+import jelatine.cldc.io.URL;
 
 /**
  * This class is a factory for creating Connection objects
@@ -46,6 +48,10 @@ public class Connector
      * READ_WRITE access mode
      */
     public final static int READ_WRITE = 3;
+    
+    private final static String PROTOCOL_PATH_KEY = "javax.microedition.io.Connector.protocolpath";
+    
+    private final static String DEFAULT_PROTOCOL_PATH = "jelatine.cldc.io";
 
     /**
      * Non-public constructor
@@ -113,13 +119,28 @@ public class Connector
         if ((name == null) || (mode < 1 || mode > 3))
             throw new IllegalArgumentException();
 
-        if (name.indexOf(':') < 1)
-            throw new IllegalArgumentException();
+        // Parse URL
+        URL url = new URL(name);
+        
+        // Get the protocol implementation class
+        String protocolPath = System.getProperty(PROTOCOL_PATH_KEY);
+        if (protocolPath == null) {
+            protocolPath = DEFAULT_PROTOCOL_PATH;
+        }
+        
+        String protocolClassName = protocolPath + "." + url.getScheme() + ".ProtocolImpl";
+        Protocol protocolImpl = null;
+        try {
+            Class protocolClass = Class.forName(protocolClassName);
+            protocolImpl = (Protocol)protocolClass.newInstance();
+        } catch (Exception e) {
+            throw new ConnectionNotFoundException("Unknown Protocol: " + url.getScheme());
+        }
+        
+        // Now really open the connection
+        Connection connection = protocolImpl.open(url, mode, timeouts);
 
-        /* The rest of the method should be implemented and documented as a
-         * real implementation can be done only by the implementor of the
-         * actual protocol handlers */
-        return null;
+        return connection;
     }
 
     /**
@@ -217,7 +238,8 @@ public class Connector
         throws IllegalArgumentException, ConnectionNotFoundException,
             IOException, SecurityException
     {
-	return openDataOutputStream(name);
+	    return openDataOutputStream(name);
     }
+    
 }
 

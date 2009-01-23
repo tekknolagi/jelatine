@@ -18,6 +18,11 @@
  *   along with Jelatine.  If not, see <http://www.gnu.org/licenses/>.     *
  ***************************************************************************/
 
+// Socket
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+
 /** \file native.c
  * Native methods' implementation */
 
@@ -143,6 +148,14 @@ static KNI_RETURNTYPE_BOOLEAN jelatine_VMResourceStream_open( void );
 static KNI_RETURNTYPE_INT jelatine_VMResourceStream_read( void );
 static KNI_RETURNTYPE_VOID jelatine_VMResourceStream_finalize( void );
 #endif // JEL_JARFILE_SUPPORT
+
+// jelatine.cldc.io.socket.ProtocolImpl methods
+static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_open( void );
+static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_close( void );
+static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_read( void );
+static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_readBuf( void );
+static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_write( void );
+static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_writeBuf( void );
 
 /** Names and descriptions of the native methods */
 
@@ -462,7 +475,46 @@ native_method_desc_t native_desc[] = {
     },
 #endif // JEL_JARFILE_SUPPORT
 
-    { NULL, NULL, NULL, NULL } // Placeholder
+    // jelatine.cldc.io.socket.ProtocolImpl methods
+    {
+        "jelatine/cldc/io/socket/ProtocolImpl",
+        "open",
+        "(Ljava/lang/String;IZ)I",
+        jelatine_cldc_io_socket_ProtocolImpl_open
+    },
+    {
+        "jelatine/cldc/io/socket/ProtocolImpl",
+        "read",
+        "(I)I",
+        jelatine_cldc_io_socket_ProtocolImpl_read
+    },
+    {
+        "jelatine/cldc/io/socket/ProtocolImpl",
+        "readBuf",
+        "(I[BII)I",
+        jelatine_cldc_io_socket_ProtocolImpl_readBuf
+    },
+    {
+        "jelatine/cldc/io/socket/ProtocolImpl",
+        "write",
+        "(II)I",
+        jelatine_cldc_io_socket_ProtocolImpl_write
+    },
+    {
+        "jelatine/cldc/io/socket/ProtocolImpl",
+        "writeBuf",
+        "(I[BII)I",
+        jelatine_cldc_io_socket_ProtocolImpl_writeBuf
+    },
+    {
+        "jelatine/cldc/io/socket/ProtocolImpl",
+        "close",
+        "(I)I",
+        jelatine_cldc_io_socket_ProtocolImpl_close
+    },
+
+    // Placeholder
+    { NULL, NULL, NULL, NULL }
 };
 
 /** Searches for a native method using the provided class name, method name and
@@ -1297,3 +1349,176 @@ static KNI_RETURNTYPE_VOID jelatine_VMResourceStream_finalize( void )
 } // jelatine_VMResourceStream_finalize()
 
 #endif // JEL_JARFILE_SUPPORT
+
+/** Implementation of jelatine_cldc_io_socket_ProtocolImpl_open */
+
+static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_open( void )
+{
+    jboolean timeoutEnabled;
+    jint port;
+    int sock;
+
+    KNI_StartHandles(1);
+    KNI_DeclareHandle(str_ref);
+
+    KNI_GetParameterAsObject(1, str_ref);
+    port = KNI_GetParameterAsInt(2);
+    timeoutEnabled = KNI_GetParameterAsBoolean(3);
+
+    if (KNI_IsNullHandle(str_ref)) {
+        KNI_ThrowNew("java/lang/NullPointerException", NULL);
+    } else {
+        // Get hostname
+        uint16_t *data = array_get_data(JAVA_LANG_STRING_REF2PTR(*str_ref)->value);
+        data += JAVA_LANG_STRING_REF2PTR(*str_ref)->offset;
+        size_t length = JAVA_LANG_STRING_REF2PTR(*str_ref)->count;
+        char *hostname = java_to_utf8(data, length);
+
+        // Resolve hostname and connect
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        if (sock > 0) {
+            struct sockaddr_in name;
+            name.sin_family = AF_INET;
+            name.sin_port = htons(port);
+            struct hostent *hostinfo = gethostbyname(hostname);
+            if (hostinfo == NULL) {
+                KNI_ThrowNew("java/lang/IOException", "Host can't be resolved");
+                sock = -1;
+            } else {
+                name.sin_addr = *(struct in_addr *) hostinfo->h_addr;
+                if(connect(sock, (struct sockaddr *)&name, sizeof(struct sockaddr_in)) < 0) {
+                    KNI_ThrowNew("java/lang/IOException", "Host is not reachable");
+                    sock = -1;
+                }
+            }
+        }
+   }
+
+    KNI_EndHandles();
+    KNI_ReturnInt(sock);
+} // jelatine_cldc_io_socket_ProtocolImpl_open()
+
+/** Implementation of jelatine_cldc_io_socket_ProtocolImpl_close */
+
+static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_close( void )
+{
+    int sock = KNI_GetParameterAsInt(1);
+    int val = shutdown(sock, 2);
+    KNI_ReturnInt(val);
+} // jelatine_cldc_io_socket_ProtocolImpl_close()
+
+/** Implementation of jelatine_cldc_io_socket_ProtocolImpl_read */
+
+static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_read( void )
+{
+    int sock = KNI_GetParameterAsInt(1);
+    char b;
+
+    ssize_t result = recv(sock, &b, 1, 0);
+
+    if (result == 0) {
+       return -1;
+    } else if (result < 0) {
+        KNI_ThrowNew("java/lang/IOException", NULL);
+    }
+
+    KNI_ReturnInt(b);
+} // jelatine_cldc_io_socket_ProtocolImpl_read()
+
+/** Implementation of jelatine_cldc_io_socket_ProtocolImpl_readBuf */
+
+static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_readBuf( void )
+{
+    int sock;
+    array_t *array;
+    uint8_t *data;
+    int32_t offset, len;
+    ssize_t result;
+
+    KNI_StartHandles(1);
+    KNI_DeclareHandle(src_ref);
+
+    sock = KNI_GetParameterAsInt(1);
+    KNI_GetParameterAsObject(2, src_ref);
+    offset = KNI_GetParameterAsInt(3);
+    len = KNI_GetParameterAsInt(4);
+
+    if (KNI_IsNullHandle(src_ref)) {
+        KNI_ThrowNew("java/lang/NullPointerException", NULL);
+        result = -1;
+    } else {
+        array = (array_t *) *src_ref;
+        data = (array_get_data(array) + offset);
+
+        result = recv(sock, data, len, 0);
+
+        if (result == 0) {
+            result = -1;
+        } else if (result < 0) {
+            KNI_ThrowNew("java/lang/IOException", "Can't read from socket");
+            result = -1;
+        }
+    }
+
+    KNI_EndHandles();
+    KNI_ReturnInt(result);
+} // jelatine_cldc_io_socket_ProtocolImpl_readBuf()
+
+/** Implementation of jelatine_cldc_io_socket_ProtocolImpl_write */
+
+static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_write( void )
+{
+    int sock = KNI_GetParameterAsInt(1);
+    uint8_t byte = (uint8_t)KNI_GetParameterAsInt(2);
+
+    ssize_t result = send(sock, &byte, 1, 0);
+
+    if (result == 0) {
+       result = -1;
+    } else if (result < 0) {
+        KNI_ThrowNew("java/lang/IOException", "Can't write to the socket");
+        result = -1;
+    }
+
+    KNI_ReturnInt(result);
+} // jelatine_cldc_io_socket_ProtocolImpl_write()
+
+/** Implementation of jelatine_cldc_io_socket_ProtocolImpl_writeBuf */
+
+static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_writeBuf( void )
+{
+    int sock;
+    array_t *array;
+    uint8_t *data;
+    int32_t offset, len;
+    ssize_t result;
+
+    KNI_StartHandles(1);
+    KNI_DeclareHandle(src_ref);
+
+    sock = KNI_GetParameterAsInt(1);
+    KNI_GetParameterAsObject(2, src_ref);
+    offset = KNI_GetParameterAsInt(3);
+    len = KNI_GetParameterAsInt(4);
+
+    if (KNI_IsNullHandle(src_ref)) {
+        KNI_ThrowNew("java/lang/NullPointerException", NULL);
+        result = -1;
+    } else {
+        array = (array_t *) *src_ref;
+        data = (array_get_data(array) + offset);
+
+        result = send(sock, data, len, 0);
+
+        if (result == 0) {
+            result = -1;
+        } else if (result < 0) {
+            KNI_ThrowNew("java/lang/IOException", "Can't write to the socket");
+            result = -1;
+        }
+    }
+
+    KNI_EndHandles();
+    KNI_ReturnInt(result);
+} // jelatine_cldc_io_socket_ProtocolImpl_writeBuf()
+
