@@ -120,7 +120,12 @@ class_names = \
     jelatine.VMOutputStream \
     jelatine.VMPointer \
     jelatine.VMResourceStream \
-    jelatine.VMTimeZone
+    jelatine.VMTimeZone \
+    jelatine.cldc.io.Protocol \
+	jelatine.cldc.io.URL \
+	jelatine.cldc.io.socket.ProtocolImpl \
+    jelatine.cldc.io.socket.ProtocolImpl$$SocketInputStream \
+	jelatine.cldc.io.socket.ProtocolImpl$$SocketOutputStream
 
 # Built classes
 
@@ -202,7 +207,6 @@ java_util_classes = \
     java/util/TimeZone.class \
     java/util/Vector.class
 
-
 java_util_internal_classes = \
     java/util/Hashtable$$Enumerator.class \
     java/util/Hashtable$$HashEntry.class \
@@ -230,7 +234,22 @@ jelatine_classes = \
     jelatine/VMOutputStream.class \
     jelatine/VMPointer.class \
     jelatine/VMResourceStream.class \
-    jelatine/VMTimeZone.class
+    jelatine/VMTimeZone.class 
+
+jelatine_cldc_io_classes = \
+	jelatine/cldc/io/Protocol.class \
+    jelatine/cldc/io/URL.class
+
+jelatine_cldc_io_socket_classes = \
+	jelatine/cldc/io/socket/ProtocolImpl.class
+
+jelatine_cldc_io_socket_internal_classes = \
+	jelatine/cldc/io/socket/ProtocolImpl$$SocketInputStream.class \
+    jelatine/cldc/io/socket/ProtocolImpl$$SocketOutputStream.class
+
+jelatine_cldc_io_socket_all_classes = \
+	$(jelatine_cldc_io_socket_classes) \
+	$(jelatine_cldc_io_socket_internal_classes)
 
 all_classes = \
     $(java_io_classes) \
@@ -239,7 +258,10 @@ all_classes = \
     $(java_util_classes) \
     $(java_util_internal_classes) \
     $(javax_microedition_io_classes) \
-    $(jelatine_classes)
+    $(jelatine_classes) \
+	$(jelatine_cldc_io_classes) \
+	$(jelatine_cldc_io_socket_classes) \
+	$(jelatine_cldc_io_socket_internal_classes)
 
 # Output of the preverifier
 
@@ -321,7 +343,6 @@ prev_java_util_classes = \
     output/java/util/TimeZone.class \
     output/java/util/Vector.class
 
-
 prev_java_util_internal_classes = \
     output/java/util/Hashtable$$Enumerator.class \
     output/java/util/Hashtable$$HashEntry.class \
@@ -349,7 +370,22 @@ prev_jelatine_classes = \
     output/jelatine/VMOutputStream.class \
     output/jelatine/VMPointer.class \
     output/jelatine/VMResourceStream.class \
-    output/jelatine/VMTimeZone.class
+    output/jelatine/VMTimeZone.class 
+
+prev_jelatine_cldc_io_classes = \
+	output/jelatine/cldc/io/Protocol.class \
+    output/jelatine/cldc/io/URL.class
+
+prev_jelatine_cldc_io_socket_classes = \
+	output/jelatine/cldc/io/socket/ProtocolImpl.class
+
+prev_jelatine_cldc_io_socket_internal_classes = \
+	output/jelatine/cldc/io/socket/ProtocolImpl$$SocketInputStream.class \
+    output/jelatine/cldc/io/socket/ProtocolImpl$$SocketOutputStream.class
+
+prev_jelatine_cldc_io_socket_all_classes = \
+	$(prev_jelatine_cldc_io_socket_classes) \
+	$(prev_jelatine_cldc_io_socket_internal_classes)
 
 prev_all_classes = \
     $(prev_java_io_classes) \
@@ -358,7 +394,10 @@ prev_all_classes = \
     $(prev_java_util_classes) \
     $(prev_java_util_internal_classes) \
     $(prev_javax_microedition_io_classes) \
-    $(prev_jelatine_classes)
+    $(prev_jelatine_classes) \
+    $(prev_jelatine_cldc_io_classes) \
+	$(prev_jelatine_cldc_io_socket_classes) \
+	$(prev_jelatine_cldc_io_socket_internal_classes)
 
 ifeq (@jar_support@, no)
 all: $(prev_all_classes)
@@ -369,18 +408,21 @@ endif
 classpath.jar: $(prev_all_classes)
 	@JAR@ cf classpath.jar -C output java/io/*.class java/lang/*.class \
 	java/lang/ref/*.class java/util/*.class \
-	javax/microedition/io/*.class jelatine/*.class
+	javax/microedition/io/*.class jelatine/*.class \
+	jelatine/cldc/io/*.class jelatine/cldc/io/socket/*.class
 
 $(java_io_classes) $(java_lang_classes) $(java_lang_ref_classes) \
 $(java_util_classes) $(javax_microedition_io_classes) \
-$(jelatine_classes): %.class : @srcdir@/%.java
+$(jelatine_classes) $(jelatine_cldc_io_classes) \
+$(jelatine_cldc_io_socket_classes) : %.class : @srcdir@/%.java
 	$(JAVAC) $<
 
 $(prev_all_classes): preverification
 
 preverification: $(java_io_classes) $(java_lang_classes) \
                  $(java_lang_ref_classes) $(java_util_classes) \
-                 $(javax_microedition_io_classes) $(jelatine_classes)
+                 $(javax_microedition_io_classes) $(jelatine_classes) \
+				 $(jelatine_cldc_io_classes) $(jelatine_cldc_io_socket_classes)
 	@preverifier@ -classpath . $(class_names); \
 	touch preverification
 
@@ -394,13 +436,17 @@ distdir:
 	mkdir $(distdir)/javax/microedition; \
 	mkdir $(distdir)/javax/microedition/io; \
 	mkdir $(distdir)/jelatine; \
+	mkdir $(distdir)/jelatine/cldc/io; \
+	mkdir $(distdir)/jelatine/cldc/io/socket; \
 	cp @srcdir@/java/io/*.java $(distdir)/java/io; \
 	cp @srcdir@/java/lang/*.java $(distdir)/java/lang; \
 	cp @srcdir@/java/lang/ref/*.java $(distdir)/java/lang/ref; \
 	cp @srcdir@/java/util/*.java $(distdir)/java/util; \
 	cp @srcdir@/javax/microedition/io/*.java \
 		$(distdir)/javax/microedition/io; \
-	cp @srcdir@/jelatine/*.java $(distdir)/jelatine
+	cp @srcdir@/jelatine/*.java $(distdir)/jelatine; \
+	cp @srcdir@/jelatine/cldc/io/*.java $(distdir)/jelatine/cldc/io; \
+	cp @srcdir@/jelatine/cldc/io/socket/*.java $(distdir)/jelatine/cldc/io/socket
 
 mostlyclean: clean
 distclean: clean
@@ -480,6 +526,26 @@ ifeq (@jar_support@, no)
 			$(mkinstalldirs) $(DESTDIR)$(pkgdatadir)/classpath/jelatine/$$f; \
 		fi; \
 	done
+	$(mkinstalldirs) $(DESTDIR)$(pkgdatadir)/classpath/jelatine/cldc/io
+	@list='$(jelatine_cldc_io_classes)'; for p in $$list; do \
+	f="`echo $$p | sed -e 's|^.*/||'`"; \
+		if test -f "$$p"; then \
+			echo " $(install_sh_DATA) $$p $(DESTDIR)$(pkgdatadir)/classpath/jelatine/cldc/io/$$f"; \
+			$(install_sh_DATA) $$p $(DESTDIR)$(pkgdatadir)/classpath/jelatine/cldc/io/$$f; \
+		elif test -d "$$p"; then \
+			$(mkinstalldirs) $(DESTDIR)$(pkgdatadir)/classpath/jelatine/cldc/io/$$f; \
+		fi; \
+	done
+	$(mkinstalldirs) $(DESTDIR)$(pkgdatadir)/classpath/jelatine/cldc/io/socket
+	@list='$(jelatine_cldc_io_socket_classes) $(jelatine_cldc_io_socket_internal_classes)'; for p in $$list; do \
+	f="`echo $$p | sed -e 's|^.*/||'`"; \
+		if test -f "$$p"; then \
+			echo " $(install_sh_DATA) $$p $(DESTDIR)$(pkgdatadir)/classpath/jelatine/cldc/io/socket/$$f"; \
+			$(install_sh_DATA) $$p $(DESTDIR)$(pkgdatadir)/classpath/jelatine/cldc/io/socket/$$f; \
+		elif test -d "$$p"; then \
+			$(mkinstalldirs) $(DESTDIR)$(pkgdatadir)/classpath/jelatine/cldc/io/socket/$$f; \
+		fi; \
+	done
 else
 	echo " $(install_sh_DATA) classpath.jar $(DESTDIR)$(pkgdatadir)/classpath.jar"; \
 	$(install_sh_DATA) classpath.jar $(DESTDIR)$(pkgdatadir)/classpath.jar
@@ -531,6 +597,20 @@ ifeq (@jar_support@, no)
 			rm -f $(DESTDIR)$(pkgdatadir)/classpath/jelatine/$$f; \
 		fi; \
 	done
+	@list='$(jelatine_cldc_io_classes)'; for p in $$list; do \
+		f="`echo $$p | sed -e 's|^.*/||'`"; \
+		if test -f "$$p"; then \
+			echo " rm -f $(DESTDIR)$(pkgdatadir)/classpath/jelatine/cldc/io/$$f"; \
+			rm -f $(DESTDIR)$(pkgdatadir)/classpath/jelatine/cldc/io/$$f; \
+		fi; \
+	done
+	@list='$(jelatine_cldc_io_socket_classes) $(jelatine_cldc_io_socket_internal_classes)'; for p in $$list; do \
+		f="`echo $$p | sed -e 's|^.*/||'`"; \
+		if test -f "$$p"; then \
+			echo " rm -f $(DESTDIR)$(pkgdatadir)/classpath/jelatine/cldc/io/socket/$$f"; \
+			rm -f $(DESTDIR)$(pkgdatadir)/classpath/jelatine/cldc/io/socket/$$f; \
+		fi; \
+	done
 else
 	echo " rm -f $(DESTDIR)$(pkgdatadir)/classpath.jar"; \
 	rm classpath.jar $(DESTDIR)$(pkgdatadir)/classpath.jar
@@ -543,6 +623,8 @@ clean:
 	rm -f java/util/*.class; \
 	rm -f javax/microedition/io/*.class; \
 	rm -f jelatine/*.class; \
+	rm -f jelatine/cldc/io/*.class; \
+	rm -f jelatine/cldc/io/socket/*.class; \
 	rm -rf classpath.jar; \
 	rm -rf output; \
 	rm -f preverification
