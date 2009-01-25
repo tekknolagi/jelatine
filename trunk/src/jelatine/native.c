@@ -18,11 +18,6 @@
  *   along with Jelatine.  If not, see <http://www.gnu.org/licenses/>.     *
  ***************************************************************************/
 
-// Socket
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-
 /** \file native.c
  * Native methods' implementation */
 
@@ -44,6 +39,12 @@
 #if JEL_JARFILE_SUPPORT
 #   include "jelatine_VMResourceStream.h"
 #endif // JEL_JARFILE_SUPPORT
+
+#if JEL_SOCKET_SUPPORT
+#   include <sys/socket.h>
+#   include <netinet/in.h>
+#   include <netdb.h>
+#endif // JEL_SOCKET_SUPPORT
 
 /******************************************************************************
  * Type definitions                                                           *
@@ -150,12 +151,14 @@ static KNI_RETURNTYPE_VOID jelatine_VMResourceStream_finalize( void );
 #endif // JEL_JARFILE_SUPPORT
 
 // jelatine.cldc.io.socket.ProtocolImpl methods
+#if JEL_SOCKET_SUPPORT
 static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_open( void );
 static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_close( void );
 static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_read( void );
 static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_readBuf( void );
 static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_write( void );
 static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_writeBuf( void );
+#endif // JEL_SOCKET_SUPPORT
 
 /** Names and descriptions of the native methods */
 
@@ -476,6 +479,7 @@ native_method_desc_t native_desc[] = {
 #endif // JEL_JARFILE_SUPPORT
 
     // jelatine.cldc.io.socket.ProtocolImpl methods
+#if JEL_SOCKET_SUPPORT
     {
         "jelatine/cldc/io/socket/ProtocolImpl",
         "open",
@@ -512,6 +516,7 @@ native_method_desc_t native_desc[] = {
         "(I)I",
         jelatine_cldc_io_socket_ProtocolImpl_close
     },
+#endif // JEL_SOCKET_SUPPORT
 
     // Placeholder
     { NULL, NULL, NULL, NULL }
@@ -1350,13 +1355,15 @@ static KNI_RETURNTYPE_VOID jelatine_VMResourceStream_finalize( void )
 
 #endif // JEL_JARFILE_SUPPORT
 
-/** Implementation of jelatine_cldc_io_socket_ProtocolImpl_open */
+#if JEL_SOCKET_SUPPORT
+
+/** Implementation of jelatine.cldc.io.socket.ProtocolImpl.open() */
 
 static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_open( void )
 {
     jboolean timeoutEnabled;
     jint port;
-    int sock;
+    int sock = -1;
 
     KNI_StartHandles(1);
     KNI_DeclareHandle(str_ref);
@@ -1376,29 +1383,35 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_open( void )
 
         // Resolve hostname and connect
         sock = socket(AF_INET, SOCK_STREAM, 0);
+
         if (sock > 0) {
             struct sockaddr_in name;
             name.sin_family = AF_INET;
             name.sin_port = htons(port);
             struct hostent *hostinfo = gethostbyname(hostname);
+
             if (hostinfo == NULL) {
                 KNI_ThrowNew("java/lang/IOException", "Host can't be resolved");
                 sock = -1;
             } else {
                 name.sin_addr = *(struct in_addr *) hostinfo->h_addr;
-                if(connect(sock, (struct sockaddr *)&name, sizeof(struct sockaddr_in)) < 0) {
-                    KNI_ThrowNew("java/lang/IOException", "Host is not reachable");
+
+                if(connect(sock, (struct sockaddr *) &name,
+                           sizeof(struct sockaddr_in)) < 0)
+                {
+                    KNI_ThrowNew("java/lang/IOException",
+                                 "Host is not reachable");
                     sock = -1;
                 }
             }
         }
-   }
+    }
 
     KNI_EndHandles();
     KNI_ReturnInt(sock);
 } // jelatine_cldc_io_socket_ProtocolImpl_open()
 
-/** Implementation of jelatine_cldc_io_socket_ProtocolImpl_close */
+/** Implementation of jelatine.cldc.io.socket.ProtocolImpl.close() */
 
 static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_close( void )
 {
@@ -1407,7 +1420,7 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_close( void )
     KNI_ReturnInt(val);
 } // jelatine_cldc_io_socket_ProtocolImpl_close()
 
-/** Implementation of jelatine_cldc_io_socket_ProtocolImpl_read */
+/** Implementation of jelatine.cldc.io.socket.ProtocolImpl.read() */
 
 static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_read( void )
 {
@@ -1417,7 +1430,7 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_read( void )
     ssize_t result = recv(sock, &b, 1, 0);
 
     if (result == 0) {
-       return -1;
+       KNI_ReturnInt(-1);
     } else if (result < 0) {
         KNI_ThrowNew("java/lang/IOException", NULL);
     }
@@ -1425,7 +1438,7 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_read( void )
     KNI_ReturnInt(b);
 } // jelatine_cldc_io_socket_ProtocolImpl_read()
 
-/** Implementation of jelatine_cldc_io_socket_ProtocolImpl_readBuf */
+/** Implementation of jelatine.cldc.io.socket.ProtocolImpl.readBuf() */
 
 static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_readBuf( void )
 {
@@ -1464,17 +1477,17 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_readBuf( void )
     KNI_ReturnInt(result);
 } // jelatine_cldc_io_socket_ProtocolImpl_readBuf()
 
-/** Implementation of jelatine_cldc_io_socket_ProtocolImpl_write */
+/** Implementation of jelatine.cldc.io.socket.ProtocolImpl.write() */
 
 static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_write( void )
 {
     int sock = KNI_GetParameterAsInt(1);
-    uint8_t byte = (uint8_t)KNI_GetParameterAsInt(2);
+    uint8_t byte = KNI_GetParameterAsInt(2);
 
     ssize_t result = send(sock, &byte, 1, 0);
 
     if (result == 0) {
-       result = -1;
+        result = -1;
     } else if (result < 0) {
         KNI_ThrowNew("java/lang/IOException", "Can't write to the socket");
         result = -1;
@@ -1483,7 +1496,7 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_write( void )
     KNI_ReturnInt(result);
 } // jelatine_cldc_io_socket_ProtocolImpl_write()
 
-/** Implementation of jelatine_cldc_io_socket_ProtocolImpl_writeBuf */
+/** Implementation of jelatine.cldc.io.socket.ProtocolImpl.writeBuf() */
 
 static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_writeBuf( void )
 {
@@ -1522,3 +1535,4 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_writeBuf( void )
     KNI_ReturnInt(result);
 } // jelatine_cldc_io_socket_ProtocolImpl_writeBuf()
 
+#endif // JEL_SOCKET_SUPPORT

@@ -38,6 +38,7 @@ AC_CONFIG_MACRO_DIR([m4])
 
 # Jelatine definitions templates
 AH_TEMPLATE([JEL_JARFILE_SUPPORT], [Enabled if JAR file support is needed])
+AH_TEMPLATE([JEL_SOCKET_SUPPORT], [Enabled if socket support is used])
 AH_TEMPLATE([JEL_THREAD_POSIX], [Enabled when POSIX thread support is used])
 AH_TEMPLATE([JEL_THREAD_PTH], [Enabled when GNU Pth thread support is used])
 AH_TEMPLATE([JEL_THREAD_NONE], [Enabled when thread support is disabled])
@@ -56,6 +57,7 @@ AH_TEMPLATE([NDEBUG], [Enabled if debugging code must be removed])
 
 AS_VAR_SET(want_preverifier, yes)
 AS_VAR_SET(jar_support, yes)
+AS_VAR_SET(socket_support, yes)
 AS_VAR_SET(threaded, auto)
 AS_VAR_SET(thread_model, auto)
 AS_VAR_SET(finalizer, yes)
@@ -81,6 +83,15 @@ AC_ARG_ENABLE(
         [Disables JAR file support in the VM]
     )],
     [AS_VAR_SET(jar_support, no)]
+)
+
+AC_ARG_ENABLE(
+    [socket],
+    [AC_HELP_STRING(
+        [--disable-socket],
+        [Disables socket support in the VM]
+    )],
+    [AS_VAR_SET(socket_support, no)]
 )
 
 AC_ARG_ENABLE(
@@ -296,6 +307,9 @@ AC_HEADER_TIME
 
 AC_CHECK_HEADERS([arpa/inet.h dirent.h fcntl.h iconv.h inttypes.h langinfo.h math.h stdarg.h sys/stat.h sys/types.h unistd.h])
 
+AC_CHECK_HEADERS([sys/socket.h netinet/in.h netdb.h], [],
+    [AS_VAR_SET(socket_support, no)])
+
 ################################################################################
 # Check for types                                                              #
 ################################################################################
@@ -426,6 +440,12 @@ AS_IF([test "x$jar_support" = xyes],
     [AS_VAR_SET(classpath, "classpath/")]
 )
 
+# Check for socket support
+
+AS_IF([test "x$socket_support" = xyes],
+    [AC_DEFINE([JEL_SOCKET_SUPPORT], [1])]
+)
+
 # Set preverifier path
 
 AS_IF([test "x$want_preverifier" = xyes],
@@ -469,10 +489,11 @@ cat <<EOF | tee -a config.log
 Configuration for jelatine $VERSION
         Build preverifier: $want_preverifier
         With floating-point support: $fp_support
-	With JAR support: $jar_support
-	With threaded interpreter: $threaded
-	With thread model: $thread_model
-	With finalization: $finalizer
-	Debugging: $debug
+        With JAR support: $jar_support
+        With socket support: $socket_support
+        With threaded interpreter: $threaded
+        With thread model: $thread_model
+        With finalization: $finalizer
+        Debugging: $debug
 
 EOF
