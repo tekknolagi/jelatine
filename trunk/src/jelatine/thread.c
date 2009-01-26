@@ -764,27 +764,22 @@ void thread_sleep(int64_t ms)
         pth_cond_t cond = PTH_COND_INIT; // Dummy condition variable
 
         ev = pth_event(PTH_EVENT_TIME,
-                       pth_timeout(ms / (int64_t) 1000,
-                                   (ms % (int64_t) 1000) * (int64_t) 1000));
+                       pth_timeout(ms / 1000,
+                                   (ms % 1000) * 1000));
         self->pth_int = &cond;
         pth_cond_await(&cond, &tm.lock, ev);
         self->pth_int = NULL;
         pth_event_free(ev, PTH_FREE_ALL);
 #elif JEL_THREAD_POSIX
-        struct timespec req;
+        struct timespec req = get_time_with_offset(ms, 0);
         pthread_cond_t cond = PTHREAD_COND_INITIALIZER; // Dummy condition variable
 
-        clock_gettime(CLOCK_REALTIME, &req);
-        req.tv_sec += ms / (int64_t) 1000;
-        req.tv_nsec += (ms % (int64_t) 1000) * (int64_t) 1000000;
         self->pthread_int = &cond;
         pthread_cond_timedwait(&cond, &tm.lock, &req);
         self->pthread_int = NULL;
 #else
-        struct timespec req;
+        struct timespec req = { ms / 1000, (ms % 1000) * 1000000 };
 
-        req.tv_sec = ms / (int64_t) 1000;
-        req.tv_nsec = (ms % (int64_t) 1000) * (int64_t) 1000000;
         nanosleep(&req, NULL);
 #endif
         if (self->interrupted) {
@@ -1050,7 +1045,7 @@ void thread_join(uintptr_t *thread)
  * \param thread The calling thread
  * \param ref The object on which to wait
  * \param millis Number of milliseconds before a timeout occurs
- * \param nanso Number of nanoseconds before a timeout occurs
+ * \param nanos Number of nanoseconds before a timeout occurs
  * \returns true if everything goes well, false if the monitor associated with
  * \a ref was not owned \a thread. In the latter case an
  * IllegalMonitorStateException should be thrown */
@@ -1098,11 +1093,8 @@ bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
             if ((millis == 0) && (nanos == 0)) {
                 pthread_cond_wait(entry->pthread_cond, &tm.lock);
             } else {
-                struct timespec req;
+                struct timespec req = get_time_with_offset(millis, nanos);
 
-                clock_gettime(CLOCK_REALTIME, &req);
-                req.tv_sec += millis / (uint64_t) 1000;
-                req.tv_nsec += (millis % (uint64_t) 1000) + nanos;
                 pthread_cond_timedwait(entry->pthread_cond, &tm.lock, &req);
             }
 
@@ -1122,8 +1114,8 @@ bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
                 pth_event_t ev;
 
                 ev = pth_event(PTH_EVENT_TIME,
-                               pth_timeout(millis / (int64_t) 1000,
-                                           millis % (int64_t) 1000 + nanos));
+                               pth_timeout(millis / 1000,
+                                           (millis % 1000) * 1000000 + nanos));
                 pth_cond_await(entry->pth_cond, &tm.lock, ev);
                 pth_event_free(ev, PTH_FREE_ALL);
             }

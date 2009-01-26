@@ -491,3 +491,34 @@ void efread(void *ptr, size_t size, size_t nmemb, FILE *stream)
         c_throw(JAVA_LANG_VIRTUALMACHINEERROR, "Unable to read from a file");
     }
 } // efread()
+
+/******************************************************************************
+ * Time functionality                                                         *
+ ******************************************************************************/
+
+/** Returns a timespec structure filled with the current time plus the offset
+ * specified by \a ms and \a nanos
+ * \param ms An offset in milliseconds
+ * \returns The current time plus the specified offset */
+
+struct timespec get_time_with_offset(uint64_t ms, uint32_t nanos)
+{
+    struct timespec res;
+
+#if HAVE_CLOCK_GETTIME
+    clock_gettime(CLOCK_REALTIME, &res);
+#elif HAVE_GETTIMEOFDAY
+    struct timeval now;
+
+    gettimeofday(&now, NULL);
+    res.tv_sec = now.tv_sec;
+    res.tv_nsec = now.tv_usec * 1000;
+#else
+#   error "get_time_with_offset() doesn't have an appropriate fallback."
+#endif
+
+   res.tv_sec += ms / 1000;
+   res.tv_nsec += (ms % 1000) * 1000000 + nanos;
+   return res;
+} // get_time_with_offset()
+

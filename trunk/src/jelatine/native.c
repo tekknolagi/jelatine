@@ -989,12 +989,11 @@ static KNI_RETURNTYPE_OBJECT java_lang_String_intern( void )
 
 static KNI_RETURNTYPE_LONG java_lang_System_currentTimeMillis( void )
 {
-    struct timespec now;
+    struct timespec now = get_time_with_offset(0, 0);
     jlong ret;
 
-    clock_gettime(CLOCK_REALTIME, &now);
-    ret = (jlong) now.tv_sec * (jlong) 1000;
-    ret += (jlong) now.tv_nsec / (jlong) 1000000;
+    ret = now.tv_sec * 1000;
+    ret += now.tv_nsec / 1000000;
     KNI_ReturnLong(ret);
 } // java_lang_System_currentTimeMillis()
 
