@@ -362,4 +362,10 @@ static inline void *ll_itr_get_next(ll_iterator_t *itr)
     return ptr;
 } // ll_itr_get_next()
 
+/******************************************************************************
+ * Time related functionality                                                 *
+ ******************************************************************************/
+
+extern struct timespec get_time_with_offset(uint64_t ms, uint32_t nanos);
+
 #endif // !JELATINE_UTIL_H
