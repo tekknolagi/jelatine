@@ -1,7 +1,7 @@
  Jelatine installation instructions
  ==================================
 
- Jelatine needs a C89-compliant compiler, the classpath needs Sun's javac
+ Jelatine needs a C99-compliant compiler, the classpath needs Sun's javac
 compiler shipped with Sun's JDK (versions 1.4, 1.5 and 1.6 should work starting
 from version 0.8.7) or the Eclipse java compiler (ECJ) which is supported since
 version 0.8.8. The latest version of the JDK can be found here
@@ -23,8 +23,8 @@ yum install zziplib-devel
  In order to build Jelatine just unpack the archive, cd in
 its directory then launch the configure script, build an install, eg:
 
-$ tar xvzf jelatine-0.9.tar.gz
-$ cd jelatine-0.9
+$ tar xvzf jelatine-0.9.1.tar.gz
+$ cd jelatine-0.9.1
 $ ./configure --prefix=/home/myname/temp
 $ make
 $ make install
@@ -41,6 +41,11 @@ and visible in the default PATH.
 
 Disables JAR support. JAR support is enabled automatically if the zziplib
 library is available.
+
+--disable-socket
+
+Disables network socket support. Socket support is automatically enabled if the
+relevant header files are present on the target.
 
 --disable-threaded
 
@@ -97,7 +102,7 @@ $ jelatine HelloWorld
  If you have unpacked and built Jelatine in your home directory but you didn't
 install it you could run it this way:
 
-/home/myself/jelatine-0.9/src/jelatine/jelatine --bootclasspath /home/myself/jelatine-0.9/src/classpath HelloWorld
+/home/myself/jelatine-0.9.1/src/jelatine/jelatine --bootclasspath /home/myself/jelatine-0.9.1/src/classpath HelloWorld
 
  The CLDC specification requires Java classes to be preprocessed using a
 preverification tool provided by Sun's reference CLDC implementation. In order

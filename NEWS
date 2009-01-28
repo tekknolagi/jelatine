@@ -1,5 +1,19 @@
 Jelatine release news.
 
+* Version 0.9.1
+===============
+- Optimized the memory consumption of permanent C allocations, this shaved a
+  few KiBs of memory from the bootstrap process
+- Significant improvements in the multi-threading implementation, lots of
+  thread-related bugs were fixed and Thread.interrupt() works much better than
+  in the previous version
+- Basic socket support was added by Guillaume Legris
+- Many important bug fixes in various parts of the VM
+- Rewritten the code base using C99 features, many parts were simplified and
+  made more readable (especially the GC). The refactoring also made the static
+  footprint of the VM go down a bit
+- Improved OS X support
+
 * Version 0.9.0
 ===============
 - Massive overhaul of the whole virtual machine
