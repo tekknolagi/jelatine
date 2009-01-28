@@ -1,7 +1,7 @@
 ## Process this file with automake to produce Makefile.in
 
 ###############################################################################
-##   Copyright © 2005, 2006, 2007, 2008 by Gabriele Svelto                   ##
+##   Copyright © 2005-2009 by Gabriele Svelto                                ##
 ##   gabriele.svelto@gmail.com                                               ##
 ##                                                                           ##
 ##   This file is part of Jelatine.                                          ##
@@ -22,4 +22,4 @@
 
 EXTRA_DIST = acx_attribute.m4 acx_builtin.m4 acx_func_va_copy.m4 \
              acx_pthread.m4 ax_c_float_words_bigendian.m4 ax_tls.m4 pth.m4 \
-			 zziplib.m4
+             zziplib.m4

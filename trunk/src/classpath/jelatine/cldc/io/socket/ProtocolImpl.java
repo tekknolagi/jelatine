@@ -1,3 +1,23 @@
+/***************************************************************************
+ *   Copyright © 2005-2009 by Guillaume Legris                             *
+ *   guillaume.legris@gmail.com                                            *
+ *                                                                         *
+ *   This file is part of Jelatine.                                        *
+ *                                                                         *
+ *   Jelatine is free software: you can redistribute it and/or modify      *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation, either version 3 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ *   Jelatine is distributed in the hope that it will be useful,           *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU General Public License for more details.                          *
+ *                                                                         *
+ *   You should have received a copy of the GNU General Public License     *
+ *   along with Jelatine.  If not, see <http://www.gnu.org/licenses/>.     *
+ ***************************************************************************/
+
 package jelatine.cldc.io.socket;
 
 import java.io.DataInputStream;
@@ -20,7 +40,7 @@ public class ProtocolImpl implements Protocol, StreamConnection {
 
     /**
      * Opens the native socket.
-     * 
+     *
      * @param host
      *            The host name or IP address
      * @param timeouts
@@ -30,11 +50,11 @@ public class ProtocolImpl implements Protocol, StreamConnection {
     private native int open(String host, int port, boolean timeouts);
 
     private native int read(int id);
-    
+
     private native int readBuf(int id, byte[] buffer, int offset, int length);
 
     private native int write(int id, int b);
-    
+
     private native int writeBuf(int id, byte[] buffer, int offset, int length);
 
     private native int close(int id);
@@ -76,11 +96,11 @@ public class ProtocolImpl implements Protocol, StreamConnection {
     }
 
     class SocketInputStream extends InputStream {
-        
+
         public int read() throws IOException {
             return ProtocolImpl.this.read(socketId);
         }
-        
+
         public int read(byte[] b) throws IOException {
             return read(b, 0, b.length);
         }
@@ -88,9 +108,9 @@ public class ProtocolImpl implements Protocol, StreamConnection {
         public int read(byte[] b, int off, int len) throws IOException {
              return ProtocolImpl.this.readBuf(socketId, b, off, len);
         }
-        
+
     }
-    
+
     class SocketOutputStream extends OutputStream {
 
         public void write(int b) throws IOException {

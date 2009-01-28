@@ -1,7 +1,7 @@
 ## Process this file with automake to produce Makefile.in
 
 ###############################################################################
-##   Copyright © 2005, 2006, 2007, 2008 by Gabriele Svelto                   ##
+##   Copyright © 2005-2009 by Gabriele Svelto                                ##
 ##   gabriele.svelto@gmail.com                                               ##
 ##                                                                           ##
 ##   This file is part of Jelatine.                                          ##
