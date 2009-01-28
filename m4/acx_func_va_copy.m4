@@ -10,11 +10,11 @@
 #
 # LAST MODIFICATION
 #
-#   2008-02-20
+#   2009-01-26
 #
 # COPYLEFT
 #
-#   Copyright © 2007, 2008 Gabriele Svelto <gabriele.svelto@gmail.com>
+#   Copyright © 2007-2009 Gabriele Svelto <gabriele.svelto@gmail.com>
 #
 #   Copying and distribution of this file, with or without
 #   modification, are permitted in any medium without royalty provided
