@@ -24,8 +24,17 @@ import java.io.IOException;
 
 import javax.microedition.io.Connection;
 
+/** Basic socket interface */
+
 public interface Protocol {
 
-    public Connection open(URL url, int mode, boolean timeouts) throws IllegalArgumentException, IOException;
+    /** Open a connection for the associated protocol
+     * @param url The target URL
+     * @param mode Mode
+     * @param timeouts A flag to indicate that the caller wants timeout
+     * exceptions */
+
+    public Connection open(URL url, int mode, boolean timeouts)
+                      throws IllegalArgumentException, IOException;
 
 }
