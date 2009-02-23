@@ -498,7 +498,8 @@ void efread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 
 /** Returns a timespec structure filled with the current time plus the offset
  * specified by \a ms and \a nanos
- * \param ms An offset in milliseconds
+ * \param ms An offset in microseconds
+ * \param nanos An offset in nanoseconds
  * \returns The current time plus the specified offset */
 
 struct timespec get_time_with_offset(uint64_t ms, uint32_t nanos)

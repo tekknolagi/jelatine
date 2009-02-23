@@ -40,8 +40,8 @@
 /** An object in the finalizer list */
 
 struct finalizable_t {
-    struct finalizable_t *next; /**< Next object in the list */
-    uintptr_t ref; /**< Reference to the finalized object */
+    struct finalizable_t *next; ///< Next object in the list
+    uintptr_t ref; ///< Reference to the finalized object
 };
 
 /** Typedef for the ::struct finalizable_t */
@@ -50,7 +50,7 @@ typedef struct finalizable_t finalizable_t;
 /** Represents a free chunk of memory belonging to the small bin */
 
 struct small_chunk_t {
-    struct small_chunk_t *next;
+    struct small_chunk_t *next; ///< The next chunk in the list
 };
 
 /** Typedef for the ::struct small_chunk_t */
