@@ -252,7 +252,7 @@ public final class Character
     public static int digit(char ch, int radix)
     {
         int value = 0;
-        
+
         if (radix >= Character.MIN_RADIX && radix <= Character.MAX_RADIX)
         {
             if ((ch >= '0') && (ch <= '9'))
@@ -264,7 +264,7 @@ public final class Character
         }
         else
             return -1;
-        
+
         if (value < radix)
             return value;
         else

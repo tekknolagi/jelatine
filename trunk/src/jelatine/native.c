@@ -75,7 +75,6 @@ static KNI_RETURNTYPE_BOOLEAN java_lang_Class_isAssignableFrom( void );
 #if JEL_FP_SUPPORT
 // java.lang.Double methods
 static KNI_RETURNTYPE_OBJECT java_lang_Double_toString( void );
-static KNI_RETURNTYPE_DOUBLE java_lang_Double_parseDouble( void );
 static KNI_RETURNTYPE_LONG java_lang_Double_doubleToLongBits( void );
 static KNI_RETURNTYPE_DOUBLE java_lang_Double_longBitsToDouble( void );
 #endif // JEL_FP_SUPPORT
@@ -197,12 +196,6 @@ native_method_desc_t native_desc[] = {
         "toString",
         "(D)Ljava/lang/String;",
         java_lang_Double_toString
-    },
-    {
-        "java/lang/Double",
-        "parseDouble",
-        "(Ljava/lang/String;)D",
-        java_lang_Double_parseDouble
     },
     {
         "java/lang/Double",
@@ -712,15 +705,6 @@ static KNI_RETURNTYPE_OBJECT java_lang_Double_toString( void )
     KNI_NewStringUTF(str, str_ref);
     KNI_EndHandlesAndReturnObject(str_ref);
 } // java_lang_Double_toString()
-
-/** Implementation of java.lang.Double.parseDouble() */
-
-static KNI_RETURNTYPE_DOUBLE java_lang_Double_parseDouble( void )
-{
-    // TODO
-    dbg_error("java.lang.Double.parseDouble() is not implemented\n");
-    KNI_ReturnDouble(0.0);
-} // java_lang_Double_parseDouble()
 
 /** Implementation of java.lang.Double.doubleToLongBits() */
 
