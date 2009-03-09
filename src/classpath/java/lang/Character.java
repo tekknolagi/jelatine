@@ -192,7 +192,7 @@ public final class Character
      */
     public static boolean isDigit(char ch)
     {
-        if ((ch >= '0') && (ch <= '1'))
+        if ((ch >= '0') && (ch <= '9'))
             return true;
         else
             return false;
