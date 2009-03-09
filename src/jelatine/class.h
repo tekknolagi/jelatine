@@ -52,7 +52,6 @@ struct class_t;
 struct interface_manager_t {
     struct class_t **interfaces; ///< The interfaces implementd by the class
     uint32_t entries; ///< The number of interfaces
-    linked_list_t *ll; ///< Temporary linked list
 };
 
 /** Typedef for ::struct interface_manager_t */
