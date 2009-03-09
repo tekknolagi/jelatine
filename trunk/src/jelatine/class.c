@@ -85,8 +85,6 @@ interface_manager_t *im_create( void )
 {
     interface_manager_t *im = gc_palloc(sizeof(interface_manager_t));
 
-    im->ll = ll_create();
-
     return im;
 } // im_create()
 
@@ -96,32 +94,34 @@ interface_manager_t *im_create( void )
 
 void im_add(interface_manager_t *im, class_t *cl)
 {
-    ll_add_unique(im->ll, cl);
+    class_t **interfaces;
+
+    for (size_t i = 0; i < im->entries; i++) {
+        if (cl == im->interfaces[i]) {
+            return;
+        }
+    }
+
+    interfaces = gc_malloc(sizeof(class_t *) * (im->entries + 1));
+    memcpy(interfaces, im->interfaces, sizeof(class_t *) * im->entries);
+    interfaces[im->entries] = cl;
+    gc_free(im->interfaces);
+
+    im->interfaces = interfaces;
+    im->entries++;
 } // im_add()
 
-/** Flattens the interface manager internal representation turning it from a
- * linked list to an array
+/** Flattens the interface manager internal representation turning it into a
+ * permanent structure
  * \param im A pointer to the interface manager */
 
 void im_flatten(interface_manager_t *im)
 {
-    uint32_t i = 0;
-    uint32_t count = ll_size(im->ll);
-    ll_iterator_t itr;
-    class_t **interfaces;
+    class_t **interfaces = gc_palloc(sizeof(class_t *) * im->entries);
 
-    itr = ll_itr(im->ll);
-    interfaces = gc_palloc(sizeof(class_t *) * count);
-
-    while (ll_itr_has_next(itr)) {
-        interfaces[i] = (class_t *) ll_itr_get_next(&itr);
-        i++;
-    }
-
+    memcpy(interfaces, im->interfaces, sizeof(class_t *) * im->entries);
+    gc_free(im->interfaces);
     im->interfaces = interfaces;
-    im->entries = count;
-    ll_dispose(im->ll);
-    im->ll = NULL;
 } // im_flatten()
 
 /** Checks if an interface is present in the interface manager
