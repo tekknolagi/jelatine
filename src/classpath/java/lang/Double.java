@@ -188,8 +188,121 @@ public final class Double
      * @see #POSITIVE_INFINITY
      * @see #NEGATIVE_INFINITY
      */
-    public native static double parseDouble(String str)
-        throws NumberFormatException, NullPointerException;
+    public static double parseDouble(String str)
+        throws NumberFormatException, NullPointerException
+    {
+        String tmp = str.trim(); // Trim all whitespace & control characters
+        long res, sign = 0;
+        int i = 0, length = tmp.length();
+
+        if (length == 0) {
+            throw new NumberFormatException();
+        }
+
+        char c = tmp.charAt(0);
+
+        // Detect the sign
+        if (c == '-') {
+            sign = 0x8000000000000000L;
+            i++;
+        } else if (c == '+') {
+            i++;
+        }
+
+        tmp = tmp.substring(i);
+        i = 0;
+
+        if (tmp.equals("NaN")) {
+            res = 0x7ff8000000000000L;
+        } else if (tmp.equals("Infinity")) {
+            res = 0x7ff0000000000000L;
+        } else {
+            length = tmp.length();
+
+            if (length == 0) {
+                throw new NumberFormatException();
+            }
+
+            // Parse the integral part (if present)
+            double value = 0.0;
+
+            while ((i < length) && Character.isDigit(tmp.charAt(i))) {
+                value = (value * 10.0)
+                        + (double) Character.digit(tmp.charAt(i), 10);
+                i++;
+            }
+
+            // Skip the dot (if present)
+            if ((i < length) && tmp.charAt(i) == '.') {
+                i++;
+            }
+
+            // Parse the fractional part (if present)
+            double div = 10.0;
+
+            while ((i < length) && Character.isDigit(tmp.charAt(i))) {
+                value += ((double) Character.digit(tmp.charAt(i), 10)) / div;
+                div *= 10.0;
+                i++;
+            }
+
+            // Parse the exponent
+            int exponent = 0;
+            double expf = 10.0;
+
+            if ((i < length) && (Character.toLowerCase(tmp.charAt(i)) == 'e')) {
+                i++;
+
+                if (i < length) {
+                    c = tmp.charAt(i);
+
+                    if (c == '-') {
+                        i++;
+                        expf = 0.1;
+                    } else if (c == '+') {
+                        i++;
+                    }
+                }
+
+                int j = i;
+
+                while ((i < length) && Character.isDigit(tmp.charAt(i))) {
+                    exponent = (exponent * 10)
+                               + Character.digit(tmp.charAt(i), 10);
+                    i++;
+                }
+
+                if (i == j) {
+                    // After the e/E character there must be an exponent
+                    throw new NumberFormatException();
+                }
+            }
+
+            // Parse the float/double specifier (if present)
+            if (i < length) {
+                c = Character.toLowerCase(tmp.charAt(i));
+                i++;
+
+                if (c != 'f' && c != 'd') {
+                    throw new NumberFormatException();
+                }
+            }
+
+            // Ensure that there are no more characters
+            if (i != length) {
+                throw new NumberFormatException();
+            }
+
+            // Encode the actual number
+            for (i = 0; i < exponent; i++) {
+                value *= expf;
+            }
+
+            res = Double.doubleToLongBits(value);
+        }
+
+        return Double.longBitsToDouble(res | sign);
+     }
 
     /**
      * Return <code>true</code> if the <code>double</code> has the same
