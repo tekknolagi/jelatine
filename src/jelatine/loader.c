@@ -63,13 +63,6 @@ struct loader_t {
     class_t **class_table; ///< Current class table
     uint32_t used; ///< Used slots in the class table
     uint32_t capacity; ///< Available slots in the class table
-    const char *classpath; ///< Class-path
-    const char *boot_classpath; ///< Boot class-path
-#if JEL_JARFILE_SUPPORT
-    ZZIP_DIR *classpath_jar;
-    ZZIP_DIR *boot_classpath_jar;
-#endif // JEL_JARFILE_SUPPORT
-
     uint32_t interface_methods; ///< Counter used for method interfaces
 };
 
@@ -87,7 +80,6 @@ static loader_t bcl;
  * Class-related local function prototypes                                     *
  ******************************************************************************/
 
-static class_file_t *open_class_file(class_t *);
 static void load_class(class_t *);
 static void derive_class(class_t *, class_file_t *);
 static void load_interfaces(class_t *, class_file_t *);
@@ -134,77 +126,16 @@ static method_t *resolve_method(class_t *, uint16_t, bool);
  * Class loader related functions                                              *
  ******************************************************************************/
 
-/** Initializes the bootstrap class loader
- * \param classpath A pointer to the classpath string
- * \param boot_classpath A pointer to the classpath string used for system
- * classes */
+/** Initializes the bootstrap class loader */
 
-void bcl_init(const char *classpath, const char *boot_classpath)
+void bcl_init( void )
 {
-#if JEL_JARFILE_SUPPORT
-    size_t len;
-#endif // JEL_JARFILE_SUPPORT
-
     bcl.class_table = gc_malloc(sizeof(class_t *) * CLASS_TABLE_INIT);
     bcl.used = JELATINE_PREDEFINED_CLASSES_N;
     bcl.capacity = CLASS_TABLE_INIT;
-    bcl.classpath = classpath;
-    bcl.boot_classpath = boot_classpath;
-
-#if JEL_JARFILE_SUPPORT
-    bcl.classpath_jar = NULL;
-
-    if (classpath != NULL) {
-        len = strlen(classpath);
-
-        if (len > 3) {
-            if (strcmp(classpath + len - 4, ".jar") == 0) {
-                bcl.classpath_jar = zzip_dir_open(classpath, 0);
-
-                if (bcl.classpath_jar == NULL) {
-                    c_throw(JAVA_LANG_VIRTUALMACHINEERROR,
-                            "Unable to open JAR file: %s", classpath);
-                }
-            }
-        }
-    }
-
-    bcl.boot_classpath_jar = NULL;
-
-    if (boot_classpath != NULL) {
-        len = strlen(boot_classpath);
-
-        if (len > 3) {
-            if (strcmp(boot_classpath + len - 4, ".jar") == 0) {
-                bcl.boot_classpath_jar = zzip_dir_open(boot_classpath, 0);
-
-                if (bcl.boot_classpath_jar == NULL) {
-                    c_throw(JAVA_LANG_VIRTUALMACHINEERROR,
-                            "Unable to open JAR file: %s", boot_classpath);
-                }
-            }
-        }
-    }
-#endif // JEL_JARFILE_SUPPORT
-
     memset(bcl.class_table, 0, sizeof(class_t *) * bcl.capacity);
     bcl.interface_methods = 0;
 } // bcl_init()
-
-/** Frees all the resources used by the class loader and removes it */
-
-void bcl_teardown( void )
-{
-#if JEL_JARFILE_SUPPORT
-    if (bcl.classpath_jar != NULL) {
-        zzip_dir_close(bcl.classpath_jar);
-    }
-
-    if (bcl.boot_classpath_jar != NULL) {
-        zzip_dir_close(bcl.boot_classpath_jar);
-    }
-#endif // JEL_JARFILE_SUPPORT
-} // bcl_teardown()
 
 /** Returns a pointer to the class corresponding to the given id
  * \param id The id of the class
@@ -393,54 +324,6 @@ class_t *bcl_preload_class(const char *name)
  * Class related local functions                                               *
  ******************************************************************************/
 
-/** Open the class file associated with the class \a cl
- * \param cl A pointer to a class
- * \returns A pointer to the class file associated with the class */
-
-static class_file_t *open_class_file(class_t *cl)
-{
-    const char *cp;
-#if JEL_JARFILE_SUPPORT
-    ZZIP_DIR *jar = NULL;
-#endif // JEL_JARFILE_SUPPORT
-
-    if ((strncmp(cl->name, "java/", 5) == 0)
-        || (strncmp(cl->name, "javac/", 6) == 0)
-        || (strncmp(cl->name, "javax/", 6) == 0)
-        || (strncmp(cl->name, "jelatine/", 9) == 0))
-    {
-#if JEL_JARFILE_SUPPORT
-        if (bcl.boot_classpath_jar != NULL) {
-            jar = bcl.boot_classpath_jar;
-        } else {
-            cp = bcl.boot_classpath;
-        }
-#else
-        cp = bcl.boot_classpath;
-#endif // JEL_JARFILE_SUPPORT
-    } else {
-#if JEL_JARFILE_SUPPORT
-        if (bcl.classpath_jar != NULL) {
-            jar = bcl.classpath_jar;
-        } else {
-            cp = bcl.classpath;
-        }
-#else
-        cp = bcl.classpath;
-#endif // JEL_JARFILE_SUPPORT
-    }
-
-#if JEL_JARFILE_SUPPORT
-    if (jar) {
-        return cf_open_jar(cl->name, jar);
-    } else {
-        return cf_open(cl->name, cp);
-    }
-#else
-    return cf_open(cl->name, cp);
-#endif // JEL_JARFILE_SUPPORT
-} // open_class_file()
-
 /** Loads and links a class
  * \param cl A pointer to the class to be loaded */
 
@@ -464,7 +347,7 @@ static void load_class(class_t *cl)
 
     if (cl->name[0] != '[') {
         // Regular class
-        cf = open_class_file(cl);
+        cf = cf_open(cl->name);
         derive_class(cl, cf);
         cf_close(cf);
     } else {
@@ -1637,7 +1520,7 @@ static uint8_t *load_bytecode(class_t *cl, method_t *method)
     uint8_t *code;
     uint32_t i, code_length;
 
-    cf = open_class_file(cl);
+    cf = cf_open(cl->name);
     cf_seek(cf, method->data.offset, SEEK_SET);
 
     code_length = method_get_code_length(method);
@@ -1674,7 +1557,7 @@ static exception_handler_t *load_exception_handlers(class_t *cl,
     uint16_t index;
     uint32_t offset = method_is_synchronized(method) ? 1 : 0;
 
-    cf = open_class_file(cl);
+    cf = cf_open(cl->name);
     cf_seek(cf, method->data.offset, SEEK_SET);
 
     // Skip the code and the 'exception_table_length' field
@@ -2583,17 +2466,3 @@ const uint8_t *bcl_link_opcode(const method_t *method, const uint8_t *lpc,
     tm_unlock();
     return pc;
 } // bcl_link_opcode()
-
-#if JEL_JARFILE_SUPPORT
-
-/** Return a ZZIP_FILE handle for the requested resource or NULL if none was
- * found matching the passed name
- * \param resource A string representing the resource name
- * \returns A pointer to a ZZIP_FILE handle or NULL upon failure */
-
-ZZIP_FILE *bcl_get_resource(const char *resource)
-{
-    return zzip_file_open(bcl.classpath_jar, resource, 0);
-} // bcl_get_resource()
-
-#endif // JEL_JARFILE_SUPPORT

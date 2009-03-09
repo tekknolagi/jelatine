@@ -29,102 +29,232 @@
 #include "util.h"
 
 /******************************************************************************
+ * Classpath type definitions                                                 *
+ ******************************************************************************/
+
+/** Represents a generic path, it might be a directory path or JAR file. The
+ * \a jar field is updated on demand */
+
+struct path_t {
+    const char *str; ///< The path to the directory or JAR file
+    ZZIP_DIR *jar; ///< The JAR file handle
+};
+
+/** Typedef for the ::struct path_t */
+typedef struct path_t path_t;
+
+/** Represents the virtual machine classpath */
+
+struct classpath_t {
+    size_t entries; ///< Entries in the application classpath
+    path_t boot; ///< Boot classpath for system classes
+    path_t user[]; ///< Classpath for the application classes
+};
+
+/** Typedef for the ::struct classpath_t */
+typedef struct classpath_t classpath_t;
+
+/******************************************************************************
+ * Globals                                                                    *
+ ******************************************************************************/
+
+/** Global classpath information */
+static classpath_t *classpath;
+
+/******************************************************************************
+ * Classpath local functions prototypes                                       *
+ ******************************************************************************/
+
+static void adapt_classpath_string(path_t *, const char *, size_t);
+
+/******************************************************************************
+ * Classpath implementation                                                   *
+ ******************************************************************************/
+
+static void adapt_classpath_string(path_t *path, const char *str, size_t len)
+{
+    char *tmp;
+
+    if (len == 0) {
+        c_throw(JAVA_LANG_VIRTUALMACHINEERROR, "Invalid classpath string");
+    }
+
+#if JEL_JARFILE_SUPPORT
+    if ((len > 4) && (strcmp(str + len - 4, ".jar") == 0)) {
+        // This is a JAR file
+        tmp = gc_palloc(len + 1);
+        strncpy(tmp, str, len);
+        path->str = tmp;
+        path->jar = zzip_dir_open(tmp, 0);
+
+        if (path->jar == NULL) {
+            c_throw(JAVA_LANG_VIRTUALMACHINEERROR,
+                    "Unable to open JAR file: %s", tmp);
+        }
+
+        return;
+    }
+#endif // JEL_JARFILE_SUPPORT
+
+    if (str[len - 1] != '/') {
+        len++;
+    }
+
+    tmp = gc_palloc(len + 1);
+    strncpy(tmp, str, len);
+    tmp[len - 1] = '/';
+    path->str = tmp;
+} // adapt_classpath_string()
+
+/** Initializes the classpath by processing the \a cp and \a bcp strings
+ * \param cp A string holding the application classpath directories and
+ * JAR files
+ * \param bcp A string holding the system classpath directory or JAR
+ * file */
+
+void classpath_init(const char *cp, const char *bcp)
+{
+    size_t count = 0;
+    const char *idx = cp;
+
+    // Count the number of directories/JAR files in the classpath
+    while ((idx = strchr(idx, ':')) != NULL) {
+        count++;
+        idx++;
+    }
+
+    classpath = gc_palloc(sizeof(classpath_t) + sizeof(path_t) * (count + 1));
+    classpath->entries = count + 1;
+
+    adapt_classpath_string(&classpath->boot, bcp, strlen(bcp));
+    idx = cp;
+
+    for (size_t i = 0; i < count; i++) {
+        idx = strchr(idx, ':');
+        adapt_classpath_string(&classpath->user[i], cp, idx - cp);
+        idx++;
+        cp = idx;
+    }
+
+    adapt_classpath_string(&classpath->user[count], cp, strlen(cp));
+} // classpath_init()
+
+/** Tear down the classpath */
+
+void classpath_teardown( void )
+{
+#if JEL_JARFILE_SUPPORT
+    for (size_t i = 0; i < classpath->entries; i++) {
+        if (classpath->user[i].jar != NULL) {
+            zzip_dir_close(classpath->user[i].jar);
+        }
+    }
+#endif // JEL_JARFILE_SUPPORT
+} // classpath_teardown()
+
+/******************************************************************************
  * Class file implementation                                                  *
  ******************************************************************************/
+
+/** Opens a class file by looking it up in the specified classpath
+ * \param name The class name
+ * \param cp The classpath used for the class lookup
+ * \returns A new classfile object, throws an exception upon failure */
+
+static class_file_t *cf_open_with_classpath(const char *name, const path_t *cp)
+{
+#if JEL_JARFILE_SUPPORT
+    ZZIP_FILE *zzip_file;
+    ZZIP_STAT stat;
+#endif // JEL_JARFILE_SUPPORT
+    FILE *file = NULL;
+    class_file_t *cf;
+    int exception;
+    char *path;
+    size_t cp_len, size;
+    size_t cl_len = strlen(name);
+
+    if (cp->jar != NULL) {
+        // Append the .class suffic to the class name
+        path = gc_malloc(strlen(".class") + cl_len + 1);
+
+        strncpy(path, name, cl_len + 1);
+        strncat(path, ".class", cl_len + strlen(".class") + 1);
+        zzip_file = zzip_file_open(cp->jar, path, 0);
+        gc_free(path);
+
+        if (zzip_file == NULL) {
+            return NULL;
+        }
+
+        zzip_file_stat(zzip_file, &stat);
+        size = stat.st_size;
+
+        cf = gc_malloc(sizeof(class_file_t));
+        cf->file.compressed = zzip_file;
+        cf->jar = true;
+    } else {
+        /* Append the class name to the classpath and add the .class
+         * suffix to the resulting string */
+        cp_len = strlen(cp->str);
+        path = gc_malloc(strlen(".class") + strlen(name) + cp_len + 1);
+        strncpy(path, cp->str, cp_len + 1);
+        strncat(path, name, strlen(name) + cp_len + 1);
+        strncat(path, ".class", strlen(".class") + strlen(name) + cp_len + 1);
+
+        c_try {
+            file = efopen(path, "r");
+        } c_catch (exception) {
+            gc_free(path);
+            c_clear_exception();
+            return NULL;
+        }
+
+        gc_free(path);
+        efseek(file, 0, SEEK_END);
+        size = ftell(file);
+        efseek(file, 0, SEEK_SET);
+
+        cf = gc_malloc(sizeof(class_file_t));
+        cf->file.plain = file;
+    }
+
+    cf->size = size; // Store the file size
+
+    return cf;
+} // cf_open_with_classpath()
 
 /** Opens a class file with the specified class name (in the internal class
  * format) looking in the classpath directory or JAR file, throws an exception
  * if the class file cannot be found or opened.
- * \param name The class name
- * \param classpath The current classpath, either a directory path or a JAR file
- * \returns A pointer to the newly create class_file_t structure */
+ * \param name The class name */
 
-class_file_t *cf_open(const char *name, const char *classpath)
+class_file_t *cf_open(const char *name)
 {
-    FILE *file = NULL; // Class-file pointer
-    int exception;
-    char *path;
-    size_t length_cp, size;
-    class_file_t *cf;
+    class_file_t *cf = NULL;
 
-    /* Prepend the classpath to the class name and append ".class" to the
-     * resulting string */
-
-    if (classpath == NULL) {
-        length_cp = 0;
+    if ((strncmp(name, "java/", 5) == 0)
+        || (strncmp(name, "javac/", 6) == 0)
+        || (strncmp(name, "javax/", 6) == 0)
+        || (strncmp(name, "jelatine/", 9) == 0))
+    {
+        cf = cf_open_with_classpath(name, &classpath->boot);
     } else {
-        length_cp = strlen(classpath);
+        for (size_t i = 0; i < classpath->entries; i++) {
+            cf = cf_open_with_classpath(name, &classpath->user[i]);
+
+            if (cf != NULL) {
+                break;
+            }
+        }
     }
 
-    path = gc_malloc(strlen(".class") + strlen(name) + length_cp + 1);
-
-    if (classpath == NULL) {
-        path[0] = 0;
-    } else {
-        strcpy(path, classpath);
+    if (cf == NULL) {
+        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR, "Cannot find class %s\n", name);
     }
-
-    strcat(path, name);
-    strcat(path, ".class");
-
-    c_try {
-        file = efopen(path, "r");
-    } c_catch (exception) {
-        gc_free(path);
-        c_rethrow(exception);
-    }
-
-    gc_free(path);
-    efseek(file, 0, SEEK_END);
-    size = ftell(file);
-    efseek(file, 0, SEEK_SET);
-
-    cf = gc_malloc(sizeof(class_file_t));
-    cf->file.plain = file;
-    cf->pos = 0;
-    cf->size = size;
-    cf->jar = false;
 
     return cf;
 } // cf_open()
-
-#if JEL_JARFILE_SUPPORT
-
-class_file_t *cf_open_jar(const char *name, ZZIP_DIR *jar)
-{
-    ZZIP_FILE *file = NULL; // Class-file pointer
-    ZZIP_STAT stat;
-    char *path;
-    class_file_t *cf;
-    size_t size;
-
-    //* Append ".class" to the class name
-
-    path = gc_malloc(strlen(".class") + strlen(name) + 1);
-
-    strcpy(path, name);
-    strcat(path, ".class");
-
-    file = zzip_file_open(jar, path, 0);
-    gc_free(path);
-
-    if (file == NULL) {
-        c_throw(JAVA_LANG_CLASSNOTFOUNDEXCEPTION, "Unable to open JAR file");
-    }
-
-    zzip_file_stat(file, &stat);
-    size = stat.st_size;
-
-    cf = gc_malloc(sizeof(class_file_t));
-    cf->file.compressed = file;
-    cf->pos = 0;
-    cf->size = size;
-    cf->jar = true;
-
-    return cf;
-} // cf_open_jar()
-
-#endif // JEL_JARFILE_SUPPORT
 
 /** Closes a class file and disposes the relevant structure
  * \param cf A pointer to the class_file_y structure to be closed and disposed
@@ -268,3 +398,29 @@ void cf_seek(class_file_t *cf, long offset, int whence)
     efseek(cf->file.plain, cf->pos, SEEK_SET);
 #endif // JEL_JARFILE_SUPPORT
 } // cf_seek()
+
+#if JEL_JARFILE_SUPPORT
+
+/** Return a ZZIP_FILE handle for the requested resource or NULL if none was
+ * found matching the passed name
+ * \param resource A string representing the resource name
+ * \returns A pointer to a ZZIP_FILE handle or NULL upon failure */
+
+ZZIP_FILE *jar_get_resource(const char *resource)
+{
+    ZZIP_FILE *zzip_file = NULL;
+
+    for (size_t i = 0; i < classpath->entries; i++) {
+        if (classpath->user[i].jar != NULL) {
+            zzip_file = zzip_file_open(classpath->user[i].jar, resource, 0);
+
+            if (zzip_file != NULL) {
+                break;
+            }
+        }
+    }
+
+    return zzip_file;
+} // jar_get_resource()
+
+#endif // JEL_JARFILE_SUPPORT

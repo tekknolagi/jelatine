@@ -1304,7 +1304,7 @@ static KNI_RETURNTYPE_BOOLEAN jelatine_VMResourceStream_open( void )
     str = java_to_utf8(value_data + jstr->offset, jstr->count);
 
     // Open the stream
-    rs->handle = bcl_get_resource(str);
+    rs->handle = jar_get_resource(str);
     gc_free(str);
 
     if (rs->handle == NULL) {

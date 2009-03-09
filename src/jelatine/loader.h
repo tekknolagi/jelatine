@@ -29,10 +29,6 @@
 
 #include "wrappers.h"
 
-#if JEL_JARFILE_SUPPORT
-#   include <zzip/lib.h>
-#endif // JEL_JARFILE_SUPPORT
-
 #include "class.h"
 #include "util.h"
 
@@ -40,8 +36,7 @@
  * Loader interface                                                           *
  ******************************************************************************/
 
-extern void bcl_init(const char *, const char*);
-extern void bcl_teardown( void );
+extern void bcl_init( void );
 extern class_t *bcl_get_class_by_id(uint32_t);
 extern void bcl_mark( void );
 extern bool bcl_is_assignable(class_t *, class_t *);
@@ -51,9 +46,5 @@ extern class_t *bcl_find_class_by_name(const char *);
 extern void bcl_link_method(class_t *, method_t *);
 extern const uint8_t *bcl_link_opcode(const method_t *, const uint8_t *,
                                       internal_opcode_t);
-
-#if JEL_JARFILE_SUPPORT
-extern ZZIP_FILE *bcl_get_resource(const char *);
-#endif // JEL_JARFILE_SUPPORT
 
 #endif // !JELATINE_LOADER_H
