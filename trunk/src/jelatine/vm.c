@@ -111,8 +111,10 @@ static void vm_teardown( void );
  * \param jargc Number of arguments to be passed to the JVM
  * \param jargv Actual arguments passed to the JVM
  * \param heap_size The size of the heap in bytes
- * \param classpath The classpath for user classes
- * \param bootclasspath The classpath for system classes */
+ * \param classpath Colon separated list of directories and JAR files where to
+ * find the application classes
+ * \param bootclasspath Single directory or JAR file where to find the system
+ * classes */
 
 void vm_run(const char *classpath, const char *bootclasspath, char *main,
             size_t heap_size, int jargc, char **jargv)
@@ -250,7 +252,8 @@ static void vm_init(size_t heap_size, const char *classpath,
     monitor_init();
     string_manager_init(6, 2);
     jsm_init(6, 2);
-    bcl_init(classpath, bootclasspath);
+    classpath_init(classpath ? classpath : ".", bootclasspath);
+    bcl_init();
 
     // Initialize the VM structure
     memset(&vm, 0, sizeof(virtual_machine_t));
@@ -260,8 +263,6 @@ static void vm_init(size_t heap_size, const char *classpath,
 
 static void vm_teardown( void )
 {
-    bcl_teardown();
-    jsm_teardown();
-    string_manager_teardown();
+    classpath_teardown();
     gc_teardown();
 } // vm_teardown()

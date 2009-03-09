@@ -36,7 +36,6 @@
  ******************************************************************************/
 
 extern void string_manager_init(size_t, size_t);
-extern void string_manager_teardown( void );
 extern char *utf8_intern(const char *, size_t);
 
 extern bool utf8_check(const char *);

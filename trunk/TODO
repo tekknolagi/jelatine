@@ -21,5 +21,4 @@
    the LDC_STRING and LDC_W_STRING opcodes will be changed to LDC_REFERENCE and
    LDC_W_REFERENCE and two new prelink opcodes will be added for this purpose
  - Add support for modified UTF-8 surrogate characters
- - Add support for using multiple classpaths
  - Streamline the system-dependent part of the multi-threading implementation

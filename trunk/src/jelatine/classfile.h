@@ -37,6 +37,13 @@
 #include "util.h"
 
 /******************************************************************************
+ * Classpath interface                                                        *
+ ******************************************************************************/
+
+extern void classpath_init(const char *, const char *);
+extern void classpath_teardown( void );
+
+/******************************************************************************
  * Class file type definitions                                                *
  ******************************************************************************/
 
@@ -147,15 +154,15 @@ typedef struct class_file_t class_file_t;
  * Class file interface                                                       *
  ******************************************************************************/
 
-extern class_file_t *cf_open(const char *, const char *);
-#if JEL_JARFILE_SUPPORT
-extern class_file_t *cf_open_jar(const char *, ZZIP_DIR *);
-#endif // JEL_JARFILE_SUPPORT
+extern class_file_t *cf_open(const char *);
 extern void cf_close(class_file_t *);
 extern uint8_t cf_load_u1(class_file_t *);
 extern uint16_t cf_load_u2(class_file_t *);
 extern uint32_t cf_load_u4(class_file_t *);
 extern void cf_seek(class_file_t *, long, int);
+#if JEL_JARFILE_SUPPORT
+extern ZZIP_FILE *jar_get_resource(const char *);
+#endif // JEL_JARFILE_SUPPORT
 
 /******************************************************************************
  * Class file inlined functions                                               *

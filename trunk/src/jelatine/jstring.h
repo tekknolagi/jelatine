@@ -43,7 +43,6 @@ struct class_t;
 
 extern void jsm_init(uint32_t, uint32_t);
 extern void jsm_set_classes(struct class_t *, struct class_t *);
-extern void jsm_teardown( void );
 extern void jsm_mark( void );
 extern void jsm_purge( void );
 

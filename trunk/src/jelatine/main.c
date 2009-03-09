@@ -32,7 +32,6 @@
  ******************************************************************************/
 
 static void parse_command_line_args(int, char **);
-static char *adapt_classpath_string(const char *);
 
 /** Self explanatory
  * \param argc Number of arguments
@@ -43,7 +42,6 @@ int main(int argc, char *argv[])
     int i, len;
     int jargs_n;
     char **jargs;
-    char *cp = NULL, *bcp = NULL;
     char *main_class;
 
     parse_command_line_args(argc, argv);
@@ -54,8 +52,8 @@ int main(int argc, char *argv[])
         printf("Usage: jelatine [OPTIONS]... CLASSNAME [ARGUMENTS]...\n"
                "\n"
                "where options include:\n"
-               "    -b, --bootclasspath <single directory or jar file>\n"
-               "    -c, --classpath <single directory or jar file>\n"
+               "    -b, --bootclasspath <single directory or JAR>\n"
+               "    -c, --classpath <colon separated list of directories and JARs>\n"
                "    -s, --size <size of the heap in bytes>\n"
                "    --stack-size <size of a thread's stack in bytes>\n"
                "\n"
@@ -100,49 +98,10 @@ int main(int argc, char *argv[])
             }
         }
 
-        cp = opts_get_classpath();
-        bcp = opts_get_boot_classpath();
-
-        if (cp != NULL) {
-            len = strlen(cp);
-
-            if (len == 0) {
-                cp = NULL;
-            } else if (len > 3) {
-                if (strcmp(cp + len - 4, ".jar") == 0) {
-                    ;
-                } else {
-                    cp = adapt_classpath_string(cp);
-                }
-            } else {
-                cp = adapt_classpath_string(cp);
-            }
-        } else {
-            cp = NULL;
-        }
-
-        if (bcp != NULL) {
-            len = strlen(bcp);
-
-            if (len == 0) {
-                bcp = NULL;
-            } else if (len > 3) {
-                if (strcmp(bcp + len - 4, ".jar") == 0) {
-                    ;
-                } else {
-                    bcp = adapt_classpath_string(bcp);
-                }
-            } else {
-               bcp = adapt_classpath_string(bcp);
-            }
-        } else {
-            bcp = NULL;
-        }
-
         /* Create the vm and load the classes from the current directory
          * if the classpath is NULL or from the classpath directory */
-        vm_run(cp, bcp, main_class, opts_get_heap_size(), opts_get_jargs_n(),
-               opts_get_jargs());
+        vm_run(opts_get_classpath(), opts_get_boot_classpath(), main_class,
+               opts_get_heap_size(), opts_get_jargs_n(), opts_get_jargs());
     }
 
     exit(0);
@@ -225,29 +184,3 @@ static void parse_command_line_args(int argc, char *argv[])
     }
 } // parse_command_line_args()
 
-/** Adapths the classpath string so that it matches the convention used by the
- * virtual-machine
- * \param classpath A pointer to the classpath string
- * \returns The new, adapted classpath string */
-
-static char *adapt_classpath_string(const char *classpath)
-{
-    size_t len;
-    char *cp;
-
-    len = strlen(classpath);
-    cp = (char *) malloc(len + 2);
-
-    if (cp == NULL) {
-        exit(1);
-    }
-
-    strncpy(cp, classpath, len + 1);
-
-    if (classpath[len - 1] != '/') {
-        cp[len] = '/';
-        cp[len + 1] = 0;
-    }
-
-    return cp;
-} // adapt_classpath_string()

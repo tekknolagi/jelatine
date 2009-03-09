@@ -100,13 +100,6 @@ void string_manager_init(size_t log2cap, size_t load)
     sm.buckets = gc_malloc(sm.capacity * sizeof(utf8_string_t *));
 } // string_manager_init()
 
-/** Removes the UTF8 string manager and frees its resources */
-
-void string_manager_teardown( void )
-{
-    ; // Nothing currently
-} // string_manager_teardown()
-
 /** Rehashes the string manager pointed by \a sm
  * \param capacity The new capacity */
 

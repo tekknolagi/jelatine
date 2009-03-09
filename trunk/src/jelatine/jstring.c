@@ -115,13 +115,6 @@ void jsm_set_classes(class_t *str_cl, class_t *char_array_cl)
     jsm.char_array_cl = char_array_cl;
 } // jsm_init_cl()
 
-/** Removes the Java string manager and frees its resources */
-
-void jsm_teardown( void )
-{
-    ; // Nothing currently
-} // jsm_teardown()
-
 /** Marks the Java literals present in the manager. This function doesn't
  * acquire the VM lock as it can be called only when all the threads have
  * been stopped */
