@@ -118,6 +118,15 @@ public final class Math
     public static native double exp(double a);
 
     /**
+     * The function <em>pow</em>.
+     *
+     * @param a the base
+     * @param b the exponent
+     * @return a^b
+     */
+    public static native double pow(double a, double b);
+
+    /**
      * Convert from degrees to radians. The formula for this is
      * radians = degrees * (pi/180); however it is not always exact given the
      * limitations of floating point numbers.

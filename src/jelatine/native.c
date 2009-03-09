@@ -97,6 +97,7 @@ static KNI_RETURNTYPE_DOUBLE java_lang_Math_ceil( void );
 static KNI_RETURNTYPE_DOUBLE java_lang_Math_floor( void );
 static KNI_RETURNTYPE_DOUBLE java_lang_Math_log( void );
 static KNI_RETURNTYPE_DOUBLE java_lang_Math_exp( void );
+static KNI_RETURNTYPE_DOUBLE java_lang_Math_pow( void );
 #endif // JEL_FP_SUPPORT
 
 // java.lang.Object methods
@@ -288,6 +289,12 @@ native_method_desc_t native_desc[] = {
         "exp",
         "(D)D",
         java_lang_Math_exp
+    },
+    {
+        "java/lang/Math",
+        "pow",
+        "(DD)D",
+        java_lang_Math_pow
     },
 #endif // JEL_FP_SUPPORT
 
@@ -856,6 +863,15 @@ static KNI_RETURNTYPE_DOUBLE java_lang_Math_exp( void )
     jdouble a = KNI_GetParameterAsDouble(1);
     KNI_ReturnDouble(exp(a));
 } // java_lang_Math_exp()
+
+/** Implementation of java.lang.Math.pow() */
+
+static KNI_RETURNTYPE_DOUBLE java_lang_Math_pow( void )
+{
+    jdouble a = KNI_GetParameterAsDouble(1);
+    jdouble b = KNI_GetParameterAsDouble(3);
+    KNI_ReturnDouble(pow(a, b));
+} // java_lang_Math_pow()
 
 #endif // JEL_FP_SUPPORT
 
