@@ -2,7 +2,6 @@
 
  - Add support for profiling and tracing method and bytecode execution
    (partially done)
- - jelatine.VMDouble.parseDouble() method must be implemented
  - An example profile should be written (for example the MIDP one) to provide
    a reference implementation and the possibility of running code using more
    classes than the pure CLDC classpath

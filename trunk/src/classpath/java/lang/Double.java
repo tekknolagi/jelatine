@@ -248,7 +248,7 @@ public final class Double
 
             // Parse the exponent
             int exponent = 0;
-            double expf = 10.0;
+            boolean exp_pos = true;
 
             if ((i < length) && (Character.toLowerCase(tmp.charAt(i)) == 'e')) {
                 i++;
@@ -258,7 +258,7 @@ public final class Double
 
                     if (c == '-') {
                         i++;
-                        expf = 0.1;
+                        exp_pos = false;
                     } else if (c == '+') {
                         i++;
                     }
@@ -275,6 +275,10 @@ public final class Double
                 if (i == j) {
                     // After the e/E character there must be an exponent
                     throw new NumberFormatException();
+                }
+
+                if (!exp_pos) {
+                    exponent = -exponent;
                 }
             }
 
@@ -294,10 +298,7 @@ public final class Double
             }
 
             // Encode the actual number
-            for (i = 0; i < exponent; i++) {
-                value *= expf;
-            }
-
+            value *= Math.pow(10.0, exponent);
             res = Double.doubleToLongBits(value);
         }
 
