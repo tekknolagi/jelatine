@@ -107,7 +107,7 @@ void interpreter(method_t *main_method)
 
     // Cached globals
 #if JEL_THREADED_INTERPRETER
-    const void *dispatch[256] = {
+    static const void *dispatch[256] = {
         &&NOP_label,
         &&ACONST_NULL_label,
         &&ICONST_M1_label,
