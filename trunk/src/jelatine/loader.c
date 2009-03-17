@@ -646,7 +646,7 @@ static void derive_class(class_t *cl, class_file_t *cf)
     u2_data = cf_load_u2(cf); // Minor number
     u2_data = cf_load_u2(cf); // Major number
 
-    if ((u2_data < 45) || (u2_data > 50)) {
+    if ((u2_data < 45) || (u2_data > 51)) {
         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR, "Unsupported class version");
     }
 
@@ -2273,7 +2273,7 @@ const uint8_t *bcl_link_opcode(const method_t *method, const uint8_t *lpc,
         return pc;
     }
 
-    if (opcode == NEWARRAY_PRELINK) {
+    if ((opcode == NEWARRAY_PRELINK) || (opcode == LDC_PRELINK)) {
         index = *(pc + 1);
     } else {
         index = (*(pc + 1) << 8) | *(pc + 2);
@@ -2456,6 +2456,23 @@ const uint8_t *bcl_link_opcode(const method_t *method, const uint8_t *lpc,
             opcode = MULTIANEWARRAY;
             store_int16_un(pc + 1, index);
         }
+            break;
+
+        case LDC_PRELINK:
+            if (cp_get_tag(cp, index) != CONSTANT_String) {
+                resolve_class(cl, index);
+            }
+
+            opcode = LDC;
+            break;
+
+        case LDC_W_PRELINK:
+            if (cp_get_tag(cp, index) != CONSTANT_String) {
+                resolve_class(cl, index);
+            }
+
+            opcode = LDC_W;
+            store_int16_un(pc + 1, index);
             break;
 
         default:
