@@ -1610,7 +1610,7 @@ void interpreter(method_t *main_method)
         DISPATCH;
 
     OPCODE(LSHL)
-        *((int64_t *) (sp - 3)) <<= *((int32_t *) (sp - 1)) & 0x1f;
+        *((int64_t *) (sp - 3)) <<= *((int32_t *) (sp - 1)) & 0x3f;
         sp--;
         pc++;
         DISPATCH;
@@ -1622,7 +1622,7 @@ void interpreter(method_t *main_method)
         DISPATCH;
 
     OPCODE(LSHR)
-        *((int64_t *) (sp - 3)) >>= *((int32_t *) (sp - 1)) & 0x1f;
+        *((int64_t *) (sp - 3)) >>= *((int32_t *) (sp - 1)) & 0x3f;
         sp--;
         pc++;
         DISPATCH;
@@ -1641,7 +1641,7 @@ void interpreter(method_t *main_method)
         uint64_t value1 = *((int64_t *) (sp - 3));
         int32_t value2 = *((int32_t *) (sp - 1));
 
-        *((int64_t *) (sp - 3)) = value1 >> (value2 & 0x1f);
+        *((int64_t *) (sp - 3)) = value1 >> (value2 & 0x3f);
         sp--;
         pc++;
         DISPATCH;
