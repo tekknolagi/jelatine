@@ -218,8 +218,8 @@ enum internal_opcode_t {
     IF_ACMPEQ = 165, ///< Branch if reference equal
     IF_ACMPNE = 166, ///< Branch if reference not equal
     GOTO = 167, ///< Branch always
-    LDC_STRING = 168, ///< Load a string constant
-    LDC_W_STRING = 169, ///< Load a string constant
+    LDC_REF = 168, ///< Load a string or class constant reference
+    LDC_W_REF = 169, ///< Load a string or class constant reference
     TABLESWITCH = 170, ///< Access jump table by index and jump
     LOOKUPSWITCH = 171, ///< Access jump table by key match and jump
     IRETURN = 172, ///< Return int from method
@@ -306,6 +306,8 @@ enum internal_opcode_t {
     ARETURN_MONITOREXIT = 250, ///< Returns a reference and releases the current monitor
     RETURN_MONITOREXIT = 251, ///< Returns and releases the current monitor
     NEW_FINALIZER = 252, ///< Same as new but for finalizable objects
+    LDC_PRELINK = 253, ///< Links a load constant opcode
+    LDC_W_PRELINK = 254, ///< Links a load constant wide opcode
     // The following opcodes are called using the WIDE prefix
     METHOD_LOAD = 201, ///< Loads a method code
     METHOD_ABSTRACT = 202, ///< Dummy opcode for triggering abstract method errors

@@ -379,8 +379,8 @@ void interpreter(method_t *main_method)
         &&IF_ACMPEQ_label,
         &&IF_ACMPNE_label,
         &&GOTO_label,
-        &&LDC_STRING_label,
-        &&LDC_W_STRING_label,
+        &&LDC_REF_label,
+        &&LDC_W_REF_label,
         &&TABLESWITCH_label,
         &&LOOKUPSWITCH_label,
         &&IRETURN_label,
@@ -506,10 +506,12 @@ void interpreter(method_t *main_method)
         &&ARETURN_MONITOREXIT_label,
         &&RETURN_MONITOREXIT_label,
 #if JEL_FINALIZER
-        &&NEW_FINALIZER_label
+        &&NEW_FINALIZER_label,
 #else
-        &&NOP_label
+        &&NOP_label,
 #endif // JEL_FINALIZER
+        &&LDC_PRELINK_label,
+        &&LDC_W_PRELINK_label
     };
 #endif // JEL_THREADED_INTERPRETER
 
@@ -2003,7 +2005,7 @@ void interpreter(method_t *main_method)
         DISPATCH;
     }
 
-    OPCODE(LDC_STRING) {
+    OPCODE(LDC_REF) {
         uint8_t index = *(pc + 1);
 
         *((uintptr_t *) sp) = cp_data_get_uintptr(cp, index);
@@ -2012,7 +2014,7 @@ void interpreter(method_t *main_method)
         DISPATCH;
     }
 
-    OPCODE(LDC_W_STRING) {
+    OPCODE(LDC_W_REF) {
         uint16_t index = load_uint16_un(pc + 1);
 
         *((uintptr_t *) sp) = cp_data_get_uintptr(cp, index);
@@ -3610,6 +3612,18 @@ void interpreter(method_t *main_method)
     }
 
 #endif // JEL_FINALIZER
+
+    OPCODE(LDC_PRELINK)
+        SAVE_STATE;
+        pc = bcl_link_opcode(fp->method, pc, LDC_PRELINK);
+        // Note that the current instruction will be replayed
+        DISPATCH;
+
+    OPCODE(LDC_W_PRELINK)
+        SAVE_STATE;
+        pc = bcl_link_opcode(fp->method, pc, LDC_W_PRELINK);
+        // Note that the current instruction will be replayed
+        DISPATCH;
 
     /*
      * In the following statements we will re-use the exception field of the

@@ -115,8 +115,8 @@ void translate_bytecode(class_t *cl, method_t *method, uint8_t *code,
                  * is out of bounds */
                 tag = cp_get_tag(cp, code[i + 1]);
 
-                if (tag == CONSTANT_String) {
-                    code[i] = LDC_STRING;
+                if ((tag == CONSTANT_String) || (tag == CONSTANT_Class)) {
+                    code[i] = LDC_PRELINK;
                 } else {
 #if JEL_FP_SUPPORT
                     if (tag != CONSTANT_Float && tag != CONSTANT_Integer) {
@@ -147,11 +147,10 @@ void translate_bytecode(class_t *cl, method_t *method, uint8_t *code,
                 uint16_t temp = (code[i + 1] << 8) | code[i + 2];
                 uint8_t tag = cp_get_tag(cp, temp);
 
-                store_int16_un(code + i + 1, temp);
-
-                if (tag == CONSTANT_String) {
-                    code[i] = LDC_W_STRING;
+                if ((tag == CONSTANT_String) || (tag == CONSTANT_Class)) {
+                    code[i] = LDC_W_PRELINK;
                 } else {
+                    store_int16_un(code + i + 1, temp);
 #if JEL_FP_SUPPORT
                     if (tag != CONSTANT_Float && tag != CONSTANT_Integer) {
                         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
