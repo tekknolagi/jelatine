@@ -2183,40 +2183,6 @@ void interpreter(method_t *main_method)
         DISPATCH;
     }
 
-    OPCODE(GETSTATIC_PRELINK)
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, GETSTATIC_PRELINK);
-
-        if (thread->exception != JNULL) {
-            goto exception_handler;
-        }
-
-        // Note that the current instruction will be replayed
-        DISPATCH;
-
-    OPCODE(PUTSTATIC_PRELINK)
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, PUTSTATIC_PRELINK);
-
-        if (thread->exception != JNULL) {
-            goto exception_handler;
-        }
-
-        // Note that the current instruction will be replayed
-        DISPATCH;
-
-    OPCODE(GETFIELD_PRELINK)
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, GETFIELD_PRELINK);
-        // Note that the current instruction will be replayed
-        DISPATCH;
-
-    OPCODE(PUTFIELD_PRELINK) {
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, PUTFIELD_PRELINK);
-        // Note that the current instruction will be replayed
-        DISPATCH;
-
     OPCODE(INVOKEVIRTUAL) {
         uint16_t offset, index;
         uintptr_t ref;
@@ -2588,7 +2554,7 @@ void interpreter(method_t *main_method)
 
         SAVE_STATE;
 
-        if (!monitor_exit(thread, ref))
+        if (!monitor_exit(thread, ref)) {
             goto throw_illegalmonitorstateexception;
         }
 
@@ -3281,77 +3247,36 @@ void interpreter(method_t *main_method)
         DISPATCH;
     }
 
+    OPCODE(GETFIELD_PRELINK)
+    OPCODE(PUTFIELD_PRELINK)
     OPCODE(INVOKEVIRTUAL_PRELINK)
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, INVOKEVIRTUAL_PRELINK);
-        // Note that the current instruction will be replayed
-        DISPATCH;
-
     OPCODE(INVOKESPECIAL_PRELINK)
+    OPCODE(INVOKEINTERFACE_PRELINK)
+    OPCODE(NEWARRAY_PRELINK)
+    OPCODE(ANEWARRAY_PRELINK)
+    OPCODE(CHECKCAST_PRELINK)
+    OPCODE(INSTANCEOF_PRELINK)
+    OPCODE(MULTIANEWARRAY_PRELINK)
+    OPCODE(LDC_PRELINK)
+    OPCODE(LDC_W_PRELINK)
         SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, INVOKESPECIAL_PRELINK);
+        pc = bcl_link_opcode(fp->method, pc, *pc);
         // Note that the current instruction will be replayed
         DISPATCH;
 
+    OPCODE(GETSTATIC_PRELINK)
+    OPCODE(PUTSTATIC_PRELINK)
     OPCODE(INVOKESTATIC_PRELINK)
+    OPCODE(NEW_PRELINK)
         /* A recursive call to the interpreter may happen inside the
          * bcl_link_opcode() call */
         SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, INVOKESTATIC_PRELINK);
+        pc = bcl_link_opcode(fp->method, pc, *pc);
 
         if (thread->exception != JNULL) {
             goto exception_handler;
         }
 
-        // Note that the current instruction will be replayed
-        DISPATCH;
-
-    OPCODE(INVOKEINTERFACE_PRELINK)
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, INVOKEINTERFACE_PRELINK);
-        // Note that the current instruction will be replayed
-        DISPATCH;
-
-    OPCODE(NEW_PRELINK)
-        /* A recursive call to the interpreter may happen inside the
-         * bcl_link_opcode() call */
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, NEW_PRELINK);
-
-        if (thread->exception) {
-            goto exception_handler;
-        }
-
-        // Note that the current instruction will be replayed
-        DISPATCH;
-
-    OPCODE(NEWARRAY_PRELINK)
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, NEWARRAY_PRELINK);
-        // Note that the current instruction will be replayed
-        DISPATCH;
-
-    OPCODE(ANEWARRAY_PRELINK)
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, ANEWARRAY_PRELINK);
-        // Note that the current instruction will be replayed
-        DISPATCH;
-
-    OPCODE(CHECKCAST_PRELINK)
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, CHECKCAST_PRELINK);
-        // Note that the current instruction will be replayed
-        DISPATCH;
-
-    OPCODE(INSTANCEOF_PRELINK)
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, INSTANCEOF_PRELINK);
-         // Note that the current instruction will be replayed
-        DISPATCH;
-
-    OPCODE(MULTIANEWARRAY_PRELINK)
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, MULTIANEWARRAY_PRELINK);
         // Note that the current instruction will be replayed
         DISPATCH;
 
@@ -3612,18 +3537,6 @@ void interpreter(method_t *main_method)
     }
 
 #endif // JEL_FINALIZER
-
-    OPCODE(LDC_PRELINK)
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, LDC_PRELINK);
-        // Note that the current instruction will be replayed
-        DISPATCH;
-
-    OPCODE(LDC_W_PRELINK)
-        SAVE_STATE;
-        pc = bcl_link_opcode(fp->method, pc, LDC_W_PRELINK);
-        // Note that the current instruction will be replayed
-        DISPATCH;
 
     /*
      * In the following statements we will re-use the exception field of the
