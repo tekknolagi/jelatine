@@ -37,7 +37,9 @@
 
 struct path_t {
     const char *str; ///< The path to the directory or JAR file
+#ifdef JEL_JARFILE_SUPPORT
     ZZIP_DIR *jar; ///< The JAR file handle
+#endif // JEL_JARFILE_SUPPORT
 };
 
 /** Typedef for the ::struct path_t */
@@ -174,9 +176,10 @@ static class_file_t *cf_open_with_classpath(const char *name, const path_t *cp)
     size_t cp_len, size;
     size_t cl_len = strlen(name);
 
+#if JEL_JARFILE_SUPPORT
     if (cp->jar != NULL) {
         // Append the .class suffic to the class name
-        path = gc_malloc(strlen(".class") + cl_len + 1);
+        path = gc_malloc(cl_len + strlen(".class") + 1);
 
         strncpy(path, name, cl_len + 1);
         strncat(path, ".class", cl_len + strlen(".class") + 1);
@@ -193,33 +196,36 @@ static class_file_t *cf_open_with_classpath(const char *name, const path_t *cp)
         cf = gc_malloc(sizeof(class_file_t));
         cf->file.compressed = zzip_file;
         cf->jar = true;
-    } else {
-        /* Append the class name to the classpath and add the .class
-         * suffix to the resulting string */
-        cp_len = strlen(cp->str);
-        path = gc_malloc(strlen(".class") + strlen(name) + cp_len + 1);
-        strncpy(path, cp->str, cp_len + 1);
-        strncat(path, name, strlen(name) + cp_len + 1);
-        strncat(path, ".class", strlen(".class") + strlen(name) + cp_len + 1);
+        cf->size = size;
 
-        c_try {
-            file = efopen(path, "r");
-        } c_catch (exception) {
-            gc_free(path);
-            c_clear_exception();
-            return NULL;
-        }
+        return cf;
+    }
+#endif // JEL_JARFILE_SUPPORT
 
+    /* Append the class name to the classpath and add the .class suffix to the
+     * resulting string */
+    cp_len = strlen(cp->str);
+    path = gc_malloc(cp_len + cl_len + strlen(".class") + 1);
+    strncpy(path, cp->str, cp_len + 1);
+    strncat(path, name, cp_len + cl_len + 1);
+    strncat(path, ".class", cp_len + cl_len + strlen(".class") + 1);
+
+    c_try {
+        file = efopen(path, "r");
+    } c_catch (exception) {
         gc_free(path);
-        efseek(file, 0, SEEK_END);
-        size = ftell(file);
-        efseek(file, 0, SEEK_SET);
-
-        cf = gc_malloc(sizeof(class_file_t));
-        cf->file.plain = file;
+        c_clear_exception();
+        return NULL;
     }
 
-    cf->size = size; // Store the file size
+    gc_free(path);
+    efseek(file, 0, SEEK_END);
+    size = ftell(file);
+    efseek(file, 0, SEEK_SET);
+
+    cf = gc_malloc(sizeof(class_file_t));
+    cf->file.plain = file;
+    cf->size = size;
 
     return cf;
 } // cf_open_with_classpath()
