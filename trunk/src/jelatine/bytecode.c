@@ -118,6 +118,7 @@ void translate_bytecode(class_t *cl, method_t *method, uint8_t *code,
                 if ((tag == CONSTANT_String) || (tag == CONSTANT_Class)) {
                     code[i] = LDC_PRELINK;
                 } else {
+                    code[i] = LDC;
 #if JEL_FP_SUPPORT
                     if (tag != CONSTANT_Float && tag != CONSTANT_Integer) {
                         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
@@ -150,6 +151,7 @@ void translate_bytecode(class_t *cl, method_t *method, uint8_t *code,
                 if ((tag == CONSTANT_String) || (tag == CONSTANT_Class)) {
                     code[i] = LDC_W_PRELINK;
                 } else {
+                    code[i] = LDC_W;
                     store_int16_un(code + i + 1, temp);
 #if JEL_FP_SUPPORT
                     if (tag != CONSTANT_Float && tag != CONSTANT_Integer) {

@@ -16,8 +16,5 @@
  - Make native method descriptors more compact
  - Rework the classpath build system, make it faster and more robust with
    different javac & preverifier combinations
- - Add support for CONSTANT_Class entries for the LDC and LDC_W instructions,
-   the LDC_STRING and LDC_W_STRING opcodes will be changed to LDC_REFERENCE and
-   LDC_W_REFERENCE and two new prelink opcodes will be added for this purpose
  - Add support for modified UTF-8 surrogate characters
  - Streamline the system-dependent part of the multi-threading implementation
