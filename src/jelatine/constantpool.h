@@ -89,7 +89,7 @@ extern const_pool_type_t cp_get_tag(const_pool_t *, uint16_t);
 extern void cp_set_tag_and_data(const_pool_t *, uint16_t, uint8_t, void *);
 extern char *cp_get_class_name(const_pool_t *, uint16_t);
 extern char *cp_get_string(const_pool_t *, uint16_t);
-extern uintptr_t cp_get_jstring(const_pool_t *, uint16_t);
+extern uintptr_t cp_get_ref(const_pool_t *, uint16_t);
 extern int32_t cp_get_integer(const_pool_t *, uint16_t);
 extern int64_t cp_get_long(const_pool_t *, uint16_t);
 extern char *cp_get_name_and_type_name(const_pool_t *, uint16_t);

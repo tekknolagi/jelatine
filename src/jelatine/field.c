@@ -288,7 +288,7 @@ void fm_add_static(field_manager_t *fm, char *name, char *descriptor,
                             "object");
                 }
 
-                curr->field.reference_data = cp_get_jstring(cp, const_index);
+                curr->field.reference_data = cp_get_ref(cp, const_index);
                 break;
 
             case 'B': // This is a final static byte field

@@ -806,28 +806,42 @@ void print_bytecode(thread_t *thread, const uint8_t *pc, const_pool_t *cp)
             fprintf(stderr, "GOTO offset = %d\n", load_int16_un(pc + 1));
             break;
 
-        case LDC_STRING:
+        case LDC_REF:
         {
-            uintptr_t ref;
+            uintptr_t ref = cp_get_ref(cp, *(pc + 1));
             java_lang_String_t *jstring;
+            java_lang_Class_t *jclass;
 
-            ref = cp_get_jstring(cp, *(pc + 1));
-            jstring = JAVA_LANG_STRING_REF2PTR(ref);
-            fprintf(stderr, "LDC_STRING ");
-            jstring_print(jstring);
+            if (cp_get_tag(cp, *(pc + 1)) == CONSTANT_Class) {
+                fprintf(stderr, "LDC_REF CONSTANT_Class ");
+                jclass = JAVA_LANG_CLASS_REF2PTR(ref);
+                jstring_print(JAVA_LANG_STRING_REF2PTR(jclass->name));
+            } else { // CONSTANT_String
+                fprintf(stderr, "LDC_REF CONSTANT_String ");
+                jstring = JAVA_LANG_STRING_REF2PTR(ref);
+                jstring_print(jstring);
+            }
+
             fprintf(stderr, "\n");
         }
             break;
 
-        case LDC_W_STRING:
+        case LDC_W_REF:
         {
-            uintptr_t ref;
+            uintptr_t ref = cp_get_ref(cp, load_uint16_un(pc + 1));
             java_lang_String_t *jstring;
+            java_lang_Class_t *jclass;
 
-            ref = cp_get_jstring(cp, load_uint16_un(pc + 1));
-            jstring = JAVA_LANG_STRING_REF2PTR(ref);
-            fprintf(stderr, "LDC_W_STRING ");
-            jstring_print(jstring);
+            if (cp_get_tag(cp, load_uint16_un(pc + 1)) == CONSTANT_Class) {
+                fprintf(stderr, "LDC_REF CONSTANT_Class ");
+                jclass = JAVA_LANG_CLASS_REF2PTR(ref);
+                jstring_print(JAVA_LANG_STRING_REF2PTR(jclass->name));
+            } else { // CONSTANT_String
+                fprintf(stderr, "LDC_REF CONSTANT_String ");
+                jstring = JAVA_LANG_STRING_REF2PTR(ref);
+                jstring_print(jstring);
+            }
+
             fprintf(stderr, "\n");
         }
             break;
@@ -1326,6 +1340,14 @@ void print_bytecode(thread_t *thread, const uint8_t *pc, const_pool_t *cp)
             case NEW_FINALIZER: // TODO: Improve
                 fprintf(stderr, "NEW_FINALIZER index = %u\n",
                         load_uint16_un(pc + 1));
+                break;
+
+            case LDC_PRELINK:
+                fprintf(stderr, "LDC_PRELINK\n");
+                break;
+
+            case LDC_W_PRELINK:
+                fprintf(stderr, "LDC_W_PRELINK\n");
                 break;
 
             default:

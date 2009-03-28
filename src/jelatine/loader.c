@@ -2459,19 +2459,19 @@ const uint8_t *bcl_link_opcode(const method_t *method, const uint8_t *lpc,
             break;
 
         case LDC_PRELINK:
-            if (cp_get_tag(cp, index) != CONSTANT_String) {
+            if (cp_get_tag(cp, index) == CONSTANT_Class) {
                 resolve_class(cl, index);
             }
 
-            opcode = LDC;
+            opcode = LDC_REF;
             break;
 
         case LDC_W_PRELINK:
-            if (cp_get_tag(cp, index) != CONSTANT_String) {
+            if (cp_get_tag(cp, index) == CONSTANT_Class) {
                 resolve_class(cl, index);
             }
 
-            opcode = LDC_W;
+            opcode = LDC_W_REF;
             store_int16_un(pc + 1, index);
             break;
 

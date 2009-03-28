@@ -324,23 +324,24 @@ char *cp_get_string(const_pool_t *cp, uint16_t entry)
     return (char *) cp_data_get_ptr(cp->data, entry);
 } // cp_get_string()
 
-/** Gets a CONSTANT_String value in the specified entry of the constant
- * pool fails if the \a entry parameter is out of range or if the relevant entry
- * has a tag different from CONSTANT_String
+/** Gets a CONSTANT_String or CONSTANT_Class value in the specified entry of
+ * the constant pool fails if the \a entry parameter is out of range or if the
+ * relevant entry has a tag different from CONSTANT_String or CONSTANT_Class
  * \param cp A pointer to a valid constant pool object
  * \param entry The constant pool entry number
  * \returns A Java reference to the string */
 
-uintptr_t cp_get_jstring(const_pool_t *cp, uint16_t entry)
+uintptr_t cp_get_ref(const_pool_t *cp, uint16_t entry)
 {
     const_pool_type_t tag = cp_get_tag(cp, entry);
 
-    if (tag != CONSTANT_String) {
-        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR, "Not a CONSTANT_String entry");
+    if ((tag != CONSTANT_String) && (tag != CONSTANT_Class)) {
+        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
+                "Not a CONSTANT_String or CONSTANT_Class entry");
     }
 
     return cp_data_get_uintptr(cp->data, entry);
-} // cp_get_jstring()
+} // cp_get_ref()
 
 /** Gets a CONSTANT_Integer value in the specified entry of the constant
  * pool fails if the \a entry parameter is out of range or if the relevant entry
