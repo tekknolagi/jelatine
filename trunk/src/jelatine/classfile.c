@@ -82,7 +82,7 @@ static void adapt_classpath_string(path_t *path, const char *str, size_t len)
     }
 
 #if JEL_JARFILE_SUPPORT
-    if ((len > 4) && (strcmp(str + len - 4, ".jar") == 0)) {
+    if ((len > 4) && (strncmp(str + len - 4, ".jar", 4) == 0)) {
         // This is a JAR file
         tmp = gc_palloc(len + 1);
         strncpy(tmp, str, len);
