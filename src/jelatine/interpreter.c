@@ -2382,10 +2382,10 @@ void interpreter(method_t *main_method)
             goto throw_nullpointerexception;
         }
 
-        /* Fetch the new class and the new method from the class' parent
-         * dispatch table */
-        new_cl = header_get_class((header_t *) ref);
-        new_method = new_cl->parent->dtable[index];
+        /* Fetch the the new method from the current class' parent dispatch
+         * table */
+        new_cl = fp->cl->parent;
+        new_method = new_cl->dtable[index];
 
         print_method_call(thread, new_method);
 
