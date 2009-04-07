@@ -1131,7 +1131,7 @@ static void gc_purge_weakref_list( void )
              */
             referent = (header_t *) curr->referent;
 
-            if (! header_is_marked(referent)) {
+            if (!header_is_marked(referent)) {
                 curr->referent = JNULL;
             }
 

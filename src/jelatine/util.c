@@ -259,7 +259,7 @@ void c_print_exception(int exc)
 #ifndef NDEBUG
     printf("Thrown exception:\n"
            "   type:\t\t%s\n"
-           "   description:\t%s\n"
+           "   description:\t\t%s\n"
            "   file:\t\t%s\n"
            "   line:\t\t%d\n",
            class_bootstrap_name(exc), desc ? desc : "",
@@ -267,9 +267,9 @@ void c_print_exception(int exc)
 #else
     printf("Thrown exception:\n"
            "    type:\t\t%s\n"
-           "    description:\t%s\n",
+           "    description:\t\t%s\n",
            class_bootstrap_name(exc), desc ? desc : "");
-#endif /* ! NDEBUG */
+#endif /* !NDEBUG */
 } // c_print_exception()
 
 /******************************************************************************

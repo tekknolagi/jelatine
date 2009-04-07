@@ -119,8 +119,8 @@ static void load_method_attribute_Exceptions(class_t *, class_file_t *,
 static void assign_interface_indexes(method_manager_t *);
 static void create_dispatch_table(class_t *);
 static void create_interface_dispatch_table(class_t *);
-static uint8_t *load_bytecode(class_t *, method_t *);
 static method_t *resolve_method(class_t *, uint16_t, bool);
+static uint8_t *load_bytecode(class_t *, method_t *);
 
 /*******************************************************************************
  * Class loader related functions                                              *
@@ -685,14 +685,12 @@ static void derive_class(class_t *cl, class_file_t *cf)
     u2_data = cf_load_u2(cf);
 
     if (u2_data == 0) {
-        /*
-         * Object doesn't have a parent class and must be public, non-final,
-         * not abstract nor an interface
-         */
+        /* Object doesn't have a parent class and must be public, non-final,
+         * not abstract nor an interface */
         cl->parent = NULL;
 
         if (class_is_final(cl)
-                || ! class_is_public(cl)
+                || !class_is_public(cl)
                 || class_is_interface(cl)
                 || class_is_abstract(cl))
         {
@@ -1006,10 +1004,10 @@ static void load_methods(class_t *cl, class_file_t *cf, bool *finalizer)
                         "Interface has a static method");
             }
 
-            if (! method_is_public(method)) {
+            if (!method_is_public(method)) {
                 c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                         "Interface has non-public method");
-            } else if (! method_is_abstract(method)) {
+            } else if (!method_is_abstract(method)) {
                 c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                         "Interface has non-abstract method");
             }
@@ -1303,7 +1301,7 @@ static void create_dispatch_table(class_t *cl)
     while (method_itr_has_next(itr)) {
         method = method_itr_get_next(&itr);
 
-        if (! (method_is_static(method)
+        if (!(method_is_static(method)
             || method_is_private(method)
             || method_is_init(method)))
         {
@@ -1422,7 +1420,7 @@ static method_t *resolve_method(class_t *src, uint16_t index, bool interface)
                     "Trying to resolve a method from an interface");
         }
     } else {
-        if (! class_is_interface(cl)) {
+        if (!class_is_interface(cl)) {
             c_throw(JAVA_LANG_VIRTUALMACHINEERROR,
                     "Trying to resolve an interface method from a class");
         }
