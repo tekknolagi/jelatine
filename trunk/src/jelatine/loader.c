@@ -1479,6 +1479,12 @@ static method_t *resolve_method(class_t *src, uint16_t index, bool interface)
         }
     }
 
+    if (method_is_abstract(method) && !class_is_abstract(cl)) {
+        /* This should be an AbstractMethodError */
+        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
+                "Abstract method resolved from a non-abstract class");
+    }
+
     if (method_is_private(method) && src != cl) {
         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                 "Trying to access a private method from an external class");
