@@ -755,10 +755,7 @@ void thread_sleep(int64_t ms)
 
     tm_lock();
 
-    if (self->interrupted) {
-        self->interrupted = false;
-        KNI_ThrowNew("java/lang/InterruptedException", NULL);
-    } else {
+    if (!self->interrupted) {
 #if JEL_THREAD_PTH
         pth_event_t ev;
         pth_cond_t cond = PTH_COND_INIT; // Dummy condition variable
@@ -782,10 +779,11 @@ void thread_sleep(int64_t ms)
 
         nanosleep(&req, NULL);
 #endif
-        if (self->interrupted) {
-            self->interrupted = false;
-            KNI_ThrowNew("java/lang/InterruptedException", NULL);
-        }
+    }
+
+    if (self->interrupted) {
+        self->interrupted = false;
+        KNI_ThrowNew("java/lang/InterruptedException", NULL);
     }
 
     tm_unlock();
@@ -929,7 +927,7 @@ void thread_launch(uintptr_t *ref, method_t *run)
         dbg_error("Unable to create a new thread");
         vm_fail();
     }
-    
+
     pthread_attr_destroy(&attr);
 #elif JEL_THREAD_PTH
     attr = pth_attr_new();

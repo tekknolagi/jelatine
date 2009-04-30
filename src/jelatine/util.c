@@ -375,8 +375,14 @@ struct timespec get_time_with_offset(uint64_t ms, uint32_t nanos)
 #   error "get_time_with_offset() doesn't have an appropriate fallback."
 #endif
 
-   res.tv_sec += ms / 1000;
-   res.tv_nsec += (ms % 1000) * 1000000 + nanos;
-   return res;
+    res.tv_sec += (ms / 1000);
+    res.tv_nsec += (ms % 1000) * 1000000 + nanos;
+
+    if (res.tv_nsec > 1000000000) {
+        res.tv_nsec -= 1000000000;
+        res.tv_sec++;
+    }
+
+    return res;
 } // get_time_with_offset()
 
