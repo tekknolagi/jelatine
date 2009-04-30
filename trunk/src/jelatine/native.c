@@ -992,7 +992,7 @@ static KNI_RETURNTYPE_LONG java_lang_System_currentTimeMillis( void )
     struct timespec now = get_time_with_offset(0, 0);
     jlong ret;
 
-    ret = now.tv_sec * 1000;
+    ret = (uint64_t) now.tv_sec * 1000; // Avoid sign extension
     ret += now.tv_nsec / 1000000;
     KNI_ReturnLong(ret);
 } // java_lang_System_currentTimeMillis()
