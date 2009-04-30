@@ -1390,7 +1390,7 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_open( void )
             struct hostent *hostinfo = gethostbyname(hostname);
 
             if (hostinfo == NULL) {
-                KNI_ThrowNew("java/lang/IOException", "Host can't be resolved");
+                KNI_ThrowNew("java/io/IOException", "Host can't be resolved");
                 sock = -1;
             } else {
                 name.sin_addr = *(struct in_addr *) hostinfo->h_addr;
@@ -1398,7 +1398,7 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_open( void )
                 if(connect(sock, (struct sockaddr *) &name,
                            sizeof(struct sockaddr_in)) < 0)
                 {
-                    KNI_ThrowNew("java/lang/IOException",
+                    KNI_ThrowNew("java/io/IOException",
                                  "Host is not reachable");
                     sock = -1;
                 }
@@ -1431,7 +1431,7 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_read( void )
     if (result == 0) {
        KNI_ReturnInt(-1);
     } else if (result < 0) {
-        KNI_ThrowNew("java/lang/IOException", NULL);
+        KNI_ThrowNew("java/io/IOException", NULL);
     }
 
     KNI_ReturnInt(b);
@@ -1467,7 +1467,7 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_readBuf( void )
         if (result == 0) {
             result = -1;
         } else if (result < 0) {
-            KNI_ThrowNew("java/lang/IOException", "Can't read from socket");
+            KNI_ThrowNew("java/io/IOException", "Can't read from socket");
             result = -1;
         }
     }
@@ -1488,7 +1488,7 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_write( void )
     if (result == 0) {
         result = -1;
     } else if (result < 0) {
-        KNI_ThrowNew("java/lang/IOException", "Can't write to the socket");
+        KNI_ThrowNew("java/io/IOException", "Can't write to the socket");
         result = -1;
     }
 
@@ -1525,7 +1525,7 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_writeBuf( void )
         if (result == 0) {
             result = -1;
         } else if (result < 0) {
-            KNI_ThrowNew("java/lang/IOException", "Can't write to the socket");
+            KNI_ThrowNew("java/io/IOException", "Can't write to the socket");
             result = -1;
         }
     }
