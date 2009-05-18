@@ -35,7 +35,7 @@
  ******************************************************************************/
 
 /** Dummy constant pool used by array classes */
-static const_pool_t dummy_cp = { 0, NULL, NULL };
+static const_pool_t dummy_cp = { 0, NULL, { 0 } };
 
 /******************************************************************************
  * Constant pool implementation                                               *
@@ -92,8 +92,12 @@ const_pool_t *cp_create(class_t *cl, class_file_t *cf)
     uintptr_t jstring;
 
     entries = cf_load_u2(cf);
-    tags = gc_palloc(size_div_inf(entries, 2));
-    data = gc_palloc(sizeof(jword_t) * entries);
+    cp = gc_palloc(sizeof(const_pool_t) + sizeof(jword_t) * entries);
+    cp->entries = entries;
+    cp->tags = gc_palloc(size_div_inf(entries, 2));
+
+    tags = cp->tags;
+    data = cp->data;
 
     /* The first constant pool element is empty, we fill it with the class
      * pointer */
@@ -234,11 +238,6 @@ const_pool_t *cp_create(class_t *cl, class_file_t *cf)
                 continue;
         }
     }
-
-    cp = gc_palloc(sizeof(const_pool_t));
-    cp->entries = entries;
-    cp->tags = tags;
-    cp->data = data;
 
     return cp;
 } // cp_create()
