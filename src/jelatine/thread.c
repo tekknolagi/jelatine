@@ -1010,10 +1010,7 @@ void thread_join(uintptr_t *thread)
 
     tm_lock();
 
-    if (self->interrupted) {
-        self->interrupted = false;
-        KNI_ThrowNew("java/lang/InterruptedException", NULL);
-    } else {
+    if (!self->interrupted) {
         target = (thread_t *) JAVA_LANG_THREAD_REF2PTR(*thread)->vmThread;
 
         if (target != NULL) {
@@ -1027,11 +1024,11 @@ void thread_join(uintptr_t *thread)
             self->pth_int = NULL;
 #endif
         }
+    }
 
-        if (self->interrupted) {
-            self->interrupted = false;
-            KNI_ThrowNew("java/lang/InterruptedException", NULL);
-        }
+    if (self->interrupted) {
+        self->interrupted = false;
+        KNI_ThrowNew("java/lang/InterruptedException", NULL);
     }
 
     tm_unlock();
@@ -1054,7 +1051,6 @@ bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
     thread_t *self = thread_self();
     monitor_t *entry;
     size_t hash;
-    bool res = false;
 
     tm_lock();
 
@@ -1066,16 +1062,8 @@ bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
         entry = entry->next;
     }
 
-    if (entry) {
+    if (entry && !self->interrupted) {
         if ((entry->owner == thread) && (entry->count == 1)) {
-            // Handle a pending interrupt
-            if (self->interrupted) {
-                self->interrupted = false;
-                KNI_ThrowNew("java/lang/InterruptedException", NULL);
-                tm_unlock();
-                return true;
-            }
-
             // Release the lock and wait
             entry->owner = NULL;
             entry->count = 0;
@@ -1121,21 +1109,21 @@ bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
             self->pth_int = NULL;
 #endif
 
-            if (self->interrupted) {
-                self->interrupted = false;
-                KNI_ThrowNew("java/lang/InterruptedException", NULL);
-            }
 
             // Re-acquire the monitor
             tm_unlock();
             monitor_enter(thread, ref);
-            res = true;
         }
     } else {
         tm_unlock();
     }
 
-    return res;
+    if (self->interrupted) {
+        self->interrupted = false;
+        KNI_ThrowNew("java/lang/InterruptedException", NULL);
+    }
+
+    return entry ? true : false;
 } // thread_wait()
 
 /** Implements the functionliaty required by java.lang.Object.notify()
