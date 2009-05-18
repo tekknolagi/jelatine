@@ -73,7 +73,7 @@ typedef struct name_and_type_t name_and_type_t;
 struct const_pool_t {
     uint16_t entries; ///< Number of entries in the costant-pool
     uint8_t *tags; ///< Tags array
-    jword_t *data; ///< Data array
+    jword_t data[]; ///< Data array
 };
 
 /** Typedef for :struct const_pool_t */
@@ -114,152 +114,235 @@ extern void cp_print(const_pool_t *);
 #endif // JEL_PRINT
 
 /******************************************************************************
- * Macros for accessing the constant pool data section                        *
+ * Inlined functions for accessing the constant pool data section             *
  ******************************************************************************/
 
-/* FIXME: The constant pool data section must become a C99 variable length
- * array and the following macros must be changed to inlined functions */
-
 /** Writes a pointer value in the constant pool
- * \param d A pointer to the constant pool data array
- * \param i An index
- * \param v The new value */
-#define cp_data_set_ptr(d, i, v) (*((void **) ((d) + (i))) = (v))
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
+ * \param ptr A generic pointer */
+
+static inline void cp_data_set_ptr(jword_t *data, size_t i, void *ptr)
+{
+    *((void **) (data + i)) = ptr;
+} // cp_data_set_ptr()
 
 /** Reads a pointer value from the constant pool
- * \param d A pointer to the constant pool data array
- * \param i An index
- * \returns A pointer */
-#define cp_data_get_ptr(d, i) *((void **) ((d) + (i)))
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
+ * \returns A generic pointer */
+
+static inline void *cp_data_get_ptr(const jword_t *data, size_t i)
+{
+    return *((void **) (data + i));
+} // cp_data_get_ptr()
 
 /** Writes an uintptr_t value in the constant pool
- * \param d A pointer to the constant pool data array
- * \param i An index
- * \param v The new value */
-#define cp_data_set_uintptr(d, i, v) (*((uintptr_t *) ((d) + (i))) = (v))
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
+ * \param ptr An uintptr_t value */
+
+static inline void cp_data_set_uintptr(jword_t *data, size_t i, uintptr_t ptr)
+{
+    *((uintptr_t *) (data + i)) = ptr;
+} // cp_data_set_uintptr()
 
 /** Reads an uintptr_t value from the constant pool
- * \param d A pointer to the constant pool data array
- * \param i An index
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
  * \returns An uintptr_t value */
-#define cp_data_get_uintptr(d, i) *((uintptr_t *) ((d) + (i)))
+
+static inline uintptr_t cp_data_get_uintptr(const jword_t *data, size_t i)
+{
+    return *((const uintptr_t *) (data + i));
+} // cp_data_get_uintptr()
 
 /** Writes an uint16_t value in the constant pool
- * \param d A pointer to the constant pool data array
+ * \param data A pointer to the constant pool data array
  * \param i An index
- * \param v The new value */
-#define cp_data_set_uint16(d, i, v) \
-    (*((uint16_t *) ((d) + (i))) = (uint16_t) (v))
+ * \param v An uint16_t value */
+
+static inline void cp_data_set_uint16(jword_t *data, size_t i, uint16_t v)
+{
+    *((uint16_t *) (data + i)) = v;
+} // cp_data_set_uint16()
 
 /** Reads an uint16_t value from the constant pool
- * \param d A pointer to the constant pool data array
- * \param i An index
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
  * \returns An uint16_t value */
-#define cp_data_get_uint16(d, i) *((uint16_t *) ((d) + (i)))
+
+static inline uint16_t cp_data_get_uint16(const jword_t *data, size_t i)
+{
+    return *((const uint16_t *) (data + i));
+} // cp_data_get_uint16()
 
 /** Writes an int32_t value in the constant pool
- * \param d A pointer to the constant pool data array
- * \param i An index
- * \param v The new value */
-#define cp_data_set_int32(d, i, v) (*((int32_t *) ((d) + (i))) = (v))
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
+ * \param v An int32_t value */
+
+static inline void cp_data_set_int32(jword_t *data, size_t i, int32_t v)
+{
+    *((int32_t *) (data + i)) = v;
+} // cp_data_set_int32()
 
 /** Reads an int32_t value from the constant pool
- * \param d A pointer to the constant pool data array
- * \param i An index
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
  * \returns An int32_t value */
-#define cp_data_get_int32(d, i) *((int32_t *) ((d) + (i)))
+
+static inline int32_t cp_data_get_int32(const jword_t *data, size_t i)
+{
+    return *((const int32_t *) (data + i));
+} // cp_data_get_int32()
 
 /** Writes a float value in the constant pool
- * \param d A pointer to the constant pool data array
- * \param i An index
- * \param v The new value */
-#define cp_data_set_float(d, i, v) (*((float *) ((d) + (i))) = (v))
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
+ * \param v A float value */
+
+static inline void cp_data_set_float(jword_t *data, size_t i, float v)
+{
+    *((float *) (data + i)) = v;
+} // cp_data_set_float()
 
 /** Reads a float value from the constant pool
- * \param d A pointer to the constant pool data array
- * \param i An index
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
  * \returns A float value */
-#define cp_data_get_float(d, i) *((float *) ((d) + (i)))
+
+static inline float cp_data_get_float(const jword_t *data, size_t i)
+{
+    return *((const float *) (data + i));
+} // cp_data_get_float()
 
 /** Writes an int64_t value in the constant pool
- * \param d A pointer to the constant pool data array
- * \param i An index
- * \param v The new value */
-#define cp_data_set_int64(d, i, v) (*((int64_t *) ((d) + (i))) = (v))
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
+ * \param v An int64_t value */
+
+static inline void cp_data_set_int64(jword_t *data, size_t i, int64_t v)
+{
+    *((int64_t *) (data + i)) = v;
+} // cp_data_set_int64()
 
 /** Reads an int64_t value from the constant pool
- * \param d A pointer to the constant pool data array
- * \param i An index
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
  * \returns An int64_t value */
-#define cp_data_get_int64(d, i) *((int64_t *) ((d) + (i)))
+
+static inline int64_t cp_data_get_int64(const jword_t *data, size_t i)
+{
+    return *((const int64_t *) (data + i));
+} // cp_data_get_int64()
 
 /** Writes a double value in the constant pool
- * \param d A pointer to the constant pool data array
- * \param i An index
- * \param v The new value */
-#define cp_data_set_double(d, i, v) (*((double *) ((d) + (i))) = (v))
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
+ * \param v A double value */
+
+static inline void cp_data_set_double(jword_t *data, size_t i, double v)
+{
+    *((double *) (data + i)) = v;
+} // cp_data_set_double()
 
 /** Reads a double value from the constant pool
- * \param d A pointer to the constant pool data array
- * \param i An index
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
  * \returns A double value */
-#define cp_data_get_double(d, i) *((double *) ((d) + (i)))
+
+static inline double cp_data_get_double(const jword_t *data, size_t i)
+{
+    return *((const double *) (data + i));
+} // cp_data_get_double()
 
 /** Sets the class index of a Fieldref entry
- * \param d A pointer to the constant pool data array
- * \param i An index
- * \param v The new value */
-#define cp_data_set_fieldref_class(d, i, v) \
-    (((fieldref_t *) ((d) + (i)))->class_index = (v))
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
+ * \param idx The new class index */
+
+static inline void cp_data_set_fieldref_class(jword_t *data, size_t i,
+                                              uint16_t idx)
+{
+    ((fieldref_t *) (data + i))->class_index = idx;
+} // cp_data_set_fieldref_class()
 
 /** Reads the class index of a Fieldref entry
- * \param d A pointer to the constant pool data array
- * \param i An index
- * \returns A class index */
-#define cp_data_get_fieldref_class(d, i) \
-    (((fieldref_t *) ((d) + (i)))->class_index)
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
+ * \returns The class index of the Fieldref structure */
+
+static inline uint16_t cp_data_get_fieldref_class(const jword_t *data, size_t i)
+{
+    return ((const fieldref_t *) (data + i))->class_index;
+} // cp_data_get_fieldref_class()
 
 /** Sets the NameAndType index of a Fieldref entry
- * \param d A pointer to the constant pool data array
- * \param i An index
- * \param v The new value */
-#define cp_data_set_fieldref_name_and_type(d, i, v) \
-    (((fieldref_t *) ((d) + (i)))->name_and_type_index = (v))
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
+ * \param idx The new name and type index */
+
+static inline void cp_data_set_fieldref_name_and_type(jword_t *data, size_t i,
+                                                      uint16_t idx)
+{
+    ((fieldref_t *) (data + i))->name_and_type_index = idx;
+} // cp_data_set_fieldref_name_and_type()
 
 /** Reads the NameAndType index of a Fieldref entry
- * \param d A pointer to the constant pool data array
- * \param i An index
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
  * \returns The name and type index */
-#define cp_data_get_fieldref_name_and_type(d, i) \
-    (((fieldref_t *) ((d) + (i)))->name_and_type_index)
+
+static inline uint16_t cp_data_get_fieldref_name_and_type(const jword_t *data,
+                                                          size_t i)
+{
+    return ((const fieldref_t *) (data + i))->name_and_type_index;
+} // cp_data_get_fieldref_name_and_type()
 
 /** Sets the name field of a NameAndType entry
- * \param d A pointer to the constant pool data array
- * \param i An index
- * \param v The new value */
-#define cp_data_set_name_and_type_name(d, i, v) \
-    (((name_and_type_t *) ((d) + (i)))->name_index = (v))
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
+ * \param idx The new name index */
+
+static inline void cp_data_set_name_and_type_name(jword_t *data, size_t i,
+                                                  uint16_t idx)
+{
+    ((name_and_type_t *) (data + i))->name_index = idx;
+} // cp_data_set_name_and_type_name()
 
 /** Reads the name field of a NameAndType entry
- * \param d A pointer to the constant pool data array
- * \param i An index
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
  * \returns The name index */
-#define cp_data_get_name_and_type_name(d, i) \
-    (((name_and_type_t *) ((d) + (i)))->name_index)
+
+static inline uint16_t cp_data_get_name_and_type_name(const jword_t *data,
+                                                      size_t i)
+{
+    return ((const name_and_type_t *) (data + i))->name_index;
+} // cp_data_get_name_and_type_name()
 
 /** Sets the descriptor field of a NameAndType entry
- * \param d A pointer to the constant pool data array
- * \param i An index
- * \param v The new value */
-#define cp_data_set_name_and_type_descriptor(d, i, v) \
-    (((name_and_type_t *) ((d) + (i)))->descriptor_index = (v))
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
+ * \param idx The new descriptor index */
+
+static inline void cp_data_set_name_and_type_descriptor(jword_t *data, size_t i,
+                                                        uint16_t idx)
+{
+    ((name_and_type_t *) (data + i))->descriptor_index = idx;
+} // cp_data_set_name_and_type_descriptor()
 
 /** Reads the descriptor field of a NameAndType entry
- * \param d A pointer to the constant pool data array
- * \param i An index
+ * \param data A pointer to the constant pool data array
+ * \param i An index in the constant pool
  * \returns The descriptor index */
-#define cp_data_get_name_and_type_descriptor(d, i) \
-    (((name_and_type_t *) ((d) + (i)))->descriptor_index)
+
+static inline uint16_t cp_data_get_name_and_type_descriptor(const jword_t *data,
+                                                            size_t i)
+{
+    return ((const name_and_type_t *) (data + i))->descriptor_index;
+} // cp_data_get_name_and_type_descriptor()
 
 /******************************************************************************
  * Inlined constant pool functions                                            *
