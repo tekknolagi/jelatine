@@ -298,8 +298,6 @@ void fm_add_static(field_manager_t *fm, char *name, char *descriptor,
             case 'Z': // This is a final static bool field
                 if (cp_get_integer(cp, const_index)) {
                     curr->field.byte_data = 1;
-                } else {
-                    curr->field.byte_data = 0;
                 }
 
                 break;

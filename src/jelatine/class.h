@@ -350,8 +350,7 @@ static inline bool class_has_finalizer(const class_t *cl)
 
 static inline void class_set_state(class_t *cl, class_state_t state)
 {
-    /* Class state can only 'go forward' */
-    assert(cl->state < state);
+    assert(cl->state < state); // Class state can only 'increase'
     cl->state = state;
 } // class_set_state()
 

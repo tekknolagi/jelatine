@@ -269,7 +269,7 @@ void c_print_exception(int exc)
            "    type:\t\t%s\n"
            "    description:\t\t%s\n",
            class_bootstrap_name(exc), desc ? desc : "");
-#endif /* !NDEBUG */
+#endif // !NDEBUG
 } // c_print_exception()
 
 /******************************************************************************

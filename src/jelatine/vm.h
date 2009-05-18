@@ -41,12 +41,12 @@ extern void vm_run(const char *, const char *, char *, size_t, int, char **);
 #if JEL_TRACE
 extern bool vm_opt_trace_bytecodes( void );
 extern bool vm_opt_trace_methods( void );
-#endif /* JEL_TRACE */
+#endif // JEL_TRACE
 
 #if JEL_PRINT
 extern bool vm_opt_print_bytecodes( void );
 extern bool vm_opt_print_methods( void );
-#endif /* JEL_PRINT */
+#endif // JEL_PRINT
 
 /******************************************************************************
  * Inlined virtual machine functions                                          *
