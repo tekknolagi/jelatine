@@ -31,10 +31,6 @@
 
 #include "classfile.h"
 
-// Forward declarations
-
-struct class_t;
-
 /******************************************************************************
  * Field types definitions                                                    *
  ******************************************************************************/
@@ -81,7 +77,7 @@ typedef struct static_field_t static_field_t;
 /** Representation of a field attributes */
 
 struct field_attributes_t {
-    bool constant_value_found; ///< True if the 'ConstantValue' attribute was found
+    bool constant_value_found; ///< True when 'ConstantValue' attribute is found
     uint16_t constant_value_index; ///< Index of the constant value
 };
 

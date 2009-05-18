@@ -3634,7 +3634,7 @@ exception_handler:
                 thread->exception = JNULL;
             }
 
-            /* Adjust the stack and push the exception on top of it */
+            // Adjust the stack and push the exception on top of it
             sp = fp->locals + method->max_locals + 1;
             *((uintptr_t *) (sp - 1)) = exception_ref;
 

@@ -311,7 +311,7 @@ void utf8_to_java(uint16_t *dst, const char *src)
 
 char *java_to_utf8(const uint16_t *data, size_t length)
 {
-    size_t utf8_length = 1; /* At least the nul character is needed */
+    size_t utf8_length = 1; // At least the nul character is needed
     uint16_t jc;
     char *str;
 
@@ -348,9 +348,9 @@ char *java_to_utf8(const uint16_t *data, size_t length)
     }
 
     return str;
-} /* java_to_utf8() */
+} // java_to_utf8()
 
-/* Calculates the hash value of an UTF-8 string
+/** Calculates the hash value of an UTF-8 string
  * \param data The string's data
  * \param len The number of characters in the string */
 

@@ -59,7 +59,7 @@
 #   include <inttypes.h>
 #endif // HAVE_INTTYPES_H
 
-/* Boolean type wrapper */
+// Boolean type wrapper
 
 /** \def bool
  * Boolean type wrapper used if the compiler doesn't provide it */

@@ -69,7 +69,7 @@ struct thread_t {
 #if !NDEBUG
         const char *file; ///< File where the exception was thrown
         int line; ///< Line where the exception was thrown
-#endif /* !NDEBUG */
+#endif // !NDEBUG
         uintptr_t data; ///< Class type of the exception
         char *description; ///< Exception description
         jmp_buf *buf; ///< Closest jump buffer

@@ -257,7 +257,7 @@ static void vm_init(size_t heap_size, const char *classpath,
 
     // Initialize the VM structure
     memset(&vm, 0, sizeof(virtual_machine_t));
-} /* vm_init() */
+} // vm_init()
 
 /** Destroys the virtual machine instance */
 

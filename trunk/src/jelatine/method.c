@@ -113,10 +113,10 @@ method_manager_t *mm_create(uint32_t count)
 static void parse_method_descriptor(method_t *method)
 {
     const char *desc = method->descriptor;
-    size_t i = 0, j = 0; /* A couple of counters */
-    uint32_t args_size = 0; /* Size (in stack slots) of the arguments */
-    uint32_t ret_size = 0; /* Size (in stack slots) of the return value */
-    uint32_t dimensions = 0;
+    size_t i = 0, j = 0; // A couple of counters
+    uint32_t args_size = 0; // Size (in stack slots) of the arguments
+    uint32_t ret_size = 0; // Size (in stack slots) of the return value
+    uint32_t dimensions = 0; // Array dimensions
 
     switch (desc[i]) {
         case '(':
@@ -266,7 +266,7 @@ return_type_pass:
     }
 
     if (!method_is_static(method)) {
-        args_size++; /* Include the 'this' pointer as an argument */
+        args_size++; // Include the 'this' pointer as an argument
     }
 
     if (args_size >= METHOD_ARGUMENTS_MAX) {

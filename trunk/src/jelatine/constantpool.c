@@ -80,13 +80,13 @@ const_pool_t *cp_create(class_t *cl, class_file_t *cf)
     uint16_t entries, u2_data;
 #if JEL_FP_SUPPORT
     uint32_t u4_data;
-#endif /* JEL_FP_SUPPORT */
+#endif // JEL_FP_SUPPORT
     uint64_t u8_data;
     size_t len;
 #if JEL_FP_SUPPORT
     float f_data;
     double d_data;
-#endif /* JEL_FP_SUPPORT */
+#endif // JEL_FP_SUPPORT
     char *str;
     char *utf8_str;
     uintptr_t jstring;

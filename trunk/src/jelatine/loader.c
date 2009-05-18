@@ -204,7 +204,7 @@ bool bcl_is_assignable(class_t *src, class_t *dest)
             /* If T is an interface type, T must be one of the interfaces
              * implemented by arrays (§2.15). */
 
-            return false; /* No array interfaces are present in the CLDC */
+            return false; // No array interfaces are present in the CLDC
         } else {
             // If T is a class type, then T must be Object (§2.4.7).
 
@@ -579,7 +579,7 @@ static void initialize_class(thread_t *thread, class_t *cl)
     }
 
     if ((cl->id != JAVA_LANG_OBJECT) && !class_is_initialized(cl->parent)) {
-        /* If this class has a parent class initialize it */
+        // If this class has a parent class initialize it
         initialize_class(thread, cl->parent);
 
         if (thread->exception != JNULL) {
@@ -875,7 +875,7 @@ static bool same_package(const class_t *cl1, const class_t *cl2)
     }
 
     return false;
-} //* same_package()
+} // same_package()
 
 /** Finds a class by its name
  * \param name The class' name
@@ -898,7 +898,7 @@ class_t *bcl_find_class_by_name(const char *name)
 
     tm_unlock();
     return res;
-} /* bcl_find_class_by_name() */
+} // bcl_find_class_by_name()
 
 /** Grows the class, dispatch and interface dispatch table and updates all the
  * threads cached table pointers */
@@ -947,7 +947,7 @@ static void load_methods(class_t *cl, class_file_t *cf, bool *finalizer)
     method_iterator_t itr;
     char *name, *descriptor;
     method_attributes_t attr;
-    uint32_t count; /* Number of methods */
+    uint32_t count; // Number of methods
     uint16_t access_flags;
     uint16_t name_index;
     uint16_t descriptor_index;
@@ -1478,7 +1478,7 @@ static method_t *resolve_method(class_t *src, uint16_t index, bool interface)
     }
 
     if (method_is_abstract(method) && !class_is_abstract(cl)) {
-        /* This should be an AbstractMethodError */
+        // This should be an AbstractMethodError
         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                 "Abstract method resolved from a non-abstract class");
     }
@@ -2072,7 +2072,7 @@ static static_field_t *resolve_static_field(class_t *src, uint16_t index)
                 "Trying to access a protected field from a non-child class of "
                 "a different package");
     } else if (!sfield_is_public(field) && !same_package(cl, src)) {
-        /* Field is package visible, if ACC_PUBLIC is set no check is needed */
+        // Field is package visible, if ACC_PUBLIC is set no check is needed
         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                 "Trying to access a package-visible field from a different "
                 "package");

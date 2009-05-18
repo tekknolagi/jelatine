@@ -698,7 +698,7 @@ static KNI_RETURNTYPE_OBJECT java_lang_Double_toString( void )
             snprintf(scratchpad, 16, "%.6E", a);
         }
 
-        scratchpad[15] = 0; /* Make sure that the string is terminated... */
+        scratchpad[15] = 0; // Make sure that the string is terminated...
         str = scratchpad;
     }
 
@@ -722,7 +722,7 @@ static KNI_RETURNTYPE_DOUBLE java_lang_Double_longBitsToDouble( void )
     KNI_ReturnDouble(val);
 } // java_lang_Double_longBitsToDouble()
 
-#endif /* JEL_FP_SUPPORT */
+#endif // JEL_FP_SUPPORT
 
 #if JEL_FP_SUPPORT
 
@@ -756,7 +756,7 @@ static KNI_RETURNTYPE_OBJECT java_lang_Float_toString( void )
             snprintf(scratchpad, 16, "%.6E", a);
         }
 
-        scratchpad[15] = 0; /* Make sure that the string is terminated... */
+        scratchpad[15] = 0; // Make sure that the string is terminated...
         str = scratchpad;
     }
 

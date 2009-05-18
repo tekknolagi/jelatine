@@ -91,7 +91,7 @@ public abstract class InputStream
     /**
      * This method marks a position in the input to which the stream can
      * be "reset" by calling the <code>reset()</code> method.  The
-     * parameter @code{readlimit} is the number of bytes that can be read
+     * parameter <code>readlimit</code> is the number of bytes that can be read
      * from the stream after setting the mark before the mark becomes
      * invalid.  For example, if <code>mark()</code> is called with a
      * read limit of 10, then when 11 bytes of data are read from the

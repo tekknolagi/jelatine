@@ -202,6 +202,8 @@ public class InputStreamReader extends Reader
 
     /**
      * Marks the current position in the underlying stream
+     * @param readLimit The number of chars that can be read before the mark
+     * becomes invalid
      * @throws IOException if an error occurs
      */
     public void mark(int readLimit) throws IOException
