@@ -1,5 +1,13 @@
 Jelatine release news.
 
+* Version 0.9.3
+===============
+- More major bugs were fixed
+- Added partial support for version 50 classfiles
+- Some code refactoring and cleanup, minor static footprint reduction
+- A small optimization, in the form of a change to the constant pool structure,
+  was added
+
 * Version 0.9.2
 ===============
 - A few major bugs which went unnoticed for a long time were fixed
