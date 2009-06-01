@@ -1206,93 +1206,75 @@ static void assign_interface_indexes(method_manager_t *mm)
 static void create_dispatch_table(class_t *cl)
 {
     method_iterator_t itr = method_itr(cl->method_manager);
-    method_t *method;
+    method_t *method, *overridden;
     method_t **parent_dtable, **new_dtable;
-    uint32_t new_count;
+    uint32_t new_count, old_count;
     bool found;
 
     if (cl->parent == NULL) {
-        /* java.lang.Object is the only class which doesn't have a parent
-         * class and so a parent dispatch table */
-        new_count = 0;
+        old_count = 0;
+        parent_dtable = NULL;
+    } else {
+        old_count = cl->parent->dtable_count;
+        parent_dtable = cl->parent->dtable;
+    }
 
-        while (method_itr_has_next(itr)) {
-            method = method_itr_get_next(&itr);
-            /* Skip static methods, initialization methods or private methods,
-             * as they are called directly and virtual dispatch does not apply
-             * to them */
-            if (method_is_static(method)
-                || method_is_init(method)
-                || method_is_private(method))
-            {
-                method_set_index(method, 0);
-                continue;
+    new_count = old_count;
+
+    while (method_itr_has_next(itr)) {
+        method = method_itr_get_next(&itr);
+
+        /* Skip static methods, initialization methods or private methods, as
+         * they are called directly and virtual dispatch does not apply to
+         * them */
+        if (method_is_static(method)
+            || method_is_init(method)
+            || method_is_private(method))
+        {
+            method_set_index(method, 0);
+            continue;
+        }
+
+        found = false;
+
+        // Look for the current method in the parent dispatch table
+        for (size_t i = 0; i < old_count; i++) {
+            overridden = parent_dtable[i];
+
+            if (method_compare(method, overridden)) {
+                /* This method overrides another method, check that it is not
+                 * final */
+                if (method_is_final(overridden)) {
+                    c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
+                            "A method overrides a final method");
+                }
+
+                if ((method_is_public(overridden) && !method_is_public(method))
+                    || (method_is_protected(overridden)
+                        && !(method_is_protected(method)
+                             || method_is_public(method))))
+                {
+                    c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
+                            "A method is overriden by another method with "
+                            "weaker access privileges");
+                }
+
+                method_set_index(method, i);
+                found = true;
+                break;
             }
+        }
 
+        if (!found) {
             method_set_index(method, new_count);
             new_count++;
-        }
-    } else {
-        new_count = cl->parent->dtable_count;
-        parent_dtable = cl->parent->dtable;
-
-        while (method_itr_has_next(itr)) {
-            method = method_itr_get_next(&itr);
-
-            /* Skip static methods, initialization methods or private methods,
-             * as they are called directly and virtual dispatch does not apply
-             * to them */
-            if (method_is_static(method)
-                || method_is_init(method)
-                || method_is_private(method))
-            {
-                method_set_index(method, 0);
-                continue;
-            }
-
-            found = false;
-
-            // Look for the current method in the parent dispatch table
-            for (size_t i = 0; i < cl->parent->dtable_count; i++) {
-                if (method_compare(method, parent_dtable[i])) {
-                    /* This method overrides another method, check that it is
-                     * not final */
-                    if (method_is_final(parent_dtable[i])) {
-                        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                                "A method overrides a final method");
-                    }
-
-                    if ((method_is_public(parent_dtable[i])
-                         && !method_is_public(method))
-                        || (method_is_protected(parent_dtable[i])
-                            && !(method_is_protected(method)
-                                 || method_is_public(method))))
-                    {
-                        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                                "A method is overriden by another method with "
-                                "weaker access privileges");
-                    }
-
-                    method_set_index(method, i);
-                    found = true;
-                    break;
-                }
-            }
-
-            if (found == false) {
-                method_set_index(method, new_count);
-                new_count++;
-            }
         }
     }
 
     new_dtable = gc_palloc(sizeof(method_t *) * new_count);
 
     // Copy the old method table in the new one
-    if (cl->parent != NULL) {
-        memcpy(new_dtable, cl->parent->dtable,
-               sizeof(method_t *) * cl->parent->dtable_count);
-    }
+    memcpy(new_dtable, parent_dtable, sizeof(method_t *) * old_count);
 
     /* Add the new methods to the new method table eventally replacing the
      * overridden ones */
