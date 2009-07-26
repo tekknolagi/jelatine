@@ -61,8 +61,8 @@ jint KNI_ThrowNew(const char *name, const char *message)
     ref = gc_new(cl);
     thread->exception = ref;
 
-    if (name) {
-        str = jstring_create_from_utf8(name);
+    if (message) {
+        str = jstring_create_from_utf8(message);
         ptr = JAVA_LANG_THROWABLE_REF2PTR(thread->exception);
         ptr->detailMessage = JAVA_LANG_STRING_PTR2REF(str);
     }
