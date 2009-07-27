@@ -25,6 +25,7 @@
 
 #include "array.h"
 #include "class.h"
+#include "kni.h"
 #include "loader.h"
 #include "memory.h"
 #include "thread.h"
@@ -109,22 +110,22 @@ size_t array_get_ref_n(array_t *array)
     }
 } // array_get_ref_n()
 
-/** C implementation of java.lang.System.arraycopy() for reference arrays
+/** C implementation of java.lang.System.arraycopy() for reference arrays.
+ * If an element is found not to be compatible with the destination array an
+ * ArrayStoreException is thrown
  * \param src A pointer to the source array
  * \param src_offset The offset in the source array
  * \param dest A pointer to the destination array
  * \param dest_offset The offset in the destination array
- * \param length The number of elements to copy
- * \returns true if the operation was successful, false if an exception must be
- * thrown */
+ * \param length The number of elements to copy */
 
-bool arraycopy_ref(array_t *src, int32_t src_offset, array_t *dest,
+void arraycopy_ref(array_t *src, int32_t src_offset, array_t *dest,
                    int32_t dest_offset, int32_t length)
 {
     class_t *src_cl;
     class_t *dest_cl = header_get_class(&(dest->header))->elem_class;
-    uintptr_t *src_data = array_ref_get_data(src);
-    uintptr_t *dest_data = array_ref_get_data(dest);
+    uintptr_t *src_data = array_ref_get_data(src) - src_offset;
+    uintptr_t *dest_data = array_ref_get_data(dest) - dest_offset;
     uintptr_t ref;
     int32_t i;
 
@@ -138,35 +139,21 @@ bool arraycopy_ref(array_t *src, int32_t src_offset, array_t *dest,
         temp_data = array_ref_get_data(temp);
 
         for (i = 0; i < length; i++) {
-            temp_data[-i] = src_data[-(i + src_offset)];
+            temp_data[-i] = src_data[-i];
         }
 
-        for (i = 0; i < length; i++) {
-            ref = temp_data[-i];
-            src_cl = header_get_class((header_t *) ref);
-
-            if (src_cl == dest_cl) {
-                dest_data[-(i + dest_offset)] = ref;
-            } else if (bcl_is_assignable(src_cl, dest_cl)) {
-                dest_data[-(i + dest_offset)] = ref;
-            } else {
-                return false;
-            }
-        }
-    } else {
-        for (i = 0; i < length; i++) {
-            ref = src_data[-(i + src_offset)];
-            src_cl = header_get_class((header_t *) ref);
-
-            if (src_cl == dest_cl) {
-                dest_data[-(i + dest_offset)] = ref; // Fast shortcut
-            } else if (bcl_is_assignable(src_cl, dest_cl)) {
-                dest_data[-(i + dest_offset)] = ref;
-            } else {
-                return false;
-            }
-        }
+        src_data = temp_data;
     }
 
-    return true;
+    for (i = 0; i < length; i++) {
+        ref = src_data[-i];
+        src_cl = header_get_class((header_t *) ref);
+
+        if ((src_cl == dest_cl) || bcl_is_assignable(src_cl, dest_cl)) {
+            dest_data[-i] = ref;
+        } else {
+            KNI_ThrowNew("java/lang/ArrayStoreException", NULL);
+            return;
+        }
+    }
 } // arraycopy_ref()
