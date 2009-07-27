@@ -1003,7 +1003,7 @@ static KNI_RETURNTYPE_VOID java_lang_System_arraycopy( void )
 {
     class_t *src_type, *dest_type;
     array_t *src_array, *dest_array;
-    uint32_t src_elem_type, dest_elem_type;
+    primitive_type_t src_elem_type, dest_elem_type;
     uint8_t *src_data, *dest_data;
 
     int32_t srcOffset, destOffset, len;

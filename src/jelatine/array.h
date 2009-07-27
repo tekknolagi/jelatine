@@ -109,7 +109,7 @@ extern uint8_t prim_to_array_types[];
  * Array interface                                                            *
  ******************************************************************************/
 
-extern bool arraycopy_ref(array_t *, int32_t, array_t *, int32_t, int32_t);
+extern void arraycopy_ref(array_t *, int32_t, array_t *, int32_t, int32_t);
 extern size_t array_get_nref_size(array_t *);
 extern size_t array_get_ref_n(array_t *);
 
