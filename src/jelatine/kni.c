@@ -57,7 +57,7 @@ jint KNI_ThrowNew(const char *name, const char *message)
     java_lang_String_t *str;
     thread_t *thread = thread_self();
 
-    cl = bcl_resolve_class_by_name(thread->fp->cl, name);
+    cl = bcl_resolve_class(thread->fp->cl, name);
     ref = gc_new(cl);
     thread->exception = ref;
 

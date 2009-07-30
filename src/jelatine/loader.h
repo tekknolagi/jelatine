@@ -40,8 +40,8 @@ extern void bcl_init( void );
 extern class_t *bcl_get_class_by_id(uint32_t);
 extern void bcl_mark( void );
 extern bool bcl_is_assignable(class_t *, class_t *);
-extern class_t *bcl_preload_class(const char *);
-extern class_t *bcl_resolve_class_by_name(class_t *, const char *);
+extern void bcl_preload_bootstrap_classes( void );
+extern class_t *bcl_resolve_class(class_t *, const char *);
 extern class_t *bcl_find_class_by_name(const char *);
 extern void bcl_link_method(class_t *, method_t *);
 extern const uint8_t *bcl_link_opcode(const method_t *, const uint8_t *,

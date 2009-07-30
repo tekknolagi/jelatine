@@ -578,7 +578,7 @@ static KNI_RETURNTYPE_OBJECT java_lang_Class_forName( void )
 
         // Try to resolve the class
         c_try {
-            cl = bcl_resolve_class_by_name(NULL, str);
+            cl = bcl_resolve_class(NULL, str);
             *cl_ref = class_get_object(cl);
         } c_catch (exception) {
             if (exception == JAVA_LANG_CLASSNOTFOUNDEXCEPTION) {

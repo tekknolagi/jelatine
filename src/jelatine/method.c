@@ -84,7 +84,7 @@ static uint8_t native_method_code[] = { WIDE, INVOKE_NATIVE };
 
 void init_dummy_methods( void )
 {
-    class_t *object = bcl_resolve_class_by_name(NULL, "java/lang/Object");
+    class_t *object = bcl_resolve_class(NULL, "java/lang/Object");
 
     halt_exception_handler.catch_type = object;
     halt_method.cp = cp_create_dummy();
@@ -362,19 +362,18 @@ void mm_add(method_manager_t *mm, char *name, char *descriptor,
         method->exception_table_length = 0;
         method->code = NULL;
     } else if (access_flags & ACC_ABSTRACT) {
-        // Make the method code point to the dummy abstract method code
+        if (attr->code_found == true) {
+            c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
+                    "Code attribute found for a method declared as abstract");
+        }
+         // Make the method code point to the dummy abstract method code
         method->max_stack = 0;
         method->max_locals = 0;
         method->code_length = 1;
         method->exception_table_length = 0;
         method->code = abstract_method_code;
         method->data.handlers = NULL;
-
-        if (attr->code_found == true) {
-            c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                    "Code attribute found for a method declared as abstract");
-        }
-    } else {
+   } else {
         if (attr->code_found == false) {
             c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                     "Java method lacks the Code attribute");
