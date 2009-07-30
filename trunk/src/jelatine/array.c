@@ -35,6 +35,19 @@
  * Globals                                                                    *
  ******************************************************************************/
 
+/** This array holds the names of the primitive-type arrays */
+
+const char *array_names[] = {
+    "[Z",
+    "[C",
+    "[F",
+    "[D",
+    "[B",
+    "[S",
+    "[I",
+    "[J"
+};
+
 /** This array holds the size in bytes of the basic array element types.
  * T_BOOLEAN is a special case as it set as having an element size of 1 byte
  * per element when in fact it uses 1 bit per element */
