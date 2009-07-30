@@ -102,6 +102,7 @@ typedef struct ref_array_t ref_array_t;
  * Globals                                                                    *
  ******************************************************************************/
 
+extern const char *array_names[];
 extern uint8_t array_elem_sizes[];
 extern uint8_t prim_to_array_types[];
 
@@ -140,6 +141,15 @@ static inline uint32_t array_length(array_t *p)
 {
     return p->length;
 } // array_length()
+
+/** Returns the name of a basic array type
+ * \param t The basic array type
+ * \returns A string holding the name of the array class */
+
+static inline const char *array_name(array_type_t t)
+{
+    return array_names[t - T_BOOLEAN];
+} // array_name()
 
 /** Returns the size of an element of the specified basic array type
  * \param t The basic array type

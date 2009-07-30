@@ -2390,7 +2390,7 @@ const uint8_t *bcl_link_opcode(const method_t *method, const uint8_t *lpc,
             break;
 
         case NEWARRAY_PRELINK:
-            bcl_resolve_class(NULL, class_bootstrap_name(index));
+            bcl_resolve_class(NULL, array_name(index));
             opcode = NEWARRAY;
             break;
 
