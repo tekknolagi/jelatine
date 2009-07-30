@@ -99,7 +99,7 @@ struct method_t {
     const_pool_t *cp; ///< Method's constant pool
     uint16_t access_flags; ///< Access flags
     uint16_t args_size; ///< Size of the arguments passed
-    uint16_t index; ///< Global or local dispatch table index
+    uint16_t index; ///< Dispatch table index
     uint16_t max_stack; ///< Maximum number of operand stack slots
     uint16_t max_locals; ///< Maximum number of used locals
     uint16_t return_type; ///< Return type for native methods

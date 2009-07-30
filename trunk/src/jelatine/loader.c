@@ -87,6 +87,7 @@ static void load_attributes(class_t *, class_file_t *);
 static bool same_package(const class_t *, const class_t *);
 static void grow_class_table( void );
 static class_t *resolve_class(class_t *, uint16_t);
+static class_t *preload_class(const char *, int32_t, size_t, size_t);
 static void initialize_class(thread_t *, class_t *);
 
 /*******************************************************************************
@@ -263,63 +264,6 @@ bool bcl_is_assignable(class_t *src, class_t *dest)
     }
 } // bcl_is_assignable()
 
-/** Asks the class to be preloaded w/o linking it or pulling any data from
- * storage
- *
- * This function is used for preloading specific classes which need to be
- * available during the bootstrap cycle, it also initializes (for selected
- * classes) the ref_n and nref_size fields so that if objects of those classes
- * are created before the actual classes are loaded the garbage-collector can
- * still safely handle them.
- *
- * \param name The class name
- * \returns A pointer to the preloaded class */
-
-class_t *bcl_preload_class(const char *name)
-{
-    class_t *cl;
-    int32_t id;
-
-    tm_lock();
-    cl = bcl_find_class_by_name(name);
-
-    if (cl == NULL) {
-        cl = gc_palloc(sizeof(class_t));
-        id = class_bootstrap_id(name);
-
-        if (id < 0) {
-            if (bcl.used >= bcl.capacity) {
-                grow_class_table();
-            }
-
-            id = bcl.used;
-            cl->id = bcl.used;
-            bcl.used++;
-            bcl.class_table[id] = cl;
-        } else {
-            if (id == JAVA_LANG_STRING) {
-                cl->ref_n = JAVA_LANG_STRING_REF_N;
-                cl->nref_size = JAVA_LANG_STRING_NREF_SIZE;
-            } else if (id == JAVA_LANG_CLASS) {
-                cl->ref_n = JAVA_LANG_CLASS_REF_N;
-                cl->nref_size = JAVA_LANG_CLASS_NREF_SIZE;
-            } else if (id == JAVA_LANG_THREAD) {
-                cl->ref_n = JAVA_LANG_THREAD_REF_N;
-                cl->nref_size = JAVA_LANG_THREAD_NREF_SIZE;
-            }
-
-            cl->id = id;
-            bcl.class_table[id] = cl;
-        }
-
-        cl->name = utf8_intern(name, strlen(name));
-        class_set_state(cl, CS_PRELOADED);
-    }
-
-    tm_unlock();
-    return cl;
-} // bcl_preload_class()
-
 /*******************************************************************************
  * Class related local functions                                               *
  ******************************************************************************/
@@ -371,7 +315,7 @@ static void load_class(class_t *cl)
             memcpy(str, cl->name + 1, len - 1);
             str[len - 1] = 0;
 
-            elem = bcl_resolve_class_by_name(NULL, str);
+            elem = bcl_resolve_class(NULL, str);
             cl->elem_class = elem;
             cl->access_flags = elem->access_flags | ACC_ARRAY;
 
@@ -389,7 +333,7 @@ static void load_class(class_t *cl)
             memcpy(str, cl->name + 2, len - 3);
             str[len - 3] = 0;
 
-            elem = bcl_resolve_class_by_name(NULL, str);
+            elem = bcl_resolve_class(NULL, str);
             cl->elem_class = elem;
             cl->access_flags = elem->access_flags | ACC_ARRAY;
 
@@ -477,20 +421,74 @@ static class_t *resolve_class(class_t *orig, uint16_t index)
     }
 
     name = cp_get_class_name(orig->const_pool, index);
-    cl = bcl_resolve_class_by_name(orig, name);
+    cl = bcl_resolve_class(orig, name);
     cp_set_tag_and_data(orig->const_pool, index, CONSTANT_Class_resolved, cl);
 
     return cl;
 } // resolve_class()
 
-/** Resolves a class using its name
+/** Preloads a class, the class structure is allocated and initialized only
+ * with its name, id and layout information. This is enough to enable the
+ * memory allocator to create new objects of the said class.
+ * Note that this function doesn't take the class lock, hence it can be used
+ * only during the bootstrap phase, all subsequent classes will be loaded
+ * using bcl_resolve_class()
+ * \param name The name of the class
+ * \param id The class' id
+ * \param ref_n The number of references of a class' instance
+ * \param nref_size The size of the non-reference area of a class' instance
+ * \returns A pointer to the preloaded class */
+
+static class_t *preload_class(const char *name, int32_t id, size_t ref_n,
+                              size_t nref_size)
+{
+    class_t *cl = gc_palloc(sizeof(class_t));
+
+    cl->name = utf8_intern(name, strlen(name));
+    cl->id = id;
+    cl->ref_n = ref_n;
+    cl->nref_size = nref_size;
+
+    class_set_state(cl, CS_PRELOADED);
+    bcl.class_table[id] = cl;
+
+    return cl;
+}
+
+/** Preload the classes needed during the bootstrap process */
+
+void bcl_preload_bootstrap_classes( void )
+{
+    class_t *char_array_cl, *str_cl;
+
+    // Preload the java.lang.Class class
+    preload_class("java/lang/Class", JAVA_LANG_CLASS, JAVA_LANG_CLASS_REF_N,
+                  JAVA_LANG_CLASS_NREF_SIZE);
+
+    // Preload the char array class
+    char_array_cl = preload_class("[C", JELATINE_CHAR_ARRAY, 0, 0);
+
+    // Preload the java.lang.String class
+    str_cl = preload_class("java/lang/String", JAVA_LANG_STRING,
+                           JAVA_LANG_STRING_REF_N, JAVA_LANG_STRING_NREF_SIZE);
+
+    // Set the classes needed by the Java string manager
+    jsm_set_classes(str_cl, char_array_cl);
+
+    // Preload the java.lang.Thread class
+    preload_class("java/lang/Thread", JAVA_LANG_THREAD, JAVA_LANG_THREAD_REF_N,
+                  JAVA_LANG_THREAD_NREF_SIZE);
+} // bcl_preload_bootstrap_classes()
+
+/** Resolves a class
  * \param orig The originating class
  * \param name The class' name
  * \returns A pointer to the class */
 
-class_t *bcl_resolve_class_by_name(class_t *orig, const char *name)
+class_t *bcl_resolve_class(class_t *orig, const char *name)
 {
     class_t *cl, *temp;
+    int32_t id;
     int exception;
 
     tm_lock();
@@ -508,17 +506,34 @@ class_t *bcl_resolve_class_by_name(class_t *orig, const char *name)
             if (class_is_being_linked(cl)) {
                 c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                         "Circular dependency found in the class graph");
-            } else {
-                if (class_is_preloaded(cl)) {
-                    load_class(cl);
+            }
+
+            // If the class has only being preloaded we need to load it
+            if (class_is_preloaded(cl)) {
+                load_class(cl);
+            }
+
+            /* If the class is not being linked it is either already linnked,
+               initializing or initialized, thus we can return safely */
+        } else {
+            cl = gc_palloc(sizeof(class_t));
+            id = class_bootstrap_id(name);
+
+            /* If this is not one of the bootstrap classes we must assing it
+             * a new id in the class table */
+            if (id < 0) {
+                if (bcl.used >= bcl.capacity) {
+                    grow_class_table();
                 }
 
-                /* If the class is not in the preloaded state it is either
-                 * linked, initializing or initialized, thus we can return
-                 * safely */
+                id = bcl.used;
+                bcl.used++;
             }
-        } else {
-            cl = bcl_preload_class(name);
+
+            cl->id = id;
+            bcl.class_table[id] = cl;
+            cl->name = utf8_intern(name, strlen(name));
+
             load_class(cl);
         }
 
@@ -544,7 +559,7 @@ class_t *bcl_resolve_class_by_name(class_t *orig, const char *name)
 
     tm_unlock();
     return cl;
-} // bcl_resolve_class_by_name()
+} // bcl_resolve_class()
 
 /** Executes the static initialization of class
  * \param thread The thread trying to initialize the class
@@ -1562,7 +1577,7 @@ static exception_handler_t *load_exception_handlers(class_t *cl,
         if (index == 0) {
             // Catch any exception
             handlers[i].catch_type =
-                bcl_resolve_class_by_name(cl, "java/lang/Object");
+                bcl_resolve_class(cl, "java/lang/Object");
         } else {
             // Catch only the specified type
             handlers[i].catch_type = resolve_class(cl, index);
@@ -2375,7 +2390,7 @@ const uint8_t *bcl_link_opcode(const method_t *method, const uint8_t *lpc,
             break;
 
         case NEWARRAY_PRELINK:
-            bcl_resolve_class_by_name(NULL, class_bootstrap_name(index));
+            bcl_resolve_class(NULL, class_bootstrap_name(index));
             opcode = NEWARRAY;
             break;
 
@@ -2409,7 +2424,7 @@ const uint8_t *bcl_link_opcode(const method_t *method, const uint8_t *lpc,
                 temp[len + 3] = 0;
             }
 
-            cl = bcl_resolve_class_by_name(cl, temp);
+            cl = bcl_resolve_class(cl, temp);
             gc_free(temp);
             opcode = ANEWARRAY;
             store_int16_un(pc + 1, class_get_id(cl));

@@ -121,7 +121,7 @@ void vm_run(const char *classpath, const char *bootclasspath, char *main,
 {
     char *main_class;
     thread_t main_thread;
-    class_t *cl, *str_cl, *char_array_cl, *thread_cl;
+    class_t *cl, *thread_cl;
     method_t *method;
     uintptr_t args, ref;
     uintptr_t *args_data;
@@ -150,20 +150,16 @@ void vm_run(const char *classpath, const char *bootclasspath, char *main,
                     "Invalid class name: %s", main_class);
         }
 
-        /* java.lang.String, java.lang.Class and the array class [C must be
-         * preloaded as they are needed by constant string objects and class
-         * objects respectively */
-        bcl_preload_class("java/lang/Class");
-        char_array_cl = bcl_preload_class("[C");
-        str_cl = bcl_preload_class("java/lang/String");
-        thread_cl = bcl_preload_class("java/lang/Thread");
-        jsm_set_classes(str_cl, char_array_cl);
+        /* java.lang.String, java.lang.Class, java.lang.Thread and the array
+         * class [C must be preloaded as they are needed by constant string
+         * objects and class objects respectively */
+        bcl_preload_bootstrap_classes();
 
         // Resolve the bootstrap classes
-        bcl_resolve_class_by_name(NULL, "java/lang/Object");
-        bcl_resolve_class_by_name(NULL, "[C");
-        bcl_resolve_class_by_name(NULL, "java/lang/String");
-        bcl_resolve_class_by_name(NULL, "[Ljava/lang/String;");
+        bcl_resolve_class(NULL, "java/lang/Object");
+        bcl_resolve_class(NULL, "[C");
+        bcl_resolve_class(NULL, "java/lang/String");
+        thread_cl = bcl_resolve_class(NULL, "java/lang/Thread");
 
         // Enable the garbage-collector now that it is safe to do so
         gc_enable(true);
@@ -174,7 +170,7 @@ void vm_run(const char *classpath, const char *bootclasspath, char *main,
 #if JEL_FINALIZER
         /* Create the finalizer thread: find the jelatine.VMFinalizer class and
          * find its run() method */
-        cl = bcl_resolve_class_by_name(NULL, "jelatine/VMFinalizer");
+        cl = bcl_resolve_class(NULL, "jelatine/VMFinalizer");
         method = mm_get(cl->method_manager, "run", "()V");
         assert(method != NULL);
 
@@ -188,7 +184,7 @@ void vm_run(const char *classpath, const char *bootclasspath, char *main,
         thread_pop_root();
 #endif // JEL_FINALIZER
 
-        cl = bcl_resolve_class_by_name(NULL, main_class);
+        cl = bcl_resolve_class(NULL, main_class);
         // Find the main() method
         method = mm_get(cl->method_manager, "main", "([Ljava/lang/String;)V");
 
@@ -207,8 +203,7 @@ void vm_run(const char *classpath, const char *bootclasspath, char *main,
         method->access_flags |= ACC_MAIN;
 
         // Prepare the 'args' array holding command line arguments
-        args = gc_new_array_ref(bcl_resolve_class_by_name(NULL,
-                                                         "[Ljava/lang/String;"),
+        args = gc_new_array_ref(bcl_resolve_class(NULL, "[Ljava/lang/String;"),
                                 jargc);
         args_data = array_ref_get_data((array_t *) args);
         thread_push_root(&args);

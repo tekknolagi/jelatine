@@ -3582,7 +3582,7 @@ throw_exception:
         SAVE_STATE;
         name = class_bootstrap_name(thread->exception);
         thread->exception = JNULL; // Needed because of the GC
-        cl = bcl_resolve_class_by_name(fp->cl, name);
+        cl = bcl_resolve_class(fp->cl, name);
 
 #if JEL_PRINT
         if (opts_get_print_opcodes()) {
