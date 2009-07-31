@@ -76,6 +76,9 @@ typedef struct loader_t loader_t;
 /** Bootstrap class loader */
 static loader_t bcl;
 
+/** Basic array classes */
+class_t *array_classes[8] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
 /*******************************************************************************
  * Class-related local function prototypes                                     *
  ******************************************************************************/
@@ -359,6 +362,7 @@ static void load_class(class_t *cl)
             cl->elem_class = NULL;
             cl->access_flags = ACC_FINAL | ACC_ABSTRACT | ACC_PUBLIC
                                | ACC_ARRAY;
+            bcl_set_array_class(prim_to_array_type(cl->elem_type), cl);
         }
 
         /* Set up the other fields as if the class was inheriting from
@@ -467,6 +471,7 @@ void bcl_preload_bootstrap_classes( void )
 
     // Preload the char array class
     char_array_cl = preload_class("[C", JELATINE_CHAR_ARRAY, 0, 0);
+    bcl_set_array_class(T_CHAR, char_array_cl);
 
     // Preload the java.lang.String class
     str_cl = preload_class("java/lang/String", JAVA_LANG_STRING,
