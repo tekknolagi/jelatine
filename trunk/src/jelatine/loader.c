@@ -380,7 +380,7 @@ static void load_class(class_t *cl)
     }
 
     // Create the embedded Java class object
-    jcl = bcl_find_class_by_name("java/lang/Class");
+    jcl = bcl_find_class("java/lang/Class");
     cl->obj = gc_new(jcl);
     JAVA_LANG_CLASS_REF2PTR(cl->obj)->id = cl->id;
     JAVA_LANG_CLASS_REF2PTR(cl->obj)->is_array = class_is_array(cl) ? 1 : 0;
@@ -492,7 +492,7 @@ class_t *bcl_resolve_class(class_t *orig, const char *name)
     int exception;
 
     tm_lock();
-    cl = bcl_find_class_by_name(name);
+    cl = bcl_find_class(name);
 
     c_try {
         if (cl != NULL) {
@@ -896,7 +896,7 @@ static bool same_package(const class_t *cl1, const class_t *cl2)
  * \param name The class' name
  * \returns A pointer to the class or NULL if none is found */
 
-class_t *bcl_find_class_by_name(const char *name)
+class_t *bcl_find_class(const char *name)
 {
     class_t *res = NULL;
 
@@ -913,7 +913,7 @@ class_t *bcl_find_class_by_name(const char *name)
 
     tm_unlock();
     return res;
-} // bcl_find_class_by_name()
+} // bcl_find_class()
 
 /** Grows the class, dispatch and interface dispatch table and updates all the
  * threads cached table pointers */
