@@ -208,7 +208,7 @@ static inline jint KNI_GetVersion( void )
 
 static inline void KNI_FindClass(const char *name, jclass classHandle)
 {
-    class_t *cl = bcl_find_class_by_name(name);
+    class_t *cl = bcl_find_class(name);
 
     if (cl != NULL) {
         *classHandle = class_get_object(cl);

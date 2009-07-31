@@ -702,7 +702,7 @@ void thread_init(thread_t *thread)
 
 uintptr_t thread_create_main(thread_t *thread, method_t *run, uintptr_t *args)
 {
-    class_t *thread_cl = bcl_find_class_by_name("java/lang/Thread");
+    class_t *thread_cl = bcl_find_class("java/lang/Thread");
     size_t stack_size = opts_get_stack_size();
 
     /* Contrary to the startup of a 'regular' thread we do not initialize nor
