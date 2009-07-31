@@ -294,7 +294,7 @@ uintptr_t gc_new(class_t *cl)
 
 uintptr_t gc_new_array_nonref(array_type_t type, int32_t count)
 {
-    class_t *cl = bcl_get_class_by_id(type);
+    class_t *cl = bcl_array_class(type);
     size_t size;
     array_t *array;
     uintptr_t ptr;
@@ -367,12 +367,6 @@ uintptr_t gc_new_array_ref(class_t *cl, int32_t count)
 
 uintptr_t gc_new_multiarray(class_t *cl, uint8_t dimensions, jword_t *counts)
 {
-    /* This array is initialized so that the array types correspond to the
-     * basic types of the array elements */
-    const uint8_t type_conv[] = {
-        T_BYTE, T_BOOLEAN, T_CHAR, T_SHORT, T_INT, T_FLOAT, T_LONG, T_DOUBLE
-    };
-
     uintptr_t *references;
     uintptr_t ref;
     int32_t count = *((int32_t *) counts);
@@ -384,7 +378,8 @@ uintptr_t gc_new_multiarray(class_t *cl, uint8_t dimensions, jword_t *counts)
 
     if (dimensions == 1) {
         if (cl->elem_type != PT_REFERENCE) {
-            return gc_new_array_nonref(type_conv[cl->elem_type], count);
+            return gc_new_array_nonref(prim_to_array_type(cl->elem_type),
+                                       count);
         } else {
             return gc_new_array_ref(cl, count);
         }

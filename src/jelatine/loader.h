@@ -29,8 +29,16 @@
 
 #include "wrappers.h"
 
+#include "array.h"
 #include "class.h"
+#include "opcodes.h"
 #include "util.h"
+
+/******************************************************************************
+ * Globals                                                                    *
+ ******************************************************************************/
+
+extern class_t *array_classes[];
 
 /******************************************************************************
  * Loader interface                                                           *
@@ -46,5 +54,30 @@ extern class_t *bcl_find_class(const char *);
 extern void bcl_link_method(class_t *, method_t *);
 extern const uint8_t *bcl_link_opcode(const method_t *, const uint8_t *,
                                       internal_opcode_t);
+
+/** Return the class of a basic array type.
+ * The class must have already been resolved otherwise this function will
+ * return a NULL pointer
+ * \param type The basic array type
+ * \returns The array class associated with this basic type */
+
+static inline class_t *bcl_array_class(array_type_t type)
+{
+    assert((type >= T_BOOLEAN) && (type <= T_LONG)
+           && array_classes[type - T_BOOLEAN]);
+
+    return array_classes[type - T_BOOLEAN];
+} // bcl_array_class()
+
+/** Sets the class for the specified basic array type
+ * \param type The basic array type
+ * \param cl A pointer to the array class */
+
+static inline void bcl_set_array_class(array_type_t type, class_t *cl)
+{
+    assert((type >= T_BOOLEAN) && (type <= T_LONG));
+
+    array_classes[type - T_BOOLEAN] = cl;
+} // bcl_set_array_class()
 
 #endif // !JELATINE_LOADER_H
