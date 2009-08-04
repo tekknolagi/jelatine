@@ -142,8 +142,7 @@ struct class_file_t {
         ZZIP_FILE *compressed; ///< Compressed file
 #endif // JEL_JARFILE_SUPPORT
     } file; ///< File handle
-    long pos; ///< Current position in the class-file
-    long size; ///< Size of this class-file
+
     bool jar; ///< True if the file is inside a JAR archive
 };
 
@@ -160,21 +159,9 @@ extern uint8_t cf_load_u1(class_file_t *);
 extern uint16_t cf_load_u2(class_file_t *);
 extern uint32_t cf_load_u4(class_file_t *);
 extern void cf_seek(class_file_t *, long, int);
+extern long cf_tell(class_file_t *);
 #if JEL_JARFILE_SUPPORT
 extern ZZIP_FILE *jar_get_resource(const char *);
 #endif // JEL_JARFILE_SUPPORT
-
-/******************************************************************************
- * Class file inlined functions                                               *
- ******************************************************************************/
-
-/** Returns the position inside the current class-file
- * \param cf A pointer to an open class-file
- * \returns An integer holding the current position inside the class-file */
-
-static inline long cf_tell(class_file_t *cf)
-{
-    return cf->pos;
-} // cf_tell()
 
 #endif // !JELATINE_CLASSFILE_H

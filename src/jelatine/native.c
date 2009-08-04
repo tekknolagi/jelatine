@@ -581,7 +581,7 @@ static KNI_RETURNTYPE_OBJECT java_lang_Class_forName( void )
             cl = bcl_resolve_class(NULL, str);
             *cl_ref = class_get_object(cl);
         } c_catch (exception) {
-            if (exception == JAVA_LANG_CLASSNOTFOUNDEXCEPTION) {
+            if (exception == JAVA_LANG_NOCLASSDEFFOUNDERROR) {
                 c_clear_exception();
                 KNI_ThrowNew("java/lang/ClassNotFoundException", NULL);
             } else {
