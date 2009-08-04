@@ -261,16 +261,6 @@ extern void c_print_exception(int);
 #define c_rethrow(exc) longjmp(*(thread_self()->c_exception.buf), (exc))
 
 /******************************************************************************
- * Non-failing wrappers for ANSI C stdio.h functions                          *
- ******************************************************************************/
-
-extern FILE *efopen(const char *, const char *);
-extern void efclose(FILE *);
-extern void efseek(FILE *, long, int);
-extern long eftell(FILE *);
-extern void efread(void *, size_t, size_t, FILE *);
-
-/******************************************************************************
  * Time related functionality                                                 *
  ******************************************************************************/
 

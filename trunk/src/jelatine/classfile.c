@@ -64,7 +64,7 @@ typedef struct classpath_t classpath_t;
 static classpath_t *classpath;
 
 /******************************************************************************
- * Classpath local functions prototypes                                       *
+ * Local functions prototypes                                                 *
  ******************************************************************************/
 
 static void adapt_classpath_string(path_t *, const char *, size_t);
@@ -167,13 +167,11 @@ static class_file_t *cf_open_with_classpath(const char *name, const path_t *cp)
 {
 #if JEL_JARFILE_SUPPORT
     ZZIP_FILE *zzip_file;
-    ZZIP_STAT stat;
 #endif // JEL_JARFILE_SUPPORT
     FILE *file = NULL;
     class_file_t *cf;
-    int exception;
     char *path;
-    size_t cp_len, size;
+    size_t cp_len;
     size_t cl_len = strlen(name);
 
 #if JEL_JARFILE_SUPPORT
@@ -184,48 +182,37 @@ static class_file_t *cf_open_with_classpath(const char *name, const path_t *cp)
         strncpy(path, name, cl_len + 1);
         strncat(path, ".class", cl_len + strlen(".class") + 1);
         zzip_file = zzip_file_open(cp->jar, path, 0);
-        gc_free(path);
 
         if (zzip_file == NULL) {
             return NULL;
         }
 
-        zzip_file_stat(zzip_file, &stat);
-        size = stat.st_size;
-
         cf = gc_malloc(sizeof(class_file_t));
         cf->file.compressed = zzip_file;
         cf->jar = true;
-        cf->size = size;
+    } else {
+#endif // JEL_JARFILE_SUPPORT
+        /* Append the class name to the classpath and add the .class suffix to
+         * the resulting string */
+        cp_len = strlen(cp->str);
+        path = gc_malloc(cp_len + cl_len + strlen(".class") + 1);
+        strncpy(path, cp->str, cp_len + 1);
+        strncat(path, name, cp_len + cl_len + 1);
+        strncat(path, ".class", cp_len + cl_len + strlen(".class") + 1);
 
-        return cf;
+        file = fopen(path, "r");
+
+        if (file == NULL) {
+            return NULL;
+        }
+
+        cf = gc_malloc(sizeof(class_file_t));
+        cf->file.plain = file;
+#if JEL_JARFILE_SUPPORT
     }
 #endif // JEL_JARFILE_SUPPORT
 
-    /* Append the class name to the classpath and add the .class suffix to the
-     * resulting string */
-    cp_len = strlen(cp->str);
-    path = gc_malloc(cp_len + cl_len + strlen(".class") + 1);
-    strncpy(path, cp->str, cp_len + 1);
-    strncat(path, name, cp_len + cl_len + 1);
-    strncat(path, ".class", cp_len + cl_len + strlen(".class") + 1);
-
-    c_try {
-        file = efopen(path, "r");
-    } c_catch (exception) {
-        gc_free(path);
-        c_clear_exception();
-        return NULL;
-    }
-
     gc_free(path);
-    efseek(file, 0, SEEK_END);
-    size = ftell(file);
-    efseek(file, 0, SEEK_SET);
-
-    cf = gc_malloc(sizeof(class_file_t));
-    cf->file.plain = file;
-    cf->size = size;
 
     return cf;
 } // cf_open_with_classpath()
@@ -263,21 +250,19 @@ class_file_t *cf_open(const char *name)
 } // cf_open()
 
 /** Closes a class file and disposes the relevant structure
- * \param cf A pointer to the class_file_y structure to be closed and disposed
+ * \param cf A pointer to the class_file_t structure to be closed and disposed
  */
 
 void cf_close(class_file_t *cf)
 {
-    assert(cf);
-
 #if JEL_JARFILE_SUPPORT
     if (cf->jar) {
         zzip_file_close(cf->file.compressed);
     } else {
-        efclose(cf->file.plain);
+#endif
+        fclose(cf->file.plain);
+#if JEL_JARFILE_SUPPORT
     }
-#else
-    efclose(cf->file.plain);
 #endif // JEL_JARFILE_SUPPORT
 
     gc_free(cf);
@@ -291,24 +276,24 @@ void cf_close(class_file_t *cf)
 uint8_t cf_load_u1(class_file_t *cf)
 {
     uint8_t data;
+    size_t res;
 
-    if ((cf->pos + 1) <= cf->size) {
 #if JEL_JARFILE_SUPPORT
-        if (cf->jar) {
-            zzip_file_read(cf->file.compressed, &data, 1);
-        } else {
-            data = fgetc(cf->file.plain);
-        }
-#else
-        data = fgetc(cf->file.plain);
+    if (cf->jar) {
+        res = zzip_file_read(cf->file.compressed, &data, 1);
+    } else {
+#endif // JEL_JARFILE_SUPPORT
+        res = fread(&data, 1, 1, cf->file.plain);
+#if JEL_JARFILE_SUPPORT
+    }
 #endif // JEL_JARFILE_SUPPORT
 
-        cf->pos++;
-        return data;
-    } else {
+    if (res != 1) {
         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                "Reading past the end of the class file");
+                "Unable to read from a class file");
     }
+
+    return data;
 } // cf_load_u1()
 
 /** Reads a two-bytes value from the provided class-file, throws an exception if
@@ -318,27 +303,25 @@ uint8_t cf_load_u1(class_file_t *cf)
 
 uint16_t cf_load_u2(class_file_t *cf)
 {
-    uint16_t result;
     uint8_t data[2];
+    size_t res;
 
-    if ((cf->pos + 2) <= cf->size) {
 #if JEL_JARFILE_SUPPORT
-        if (cf->jar) {
-            zzip_file_read(cf->file.compressed, data, 2);
-        } else {
-            fread(data, 2, 1, cf->file.plain);
-        }
-#else
-        fread(data, 2, 1, cf->file.plain);
+    if (cf->jar) {
+        res = zzip_file_read(cf->file.compressed, data, 2);
+    } else {
+#endif // JEL_JARFILE_SUPPORT
+        res = fread(data, 1, 2, cf->file.plain);
+#if JEL_JARFILE_SUPPORT
+    }
 #endif // JEL_JARFILE_SUPPORT
 
-        result = (data[0] << 8) | data[1];
-        cf->pos += 2;
-        return result;
-    } else {
+    if (res != 2) {
         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                "Reading past the end of the class file");
+                "Unable to read from a class file");
     }
+
+    return (data[0] << 8) | data[1];
 } // cf_load_u2()
 
 /** Reads a four-bytes value from the provided class-file, throws an exception
@@ -348,27 +331,25 @@ uint16_t cf_load_u2(class_file_t *cf)
 
 uint32_t cf_load_u4(class_file_t *cf)
 {
-    uint32_t result;
     uint8_t data[4];
+    size_t res;
 
-    if ((cf->pos + 4) <= cf->size) {
 #if JEL_JARFILE_SUPPORT
-        if (cf->jar) {
-            zzip_file_read(cf->file.compressed, data, 4);
-        } else {
-            fread(data, 4, 1, cf->file.plain);
-        }
-#else
-        fread(data, 4, 1, cf->file.plain);
+    if (cf->jar) {
+        res = zzip_file_read(cf->file.compressed, data, 4);
+    } else {
+#endif // JEL_JARFILE_SUPPORT
+        res = fread(data, 1, 4, cf->file.plain);
+#if JEL_JARFILE_SUPPORT
+    }
 #endif // JEL_JARFILE_SUPPORT
 
-        result = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
-        cf->pos += 4;
-        return result;
-    } else {
+    if (res != 4) {
         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                "Reading past the end of the class file");
+                "Unable to read from a class file");
     }
+
+    return (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
 } // cf_load_u4()
 
 /** Seeks to the position specified by the \a offset parameter, throws an
@@ -381,29 +362,49 @@ uint32_t cf_load_u4(class_file_t *cf)
 
 void cf_seek(class_file_t *cf, long offset, int whence)
 {
-    assert(whence == SEEK_CUR || whence == SEEK_SET);
-
-    if (whence == SEEK_CUR) {
-        cf->pos += offset;
-    } else {
-        cf->pos = offset;
-    }
-
-    if ((cf->pos > cf->size) || (cf->pos < 0)) {
-        c_throw(JAVA_LANG_VIRTUALMACHINEERROR,
-                "Seeking past the end of the class file");
-    }
+    long res;
 
 #if JEL_JARFILE_SUPPORT
     if (cf->jar) {
-        zzip_seek(cf->file.compressed, cf->pos, SEEK_SET);
+        res = zzip_seek(cf->file.compressed, offset, whence);
     } else {
-        efseek(cf->file.plain, cf->pos, SEEK_SET);
-    }
-#else
-    efseek(cf->file.plain, cf->pos, SEEK_SET);
 #endif // JEL_JARFILE_SUPPORT
+        res = fseek(cf->file.plain, offset, whence);
+#if JEL_JARFILE_SUPPORT
+    }
+#endif // JEL_JARFILE_SUPPORT
+
+    if (res < 0) {
+        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
+                "Unable seek in a class file");
+    }
 } // cf_seek()
+
+/** Returns the position inside the current class-file
+ * \param cf A pointer to an open class-file
+ * \returns An integer holding the current position inside the class-file */
+
+long cf_tell(class_file_t *cf)
+{
+    long pos;
+
+#if JEL_JARFILE_SUPPORT
+    if (cf->jar) {
+        pos = zzip_tell(cf->file.compressed);
+    } else {
+#endif // JEL_JARFILE_SUPPORT
+        pos = ftell(cf->file.plain);
+#if JEL_JARFILE_SUPPORT
+    }
+#endif // JEL_JARFILE_SUPPORT
+
+    if (pos < 0) {
+        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
+                "Unable to get the current offset in a class file");
+    }
+
+    return pos;
+} // cf_tell()
 
 #if JEL_JARFILE_SUPPORT
 
