@@ -31,50 +31,6 @@
 #include "util.h"
 
 /******************************************************************************
- * Local declarations                                                         *
- ******************************************************************************/
-
-/** \var bootstrap_classes
- * Names of the different bootstrap classes */
-
-static char *bootstrap_classes[] =
-{
-    "",
-    "",
-    "",
-    "",
-    "[Z",
-    "[C",
-    "[F",
-    "[D",
-    "[B",
-    "[S",
-    "[I",
-    "[J",
-    "java/lang/Object",
-    "java/lang/Class",
-    "java/lang/String",
-    "java/lang/Thread",
-    "java/lang/Throwable",
-    "java/lang/Error",
-    "java/lang/NoClassDefFoundError",
-    "java/lang/VirtualMachineError",
-    "java/lang/Exception",
-    "java/lang/RuntimeException",
-    "java/lang/IllegalMonitorStateException",
-    "java/lang/ArithmeticException",
-    "java/lang/ArrayStoreException",
-    "java/lang/IndexOutOfBoundsException",
-    "java/lang/ArrayIndexOutOfBoundsException",
-    "java/lang/NullPointerException",
-    "java/lang/NegativeArraySizeException",
-    "java/lang/ClassCastException",
-    "java/lang/ClassNotFoundException",
-    "java/lang/ref/Reference",
-    "java/lang/ref/WeakReference"
-};
-
-/******************************************************************************
  * Interface manager implementation                                           *
  ******************************************************************************/
 
@@ -143,32 +99,6 @@ bool im_is_present(interface_manager_t *im, class_t *interface)
 /******************************************************************************
  * Class implementation                                                       *
  ******************************************************************************/
-
-/** Checks if a class is a bootstrap class and returns its id
- * \param name The class' name
- * \returns An id if the class is a bootstrap class or -1 */
-
-int32_t class_bootstrap_id(const char *name)
-{
-    for (size_t i = 0; i < JELATINE_PREDEFINED_CLASSES_N; i++) {
-        if (strcmp(bootstrap_classes[i], name) == 0) {
-            return i;
-        }
-    }
-
-    return -1;
-} // class_bootstrap_id()
-
-/** Return the name corresponding to the class id of a bootstrap class
- * \param id The class id
- * \returns The class name if the id corresponds to a bootstrap class */
-
-char *class_bootstrap_name(uint32_t id)
-{
-    assert(id < JELATINE_PREDEFINED_CLASSES_N);
-
-    return bootstrap_classes[id];
-} // class_bootstrap_name()
 
 /** Returns true if \a child is a child class of \a parent
  * \param parent The potentially parent class

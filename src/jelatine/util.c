@@ -253,6 +253,11 @@ void c_clear_exception( void )
 
 void c_print_exception(int exc)
 {
+    static const char *names[] = {
+        "java.lang.VirtualMachineError",
+        "java.lang.NoClassDefFoundError"
+    };
+
     thread_t *self = thread_self();
     const char *desc = self->c_exception.description;
 
@@ -262,13 +267,13 @@ void c_print_exception(int exc)
            "   description:\t\t%s\n"
            "   file:\t\t%s\n"
            "   line:\t\t%d\n",
-           class_bootstrap_name(exc), desc ? desc : "",
-           self->c_exception.file, self->c_exception.line);
+           names[exc], desc ? desc : "", self->c_exception.file,
+           self->c_exception.line);
 #else
     printf("Thrown exception:\n"
            "    type:\t\t%s\n"
            "    description:\t\t%s\n",
-           class_bootstrap_name(exc), desc ? desc : "");
+           names[exc], desc ? desc : "");
 #endif // !NDEBUG
 } // c_print_exception()
 
