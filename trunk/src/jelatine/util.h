@@ -214,6 +214,16 @@ static inline void store_int32_un_internal(char *dst, int32_t val)
  * Exception handling                                                         *
  ******************************************************************************/
 
+/** Error/exception classes as seen by the C exceptions */
+
+enum c_exception_class_t {
+    JAVA_LANG_VIRTUALMACHINEERROR, ///< java.lang.VirtualMachineError class
+    JAVA_LANG_NOCLASSDEFFOUNDERROR ///< java.lang.NoClassDefFoundError class
+};
+
+/** typedef for the ::enum c_exception_class_t */
+typedef enum c_exception_class_t c_exception_class_t;
+
 /** 'try' clause of a C pseudo-exception block. Pseudo-exceptions can be thrown
  * inside this block by using c_throw() */
 

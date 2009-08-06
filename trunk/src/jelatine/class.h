@@ -121,50 +121,6 @@ static inline struct class_t *interface_itr_get_next(interface_iterator_t *itr)
  * Class type definition                                                      *
  ******************************************************************************/
 
-/** Declaration of the ids of some of the system classes */
-
-enum classes_t {
-    JELATINE_RESERVED0 = 0, ///< Reserved entry in the class table
-    JELATINE_RESERVED1 = 1, ///< Reserved entry in the class table
-    JELATINE_RESERVED2 = 2, ///< Reserved entry in the class table
-    JELATINE_RESERVED3 = 3, ///< Reserved entry in the class table
-    JELATINE_BOOLEAN_ARRAY = 4, ///< Array of booleans
-    JELATINE_CHAR_ARRAY = 5, ///< Array of chars
-    JELATINE_FLOAT_ARRAY = 6, ///< Array of floats
-    JELATINE_DOUBLE_ARRAY = 7, ///< Array of doubles
-    JELATINE_BYTE_ARRAY = 8, ///< Array of bytes
-    JELATINE_SHORT_ARRAY = 9, ///< Array of shorts
-    JELATINE_INT_ARRAY = 10, ///< Array of integers
-    JELATINE_LONG_ARRAY = 11, ///< Array of longs
-    JAVA_LANG_OBJECT = 12, ///< java.lang.Object class
-    JAVA_LANG_CLASS = 13, ///< java.lang.Class class
-    JAVA_LANG_STRING = 14, ///< java.lang.String class
-    JAVA_LANG_THREAD = 15, ///< java.lang.Thread class
-    JAVA_LANG_THROWABLE = 16, ///< java.lang.Throwable class
-    JAVA_LANG_ERROR = 17, ///< java.lang.Error class
-    JAVA_LANG_NOCLASSDEFFOUNDERROR = 18, ///< java.lang.NoClassDefFoundError class
-    JAVA_LANG_VIRTUALMACHINEERROR = 19, ///< java.lang.VirtualMachineError class
-    JAVA_LANG_EXCEPTION = 20, ///< java.lang.Exception class
-    JAVA_LANG_RUNTIMEEXCEPTION = 21, ///< java.lang.RuntimeException class
-    JAVA_LANG_ILLEGALMONITORSTATEEXCEPTION = 22, ///< java.lang.IllegalMonitorStateException class
-    JAVA_LANG_ARITHMETICEXCEPTION = 23, ///< java.lang.ArtihmeticException class
-    JAVA_LANG_ARRAYSTOREEXCEPTION = 24, ///< java.lang.ArrayStoreException class
-    JAVA_LANG_INDEXOUTOFBOUNDSEXCEPTION = 25, ///< java.lang.IndexOutOfBoundsException class
-    JAVA_LANG_ARRAYINDEXOUTOFBOUNDSEXCEPTION = 26, ///< java.lang.ArrayIndexOutOfBoundsException class
-    JAVA_LANG_NULLPOINTEREXCEPTION = 27, ///< java.lang.NullPointerException class
-    JAVA_LANG_NEGATIVEARRAYSIZEEXCEPTION = 28, ///< java.lang.NegativeArraySizeException class
-    JAVA_LANG_CLASSCASTEXCEPTION = 29, ///< java.lang.ClassCastException class
-    JAVA_LANG_CLASSNOTFOUNDEXCEPTION = 30, ///< java.lang.ClassNotFoundException class
-    JAVA_LANG_REF_REFERENCE = 31, ///< java.lang.ref.Reference class
-    JAVA_LANG_REF_WEAKREFERENCE = 32 ///< java.lang.ref.WeakReference class
-};
-
-/** Typedef for ::enum classes_t */
-typedef enum classes_t classes_t;
-
-/** Number of predefined classes */
-#define JELATINE_PREDEFINED_CLASSES_N (JAVA_LANG_REF_WEAKREFERENCE + 1)
-
 /** Loading state of a class */
 
 enum class_state_t {
@@ -221,8 +177,6 @@ typedef struct class_t class_t;
  * Class interface                                                            *
  ******************************************************************************/
 
-extern int32_t class_bootstrap_id(const char *);
-extern char *class_bootstrap_name(uint32_t);
 extern bool class_is_parent(class_t *, class_t *);
 extern void class_purge_initializer(class_t *);
 
@@ -266,6 +220,15 @@ static inline uint32_t class_get_id(const class_t *cl)
 {
     return cl->id;
 } // class_get_id()
+
+/** Checks if a class is the Object class
+ * \param cl A valid pointer to a class_t structure
+ * \returns true if the class is the java.lang.Object class, false otherwise */
+
+static inline bool class_is_object(const class_t *cl)
+{
+    return cl->parent == NULL; // Only Object doesn't have a parent class
+} // class_is_object()
 
 /** Checks if a class is an array class
  * \param cl A valid pointer to a class_t structure

@@ -51,7 +51,7 @@
  ******************************************************************************/
 
 /** Number of entries in the class table after startup */
-#define CLASS_TABLE_INIT ((16) + (JELATINE_PREDEFINED_CLASSES_N))
+#define CLASS_TABLE_INIT (16)
 
 /** Increment of the class-table entries */
 #define CLASS_TABLE_INC (16)
@@ -89,8 +89,9 @@ static void load_interfaces(class_t *, class_file_t *);
 static void load_attributes(class_t *, class_file_t *);
 static bool same_package(const class_t *, const class_t *);
 static void grow_class_table( void );
+static uint32_t get_new_class_id( void );
 static class_t *resolve_class(class_t *, uint16_t);
-static class_t *preload_class(const char *, int32_t, size_t, size_t);
+static class_t *preload_class(const char *, size_t, size_t);
 static void initialize_class(thread_t *, class_t *);
 
 /*******************************************************************************
@@ -135,9 +136,8 @@ static uint8_t *load_bytecode(class_t *, method_t *);
 void bcl_init( void )
 {
     bcl.class_table = gc_malloc(sizeof(class_t *) * CLASS_TABLE_INIT);
-    bcl.used = JELATINE_PREDEFINED_CLASSES_N;
+    bcl.used = 0;
     bcl.capacity = CLASS_TABLE_INIT;
-    memset(bcl.class_table, 0, sizeof(class_t *) * bcl.capacity);
     bcl.interface_methods = 0;
 } // bcl_init()
 
@@ -212,7 +212,7 @@ bool bcl_is_assignable(class_t *src, class_t *dest)
         } else {
             // If T is a class type, then T must be Object (§2.4.7).
 
-            if (dest->id == JAVA_LANG_OBJECT) {
+            if (class_is_object(dest)) {
                 return true;
             } else {
                 return false;
@@ -232,7 +232,7 @@ bool bcl_is_assignable(class_t *src, class_t *dest)
         } else {
             // If T is a class type, then T must be Object (§2.4.7).
 
-            if (dest->id == JAVA_LANG_OBJECT) {
+            if (class_is_object(dest)) {
                 return true;
             } else {
                 return false;
@@ -277,12 +277,9 @@ bool bcl_is_assignable(class_t *src, class_t *dest)
 static void load_class(class_t *cl)
 {
     class_file_t *cf;
-    class_t *elem;
-    class_t *jcl;
-    char *str;
-    char *jname;
-    size_t len;
-    size_t i;
+    class_t *tcl, *elem;
+    char *str, *jname;
+    size_t len, i;
 
     class_set_state(cl, CS_LINKING); // Put the class in the linking state
 
@@ -366,9 +363,9 @@ static void load_class(class_t *cl)
         }
 
         /* Set up the other fields as if the class was inheriting from
-         * java.lang.Object, make sure that class initialization starts by
-         * resolving java.lang.Object otherwise this will fail */
-        cl->parent = bcl.class_table[JAVA_LANG_OBJECT];
+         * java.lang.Object */
+        tcl = bcl_resolve_class(NULL, "java/lang/Object");
+        cl->parent = tcl;
 
         // Initialize the rest of the array class structure
         cl->const_pool = cp_create_dummy();
@@ -377,15 +374,15 @@ static void load_class(class_t *cl)
         cl->interface_manager = NULL;
         cl->ref_n = 0;
         cl->nref_size = 0;
-        cl->dtable = bcl.class_table[JAVA_LANG_OBJECT]->dtable;
+        cl->dtable = tcl->dtable;
         cl->itable_count = 0;
         cl->inames = NULL;
         cl->itable = NULL;
     }
 
     // Create the embedded Java class object
-    jcl = bcl_find_class("java/lang/Class");
-    cl->obj = gc_new(jcl);
+    tcl = bcl_find_class("java/lang/Class");
+    cl->obj = gc_new(tcl);
     JAVA_LANG_CLASS_REF2PTR(cl->obj)->id = cl->id;
     JAVA_LANG_CLASS_REF2PTR(cl->obj)->is_array = class_is_array(cl) ? 1 : 0;
     JAVA_LANG_CLASS_REF2PTR(cl->obj)->is_interface =
@@ -409,6 +406,19 @@ static void load_class(class_t *cl)
     // Put the class in the linked state
     class_set_state(cl, CS_LINKED);
 } // load_class()
+
+/** Get a new id for use in a class, also pre-allocate the corresponding entry
+ * in the class table
+ * \returns A new class id */
+
+static uint32_t get_new_class_id( void )
+{
+    if (bcl.used >= bcl.capacity) {
+        grow_class_table();
+    }
+
+    return bcl.used++;
+} // get_new_class_id()
 
 /** Resolves a class reference
  * \param orig The originating class
@@ -438,15 +448,14 @@ static class_t *resolve_class(class_t *orig, uint16_t index)
  * only during the bootstrap phase, all subsequent classes will be loaded
  * using bcl_resolve_class()
  * \param name The name of the class
- * \param id The class' id
  * \param ref_n The number of references of a class' instance
  * \param nref_size The size of the non-reference area of a class' instance
  * \returns A pointer to the preloaded class */
 
-static class_t *preload_class(const char *name, int32_t id, size_t ref_n,
-                              size_t nref_size)
+static class_t *preload_class(const char *name, size_t ref_n, size_t nref_size)
 {
     class_t *cl = gc_palloc(sizeof(class_t));
+    uint32_t id = get_new_class_id();
 
     cl->name = utf8_intern(name, strlen(name));
     cl->id = id;
@@ -466,22 +475,22 @@ void bcl_preload_bootstrap_classes( void )
     class_t *char_array_cl, *str_cl;
 
     // Preload the java.lang.Class class
-    preload_class("java/lang/Class", JAVA_LANG_CLASS, JAVA_LANG_CLASS_REF_N,
+    preload_class("java/lang/Class", JAVA_LANG_CLASS_REF_N,
                   JAVA_LANG_CLASS_NREF_SIZE);
 
     // Preload the char array class
-    char_array_cl = preload_class("[C", JELATINE_CHAR_ARRAY, 0, 0);
+    char_array_cl = preload_class("[C", 0, 0);
     bcl_set_array_class(T_CHAR, char_array_cl);
 
     // Preload the java.lang.String class
-    str_cl = preload_class("java/lang/String", JAVA_LANG_STRING,
-                           JAVA_LANG_STRING_REF_N, JAVA_LANG_STRING_NREF_SIZE);
+    str_cl = preload_class("java/lang/String", JAVA_LANG_STRING_REF_N,
+                           JAVA_LANG_STRING_NREF_SIZE);
 
     // Set the classes needed by the Java string manager
     jsm_set_classes(str_cl, char_array_cl);
 
     // Preload the java.lang.Thread class
-    preload_class("java/lang/Thread", JAVA_LANG_THREAD, JAVA_LANG_THREAD_REF_N,
+    preload_class("java/lang/Thread", JAVA_LANG_THREAD_REF_N,
                   JAVA_LANG_THREAD_NREF_SIZE);
 } // bcl_preload_bootstrap_classes()
 
@@ -522,18 +531,7 @@ class_t *bcl_resolve_class(class_t *orig, const char *name)
                initializing or initialized, thus we can return safely */
         } else {
             cl = gc_palloc(sizeof(class_t));
-            id = class_bootstrap_id(name);
-
-            /* If this is not one of the bootstrap classes we must assing it
-             * a new id in the class table */
-            if (id < 0) {
-                if (bcl.used >= bcl.capacity) {
-                    grow_class_table();
-                }
-
-                id = bcl.used;
-                bcl.used++;
-            }
+            id = get_new_class_id();
 
             cl->id = id;
             bcl.class_table[id] = cl;
@@ -598,7 +596,7 @@ static void initialize_class(thread_t *thread, class_t *cl)
         monitor_exit(thread, class_get_object(cl));
     }
 
-    if ((cl->id != JAVA_LANG_OBJECT) && !class_is_initialized(cl->parent)) {
+    if (!class_is_object(cl) && !class_is_initialized(cl->parent)) {
         // If this class has a parent class initialize it
         initialize_class(thread, cl->parent);
 
@@ -611,7 +609,7 @@ static void initialize_class(thread_t *thread, class_t *cl)
         }
     }
 
-    if (cl->id != JAVA_LANG_OBJECT) {
+    if (!class_is_object(cl)) {
         // Initialize the class
         clinit = mm_get(cl->method_manager, "<clinit>", "()V");
 
@@ -723,7 +721,7 @@ static void derive_class(class_t *cl, class_file_t *cf)
     }
 
     if (class_is_interface(cl)) {
-        if (class_get_id(cl->parent) != JAVA_LANG_OBJECT) {
+        if (!class_is_object(cl->parent)) {
             c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                     "Interface has a parent different from java.lang.Object");
         }
@@ -1437,7 +1435,7 @@ static method_t *resolve_method(class_t *src, uint16_t index, bool interface)
         if (method != NULL) {
             break;
         } else {
-            if (cl->id == JAVA_LANG_OBJECT) {
+            if (class_is_object(cl)) {
                 break;
             }
 
@@ -1966,7 +1964,7 @@ static field_t *resolve_instance_field(class_t *src, uint16_t index)
         if (field != NULL) {
             break;
         } else {
-            if (cl->id == JAVA_LANG_OBJECT) {
+            if (class_is_object(cl)) {
                 c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                         "Unable to resolve field, field not found");
             }
@@ -2035,7 +2033,7 @@ static static_field_t *resolve_static_field(class_t *src, uint16_t index)
         if (field != NULL) {
             break;
         } else {
-            if (cl->id == JAVA_LANG_OBJECT) {
+            if (class_is_object(cl)) {
                 c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                         "Unable to resolve field, field not found");
             }

@@ -3546,41 +3546,40 @@ void interpreter(method_t *main_method)
      */
 
 throw_arithmeticexception:
-    thread->exception = JAVA_LANG_ARITHMETICEXCEPTION;
+    thread->exception = (uintptr_t) "java/lang/ArithmeticException";
     goto throw_exception;
 
 throw_arrayindexoutofboundsexception:
-    thread->exception = JAVA_LANG_ARRAYINDEXOUTOFBOUNDSEXCEPTION;
+    thread->exception = (uintptr_t) "java/lang/ArrayIndexOutOfBoundsException";
     goto throw_exception;
 
 throw_arraystoreexception:
-    thread->exception = JAVA_LANG_ARRAYSTOREEXCEPTION;
+    thread->exception = (uintptr_t) "java/lang/ArrayStoreException";
     goto throw_exception;
 
 throw_classcastexception:
-    thread->exception = JAVA_LANG_CLASSCASTEXCEPTION;
+    thread->exception = (uintptr_t) "java/lang/ClassCastException";
     goto throw_exception;
 
 throw_illegalmonitorstateexception:
-    thread->exception = JAVA_LANG_ILLEGALMONITORSTATEEXCEPTION;
+    thread->exception = (uintptr_t) "java/lang/IllegalMonitorStateException";
     goto throw_exception;
 
 throw_negativearraysizeexception:
-    thread->exception = JAVA_LANG_NEGATIVEARRAYSIZEEXCEPTION;
+    thread->exception = (uintptr_t) "java/lang/NegativeArraySizeException";
     goto throw_exception;
 
 throw_nullpointerexception:
-    thread->exception = JAVA_LANG_NULLPOINTEREXCEPTION;
+    thread->exception = (uintptr_t) "java/lang/NullPointerException";
     goto throw_exception;
 
 throw_exception:
     {
         class_t *cl;
         uintptr_t exception_ref;
-        const char *name;
+        const char *name = (const char *) thread->exception;
 
         SAVE_STATE;
-        name = class_bootstrap_name(thread->exception);
         thread->exception = JNULL; // Needed because of the GC
         cl = bcl_resolve_class(fp->cl, name);
 
