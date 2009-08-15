@@ -1231,21 +1231,12 @@ void interpreter(method_t *main_method)
         if (value == JNULL) {
             *(data - index) = JNULL;
         } else {
-            header_t *header;
+            header_t *header = (header_t *) value;
 
-            header = (header_t *) value;
             src = header_get_class(header);
-            dest = header_get_class(&(array->header));
+            dest = header_get_class(&(array->header))->elem_class;
 
-            if (dest->elem_type != PT_REFERENCE) {
-                goto throw_arraystoreexception;
-            }
-
-            dest = dest->elem_class;
-
-            if (dest == src) {
-                *(data - index) = value; // Common shortcut
-            } else if (bcl_is_assignable(src, dest)) {
+            if ((src == dest) || bcl_is_assignable(src, dest)) {
                 *(data - index) = value;
             } else {
                 goto throw_arraystoreexception;
@@ -1481,9 +1472,7 @@ void interpreter(method_t *main_method)
 
         if (value2 == 0) {
             goto throw_arithmeticexception;
-        }
-
-        if ((value1 == 0x80000000) && (value2 == -1)) {
+        } else if ((value1 == 0x80000000) && (value2 == -1)) {
             *((int32_t *) (sp - 2)) = value1;
         } else {
             *((int32_t *) (sp - 2)) = value1 / value2;
@@ -1530,9 +1519,7 @@ void interpreter(method_t *main_method)
 
         if (value2 == 0) {
             goto throw_arithmeticexception;
-        }
-
-        if ((value1 == 0x80000000) && (value2 == -1)) {
+        } else if ((value1 == 0x80000000) && (value2 == -1)) {
             *((int32_t *) (sp - 2)) = 0;
         } else {
             *((int32_t *) (sp - 2)) = value1 % value2;
@@ -1793,8 +1780,11 @@ void interpreter(method_t *main_method)
     OPCODE(LCMP) {
         int64_t value1 = *((int64_t *) (sp - 4));
         int64_t value2 = *((int64_t *) (sp - 2));
+        int64_t t = value1 - value2;
 
-        *((int32_t *) (sp - 4)) = (value1 > value2) - (value1 < value2);
+        /* HACK: This is a strict-aliasing violation but it should pose no
+         * problem for the value to be written depends on the aliasing load */
+        *((int32_t *) (sp - 4)) = (t == 0) ? 0 : ((t >> 63) | 1);
         sp -= 3;
         pc++;
         DISPATCH;
@@ -1806,10 +1796,16 @@ void interpreter(method_t *main_method)
         float value1 = *((float *) (sp - 2));
         float value2 = *((float *) (sp - 1));
 
+        /* HACK: This is a strict-aliasing violation but it should pose no
+         * problem for the value to be written depends on the aliasing load */
         if (value1 != value1 || value2 != value2) {
             *((int32_t *) (sp - 2)) = -1;
+        } else if (value1 == value2) {
+            *((int32_t *) (sp - 2)) = 0;
+        } else if (value1 > value2) {
+            *((int32_t *) (sp - 2)) = 1;
         } else {
-            *((int32_t *) (sp - 2)) = (value1 > value2) - (value1 < value2);
+            *((int32_t *) (sp - 2)) = -1;
         }
 
         sp--;
@@ -1821,10 +1817,16 @@ void interpreter(method_t *main_method)
         float value1 = *((float *) (sp - 2));
         float value2 = *((float *) (sp - 1));
 
+        /* HACK: This is a strict-aliasing violation but it should pose no
+         * problem for the value to be written depends on the aliasing load */
         if (value1 != value1 || value2 != value2) {
             *((int32_t *) (sp - 2)) = 1;
+        } else if (value1 == value2) {
+            *((int32_t *) (sp - 2)) = 0;
+        } else if (value1 > value2) {
+            *((int32_t *) (sp - 2)) = 1;
         } else {
-            *((int32_t *) (sp - 2)) = (value1 > value2) - (value1 < value2);
+            *((int32_t *) (sp - 2)) = -1;
         }
 
         sp--;
@@ -1836,10 +1838,16 @@ void interpreter(method_t *main_method)
         double value1 = *((double *) (sp - 4));
         double value2 = *((double *) (sp - 2));
 
+        /* HACK: This is a strict-aliasing violation but it should pose no
+         * problem for the value to be written depends on the aliasing load */
         if (value1 != value1 || value2 != value2) {
             *((int32_t *) (sp - 4)) = -1;
+        } else if (value1 == value2) {
+            *((int32_t *) (sp - 4)) = 0;
+        } else if (value1 > value2) {
+            *((int32_t *) (sp - 4)) = 1;
         } else {
-            *((int32_t *) (sp - 4)) = (value1 > value2) - (value1 < value2);
+            *((int32_t *) (sp - 4)) = -1;
         }
 
         sp -= 3;
@@ -1851,10 +1859,16 @@ void interpreter(method_t *main_method)
         double value1 = *((double *) (sp - 4));
         double value2 = *((double *) (sp - 2));
 
+        /* HACK: This is a strict-aliasing violation but it should pose no
+         * problem for the value to be written depends on the aliasing load */
         if (value1 != value1 || value2 != value2) {
             *((int32_t *) (sp - 4)) = 1;
+        } else if (value1 == value2) {
+            *((int32_t *) (sp - 4)) = 0;
+        } else if (value1 > value2) {
+            *((int32_t *) (sp - 4)) = 1;
         } else {
-            *((int32_t *) (sp - 4)) = (value1 > value2) - (value1 < value2);
+            *((int32_t *) (sp - 4)) = -1;
         }
 
         sp -= 3;
@@ -2492,7 +2506,7 @@ void interpreter(method_t *main_method)
             src = header_get_class(header);
 
             if (src == dest) {
-                ; // Common shortcut
+                ; // Shortcut
             } else if (!bcl_is_assignable(src, dest)) {
                 goto throw_classcastexception;
             }
@@ -2515,14 +2529,10 @@ void interpreter(method_t *main_method)
             header = (header_t *) ref;
             src = header_get_class(header);
 
-            if (src == dest) {
-                *((int32_t *) (sp - 1)) = 1; // Common shortcut
+            if ((src == dest) || bcl_is_assignable(src, dest)) {
+                *((int32_t *) (sp - 1)) = 1;
             } else {
-                if (bcl_is_assignable(src, dest)) {
-                    *((int32_t *) (sp - 1)) = 1;
-                } else {
-                    *((int32_t *) (sp - 1)) = 0;
-                }
+                *((int32_t *) (sp - 1)) = 0;
             }
         }
 
