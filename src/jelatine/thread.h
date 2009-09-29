@@ -149,8 +149,8 @@ extern void thread_launch(uintptr_t *, method_t *);
 extern void thread_interrupt(thread_t *);
 extern void thread_yield( void );
 extern void thread_join(uintptr_t *);
-extern bool thread_wait(thread_t *, uintptr_t, uint64_t, uint32_t);
-extern bool thread_notify(thread_t *, uintptr_t, bool);
+extern bool thread_wait(uintptr_t, uint64_t, uint32_t);
+extern bool thread_notify(uintptr_t, bool);
 
 #else // JEL_THREAD_NONE
 
@@ -160,16 +160,14 @@ static inline void thread_launch(uintptr_t ref, method_t *run)
 } // thread_launch()
 
 static inline void thread_yield( void ) {}
-static inline void thread_join(thread_t *thread) {}
+static inline void thread_join(uintptr_t *thread) {}
 
-static inline bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
-                               uint32_t nanos)
+static inline bool thread_wait(uintptr_t ref, uint64_t millis, uint32_t nanos)
 {
     return true;
 } // thread_wait()
 
-static inline bool thread_notify(thread_t *thread, uintptr_t ref,
-                                 bool broadcast)
+static inline bool thread_notify(uintptr_t ref, bool broadcast)
 {
     return true;
 } // thread_notify()

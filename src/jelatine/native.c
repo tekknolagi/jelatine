@@ -882,7 +882,7 @@ static KNI_RETURNTYPE_VOID java_lang_Object_notify( void )
 
     KNI_GetThisPointer(this_ref);
 
-    if (!thread_notify(thread_self(), *this_ref, false)) {
+    if (!thread_notify(*this_ref, false)) {
         KNI_ThrowNew("java/lang/IllegalMonitorStateException", NULL);
     }
 
@@ -903,7 +903,7 @@ static KNI_RETURNTYPE_VOID java_lang_Object_notifyAll( void )
 
     KNI_GetThisPointer(this_ref);
 
-    if (!thread_notify(thread_self(), *this_ref, false)) {
+    if (!thread_notify(*this_ref, false)) {
         KNI_ThrowNew("java/lang/IllegalMonitorStateException", NULL);
     }
 
@@ -919,7 +919,6 @@ static KNI_RETURNTYPE_VOID java_lang_Object_notifyAll( void )
 static KNI_RETURNTYPE_VOID java_lang_Object__wait( void )
 {
 #if !JEL_THREAD_NONE
-    thread_t *self = thread_self();
     int64_t millis;
     int32_t nanos;
 
@@ -930,7 +929,7 @@ static KNI_RETURNTYPE_VOID java_lang_Object__wait( void )
     millis = KNI_GetParameterAsLong(1);
     nanos = KNI_GetParameterAsInt(3);
 
-    if (!thread_wait(self, *this_ref, millis, nanos)) {
+    if (!thread_wait(*this_ref, millis, nanos)) {
         KNI_ThrowNew("java/lang/IllegalMonitorStateException", NULL);
     }
 
@@ -1171,7 +1170,6 @@ static KNI_RETURNTYPE_VOID java_lang_Thread_start( void )
 
 static KNI_RETURNTYPE_INT java_lang_Thread_activeCount( void )
 {
-    // Decrease thread number by one as the finalizer thread is for internal purpose
     KNI_ReturnInt(tm_active());
 } // jelatine_Thread_activeCount()
 
