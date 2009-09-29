@@ -849,6 +849,7 @@ static void *thread_start(void *arg)
 
     // Mark the thread as dead, none can join on it anymore after this point
     tm_lock();
+
 #if JEL_THREAD_POSIX
     pthread_cond_broadcast(&thread.pthread_cond);
 #elif JEL_THREAD_PTH
@@ -856,9 +857,15 @@ static void *thread_start(void *arg)
 #endif
     tm_unregister(&thread);
     JAVA_LANG_THREAD_REF2PTR(thread.obj)->vmThread = JNULL;
+
+    /* We can safely release the stack and root pointers now that the thread
+     * is not visible anymore to the garbage collector */
+    gc_free(thread.roots.pointers);
+    gc_free(thread.stack);
+
     tm_unlock();
 
-    // Waith for the joining thread to wake up
+    // Wait for the joining thread to wake up
 #if JEL_THREAD_POSIX
     while (pthread_cond_destroy(&thread.pthread_cond) != 0) {
         ;
@@ -876,9 +883,6 @@ static void *thread_start(void *arg)
         dbg_error("Uncaught exception");
         vm_fail();
     }
-
-    gc_free(thread.roots.pointers);
-    gc_free(thread.stack);
 
 #if JEL_THREAD_POSIX
     pthread_exit(NULL);
@@ -1037,7 +1041,6 @@ void thread_join(uintptr_t *thread)
 /** Implements the functionality required by java.lang.Object.wait() and
  * friends, waiting on an object until it is notified by notify() or notifyAll()
  * or until a timeout occurs (if \a nanos or \a millis or both ar non-zero)
- * \param thread The calling thread
  * \param ref The object on which to wait
  * \param millis Number of milliseconds before a timeout occurs
  * \param nanos Number of nanoseconds before a timeout occurs
@@ -1045,8 +1048,7 @@ void thread_join(uintptr_t *thread)
  * \a ref was not owned \a thread. In the latter case an
  * IllegalMonitorStateException should be thrown */
 
-bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
-                 uint32_t nanos)
+bool thread_wait(uintptr_t ref, uint64_t millis, uint32_t nanos)
 {
     thread_t *self = thread_self();
     monitor_t *entry;
@@ -1063,7 +1065,7 @@ bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
     }
 
     if (entry && !self->interrupted) {
-        if ((entry->owner == thread) && (entry->count == 1)) {
+        if ((entry->owner == self) && (entry->count == 1)) {
             // Release the lock and wait
             entry->owner = NULL;
             entry->count = 0;
@@ -1109,10 +1111,9 @@ bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
             self->pth_int = NULL;
 #endif
 
-
             // Re-acquire the monitor
             tm_unlock();
-            monitor_enter(thread, ref);
+            monitor_enter(self, ref);
         }
     } else {
         tm_unlock();
@@ -1127,7 +1128,6 @@ bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
 } // thread_wait()
 
 /** Implements the functionliaty required by java.lang.Object.notify()
- * \param thread The calling thread
  * \param ref The object used for the notification
  * \param broadcast If true, wake up all the threads waiting on this object,
  * otherwise wake up only one thread
@@ -1135,8 +1135,9 @@ bool thread_wait(thread_t *thread, uintptr_t ref, uint64_t millis,
  * \a ref was not owned by \a thread. In the latter case an
  * IllegalMonitorStateException should be thrown */
 
-bool thread_notify(thread_t *thread, uintptr_t ref, bool broadcast)
+bool thread_notify(uintptr_t ref, bool broadcast)
 {
+    thread_t *self = thread_self();
     monitor_t *entry;
     size_t hash;
     bool res = false;
@@ -1152,7 +1153,7 @@ bool thread_notify(thread_t *thread, uintptr_t ref, bool broadcast)
     }
 
     if (entry) {
-        if (entry->owner == thread) {
+        if (entry->owner == self) {
             // Notify the waiting thread
 #if JEL_THREAD_POSIX
             if (entry->pthread_cond != NULL) {

@@ -577,7 +577,7 @@ static void initialize_class(thread_t *thread, class_t *cl)
     if (class_is_being_initialized(cl)) {
         if (thread != cl->init_thread) {
             // Another thread is initializing the class, let's wait for it
-            thread_wait(thread, class_get_object(cl), 0, 0);
+            thread_wait(class_get_object(cl), 0, 0);
         } else {
             // This is a recursive call
             monitor_exit(thread, class_get_object(cl));
@@ -603,7 +603,7 @@ static void initialize_class(thread_t *thread, class_t *cl)
         if (thread->exception != JNULL) {
             monitor_enter(thread, class_get_object(cl));
             class_set_state(cl, CS_ERRONEOUS);
-            thread_notify(thread, class_get_object(cl), true);
+            thread_notify(class_get_object(cl), true);
             monitor_exit(thread, class_get_object(cl));
             return;
         }
@@ -621,7 +621,7 @@ static void initialize_class(thread_t *thread, class_t *cl)
                  * exception, we could think about it later */
                 monitor_enter(thread, class_get_object(cl));
                 class_set_state(cl, CS_ERRONEOUS);
-                thread_notify(thread, class_get_object(cl), true);
+                thread_notify(class_get_object(cl), true);
                 monitor_exit(thread, class_get_object(cl));
                 return;
             }
@@ -633,7 +633,7 @@ static void initialize_class(thread_t *thread, class_t *cl)
 
     monitor_enter(thread, class_get_object(cl));
     class_set_state(cl, CS_INITIALIZED);
-    thread_notify(thread, class_get_object(cl), true);
+    thread_notify(class_get_object(cl), true);
     monitor_exit(thread, class_get_object(cl));
     return;
 } // initialize_class()
