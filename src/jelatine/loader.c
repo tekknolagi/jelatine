@@ -1994,6 +1994,8 @@ static field_t *resolve_instance_field(class_t *src, uint16_t index)
                 "package");
     }
 
+    cp_set_tag_and_data(cp, index, CONSTANT_Fieldref_resolved, field);
+
     return field;
 } // resolve_instance_field()
 
