@@ -129,7 +129,7 @@ static inline void *array_get_data(array_t *p)
 /** Gets a pointer to the actual array data for reference arrays
  * \param p A pointer to an array header */
 
-static inline void *array_ref_get_data(array_t *p)
+static inline uintptr_t *array_ref_get_data(array_t *p)
 {
     return ((uintptr_t *) p) - 1;
 } // array_ref_get_data()
