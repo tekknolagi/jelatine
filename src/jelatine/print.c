@@ -81,7 +81,9 @@ void print_method_unwind(thread_t *thread, method_t *method)
         return;
     }
 
-    thread->call_depth--;
+    if (thread->call_depth > 0) {
+        thread->call_depth--;
+    }
 
     for (int i = 0; i < thread->call_depth; i++) {
         fprintf(stderr, "    ");
