@@ -217,7 +217,7 @@ static inline void store_int32_un_internal(char *dst, int32_t val)
 /** Error/exception classes as seen by the C exceptions */
 
 enum c_exception_class_t {
-    JAVA_LANG_VIRTUALMACHINEERROR, ///< java.lang.VirtualMachineError class
+    JAVA_LANG_VIRTUALMACHINEERROR = 1, ///< java.lang.VirtualMachineError class
     JAVA_LANG_NOCLASSDEFFOUNDERROR ///< java.lang.NoClassDefFoundError class
 };
 

@@ -254,6 +254,7 @@ void c_clear_exception( void )
 void c_print_exception(int exc)
 {
     static const char *names[] = {
+        "",
         "java.lang.VirtualMachineError",
         "java.lang.NoClassDefFoundError"
     };
