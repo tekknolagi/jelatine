@@ -495,11 +495,8 @@ void translate_bytecode(class_t *cl, method_t *method, uint8_t *code,
                 int32_t *aligned_ptr;
 
                 base = i;
-                i += 4 - (i & 0x3);
-                aligned_ptr = (int32_t *)
-                              ((code + base)
-                               + (4 - ((uintptr_t) (code + base) & 0x3)));
-
+                i = size_ceil(i + 1, 4);
+                aligned_ptr = (int32_t *) (code + i);
 
                 temp = (code[i] << 24) | (code[i + 1] << 16)
                        | (code[i + 2] << 8) | code[i + 3];
@@ -537,7 +534,7 @@ void translate_bytecode(class_t *cl, method_t *method, uint8_t *code,
 
                 while (j < (high - low + 1)) {
                     temp = (code[i] << 24) | (code[i + 1] << 16)
-                        | (code[i + 2] << 8) | code[i + 3];
+                           | (code[i + 2] << 8) | code[i + 3];
 
                     if ((base + temp > code_length - 1) || (base + temp < 0)) {
                         c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
@@ -573,9 +570,8 @@ void translate_bytecode(class_t *cl, method_t *method, uint8_t *code,
 
                 base = i;
                 match_old = 0;
-                i += 4 - (i & 0x3);
-                aligned_ptr = (int32_t *)
-                    ((code + base) + (4 - ((uintptr_t) (code + base) & 0x3)));
+                i = size_ceil(i + 1, 4);
+                aligned_ptr = (int32_t *) (code + i);
 
                 temp = (code[i] << 24) | (code[i + 1] << 16)
                        | (code[i + 2] << 8) | code[i + 3];

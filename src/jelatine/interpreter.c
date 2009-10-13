@@ -2038,60 +2038,41 @@ void interpreter(method_t *main_method)
     }
 
     OPCODE(TABLESWITCH) {
-        int32_t *aligned_ptr = (int32_t *) (pc + (4 - ((uintptr_t) pc & 0x3)));
-        int32_t default_offset = *aligned_ptr;
-        int32_t low = *(aligned_ptr + 1);
-        int32_t high = *(aligned_ptr + 2);
-        int32_t index;
+        int32_t *aligned_ptr = (int32_t *) size_ceil((uintptr_t) pc + 1, 4);
+        int32_t default_offset = aligned_ptr[0];
+        int32_t low = aligned_ptr[1];
+        int32_t high = aligned_ptr[2];
+        int32_t index = *((int32_t *) (sp - 1));
 
         aligned_ptr += 3;
-        index = *((int32_t *) (sp - 1));
         sp--;
 
         if (index < low || index > high) {
             pc += default_offset;
             DISPATCH;
         } else {
-            pc += *(aligned_ptr + index - low);
+            pc += aligned_ptr[index - low];
             DISPATCH;
         }
     }
 
     OPCODE(LOOKUPSWITCH) {
-        int32_t *aligned_ptr = (int32_t *) (pc + (4 - ((uintptr_t) pc & 0x3)));
-        int32_t default_offset = *aligned_ptr;
-        int32_t n_pairs = *(aligned_ptr + 1);
-        int32_t key;
-        uint32_t low = 0;
-        uint32_t high = n_pairs;
-        uint32_t mid;
-        int32_t match;
+        int32_t *aligned_ptr = (int32_t *) size_ceil((uintptr_t) pc + 1, 4);
+        int32_t default_offset = aligned_ptr[0];
+        int32_t n_pairs = aligned_ptr[1];
+        int32_t key = *((int32_t *) (sp - 1));
+        uint32_t i;
 
         aligned_ptr += 2;
-        key = *((int32_t *) (sp - 1));
         sp--;
 
-        while (high >= low) {
-            mid = (low + high) >> 1;
-            match = *(aligned_ptr + (mid << 1));
-
-            if (key == match) {
-                pc += *(aligned_ptr + (mid << 1) + 1);
+        for (i = 0; i < n_pairs; i++) {
+            if (key == aligned_ptr[i * 2]) {
                 break;
             }
-
-            if (key > match) {
-                low = mid + 1;
-            } else {
-                high = mid - 1;
-            }
         }
 
-        if (high < low) {
-            pc += default_offset;
-            DISPATCH;
-        }
-
+        pc += (i == n_pairs) ? default_offset : aligned_ptr[(i * 2) + 1];
         DISPATCH;
     }
 
