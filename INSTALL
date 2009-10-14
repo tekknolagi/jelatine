@@ -23,8 +23,8 @@ yum install zziplib-devel
  In order to build Jelatine just unpack the archive, cd in
 its directory then launch the configure script, build an install, eg:
 
-$ tar xvzf jelatine-0.9.3.tar.gz
-$ cd jelatine-0.9.3
+$ tar xvzf jelatine-0.9.4.tar.gz
+$ cd jelatine-0.9.4
 $ ./configure --prefix=/home/myname/temp
 $ make
 $ make install
@@ -102,7 +102,7 @@ $ jelatine HelloWorld
  If you have unpacked and built Jelatine in your home directory but you didn't
 install it you could run it this way:
 
-/home/myself/jelatine-0.9.3/src/jelatine/jelatine --bootclasspath /home/myself/jelatine-0.9.3/src/classpath HelloWorld
+/home/myself/jelatine-0.9.4/src/jelatine/jelatine --bootclasspath /home/myself/jelatine-0.9.4/src/classpath HelloWorld
 
  The CLDC specification requires Java classes to be preprocessed using a
 preverification tool provided by Sun's reference CLDC implementation. In order
