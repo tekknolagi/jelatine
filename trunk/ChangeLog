@@ -1,3 +1,72 @@
+Wed Oct 14 10:28:49 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Bumped to version 0.9.4.
+
+Tue Oct 13 19:29:01 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Fixed a bug when loading and executing LOOKUPSWITCH and TABLESWITCH opcodes.
+  
+  This fixes bug #2877993.
+
+Sun Oct 11 18:48:07 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Fixed a small glitch when printing the call trace.
+  
+  When the execution would unwind back to the program/thread entry point because
+  of an uncaught exception the printing code would output _way_ more whitespace
+  than needed.
+
+Sun Oct 11 18:28:01 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Make C-side exception values consistent with longjmp() semantics.
+  
+  This fixes bug #2876383.
+
+Thu Oct  8 19:00:19 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Copies of reference arrays with non-zero offset were broken, fixed.
+  
+  This fixes bug #2874669.
+
+Sat Oct  3 11:42:58 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Resolved instance fields weren't tagged as such, fixed.
+
+Tue Sep 29 23:57:47 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Fix a GC-related race condition triggered during thread termination.
+  
+  This fixes bug #2723319.
+
+Sat Aug 15 20:55:49 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Some minor optimizations to the interpreter.
+
+Sun Aug  2 18:07:00 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Removed the predefined class IDs used for bootstrap classes.
+
+Tue Aug  4 11:53:55 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Made the class file access functions more robust.
+  
+  This also fixes bug #2830446.
+
+Sat Aug  1 00:34:03 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Cleaned up the code for allocating arrays of primitive types.
+
+Fri Jul 31 15:57:37 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Renamed bcl_find_class_by_name() to bcl_find_class().
+
+Thu Jul 30 16:37:10 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Added an helper function for getting basic array class names.
+
+Thu Jul 30 14:46:26 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Refactored the class preloading mechanism and bootstrap process.
+
+Mon Jul 27 21:26:29 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * Improved and corrected the code for copying arrays of references.
+  
+  This also fixes bug #2827660.
+
+Sun Jul 26 23:27:16 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  * KNI_ThrowNew ignored the message parameter, fixed.
+  
+  This fixes bug #2827164.
+
+Thu Aug  6 12:20:30 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
+  tagged jelatine-0.9.3
+
 Mon Jun  1 23:01:23 CEST 2009  Gabriele Svelto <gabriele.svelto@gmail.com>
   * Bumped to version 0.9.3.
 

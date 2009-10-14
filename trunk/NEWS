@@ -1,5 +1,11 @@
 Jelatine release news.
 
+* Version 0.9.4
+===============
+- A lot of bad bugs were fixed
+- More code refactoring and cleanup
+- A few minor optimizations were implemented
+
 * Version 0.9.3
 ===============
 - More major bugs were fixed
