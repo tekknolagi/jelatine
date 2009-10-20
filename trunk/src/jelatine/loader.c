@@ -36,7 +36,7 @@
 #include "opcodes.h"
 #include "utf8_string.h"
 #include "util.h"
-#include "vm.h"
+#include "verifier.h"
 
 #include "java_lang_Class.h"
 #include "java_lang_ref_Reference.h"
@@ -79,36 +79,23 @@ static loader_t bcl;
 /** Basic array classes */
 class_t *array_classes[8] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
-/*******************************************************************************
- * Class-related local function prototypes                                     *
+/******************************************************************************
+ * Class-related local function prototypes                                    *
  ******************************************************************************/
 
 static void load_class(class_t *);
-static void derive_class(class_t *, class_file_t *);
-static void load_interfaces(class_t *, class_file_t *);
-static void load_attributes(class_t *, class_file_t *);
-static bool same_package(const class_t *, const class_t *);
-static void grow_class_table( void );
 static uint32_t get_new_class_id( void );
 static class_t *resolve_class(class_t *, uint16_t);
 static class_t *preload_class(const char *, size_t, size_t);
+static void initialize_static_fields(class_t *);
 static void initialize_class(thread_t *, class_t *);
+static void derive_class(class_t *, class_file_t *);
+static void load_interfaces(class_t *, class_file_t *);
+static void load_attributes(class_t *, class_file_t *);
+static void grow_class_table( void );
 
-/*******************************************************************************
- * Field related local function prototypes                                     *
- ******************************************************************************/
-
-static void load_fields(class_t *, class_file_t *);
-static void load_field_attributes(class_t *, class_file_t *,
-                                  field_attributes_t *);
-static void load_field_attribute_ConstantValue(class_t *, class_file_t *,
-                                               field_attributes_t *);
-static void layout_fields(class_t *);
-static field_t *resolve_instance_field(class_t *, uint16_t);
-static static_field_t *resolve_static_field(class_t *, uint16_t);
-
-/*******************************************************************************
- * Method related local function prototypes                                    *
+/******************************************************************************
+ * Method related local function prototypes                                   *
  ******************************************************************************/
 
 static uint32_t next_interface_id( void );
@@ -126,9 +113,33 @@ static void create_dispatch_table(class_t *);
 static void create_interface_dispatch_table(class_t *);
 static method_t *resolve_method(class_t *, uint16_t, bool);
 static uint8_t *load_bytecode(class_t *, method_t *);
+static exception_handler_t *load_exception_handlers(class_t *, method_t *,
+                                                    uint8_t *);
 
-/*******************************************************************************
- * Class loader related functions                                              *
+/******************************************************************************
+ * Field related local function prototypes                                    *
+ ******************************************************************************/
+
+static void load_fields(class_t *, class_file_t *);
+static void load_field_info(class_t *, class_file_t *, field_info_t *);
+static void load_field_attributes(class_t *, class_file_t *,
+                                  field_attributes_t *);
+static void load_field_attribute_ConstantValue(class_t *, class_file_t *,
+                                               field_attributes_t *);
+static void layout_fields(class_t *);
+static field_t *lookup_field(class_t *, class_t **, const char *, const char *,
+                             bool);
+static field_t *resolve_instance_field(class_t *, uint16_t);
+static field_t *resolve_static_field(class_t *, uint16_t);
+
+/******************************************************************************
+ * Bytecode resolution methods                                                *
+ ******************************************************************************/
+
+static uint8_t get_type_specific_opcode(uint8_t, const char *);
+
+/******************************************************************************
+ * Class loader related functions                                             *
  ******************************************************************************/
 
 /** Initializes the bootstrap class loader */
@@ -160,16 +171,31 @@ class_t *bcl_get_class_by_id(uint32_t id)
 
 void bcl_mark( void )
 {
+    field_iterator_t itr;
     uint32_t count = bcl.used;
     class_t **ct = bcl.class_table;
+    class_t *cl;
+    field_t *field;
+    static_field_t *static_field;
 
     for (size_t i = 0; i < count; i++) {
-        if (ct[i] != NULL) {
-            gc_mark_reference(class_get_object(ct[i]));
+        cl = ct[i];
 
-            // Preloaded classes and array classes lack a field manager
-            if (ct[i]->field_manager != NULL) {
-                fm_mark_static(ct[i]->field_manager);
+        if (cl) {
+            gc_mark_reference(class_get_object(cl));
+
+            // Mark the static fields of a class
+            if (cl->static_data) {
+                itr = static_field_itr(cl);
+
+                while (field_itr_has_next(itr)) {
+                    field = field_itr_get_next(&itr);
+                    static_field = cl->static_data + field->offset;
+
+                    if (field_is_reference(field)) {
+                        gc_mark_reference(static_field->data.jref);
+                    }
+                }
             }
         }
     }
@@ -267,8 +293,8 @@ bool bcl_is_assignable(class_t *src, class_t *dest)
     }
 } // bcl_is_assignable()
 
-/*******************************************************************************
- * Class related local functions                                               *
+/******************************************************************************
+ * Class related local functions                                              *
  ******************************************************************************/
 
 /** Loads and links a class
@@ -369,7 +395,8 @@ static void load_class(class_t *cl)
 
         // Initialize the rest of the array class structure
         cl->const_pool = cp_create_dummy();
-        cl->field_manager = NULL;
+        cl->fields_n = 0;
+        cl->fields = NULL;
         cl->method_manager = NULL;
         cl->interface_manager = NULL;
         cl->ref_n = 0;
@@ -564,6 +591,91 @@ class_t *bcl_resolve_class(class_t *orig, const char *name)
     return cl;
 } // bcl_resolve_class()
 
+/** Lays out and initializes the static fields of a class
+ * \param cl A class being initialized */
+
+static void initialize_static_fields(class_t *cl)
+{
+    const_pool_t *cp = cl->const_pool;
+    field_iterator_t itr;
+    field_t *field;
+    static_field_t *data;
+    size_t const_index;
+    size_t i = 0;
+
+    itr = static_field_itr(cl);
+
+    while (field_itr_has_next(itr)) {
+        field = field_itr_get_next(&itr);
+        i++;
+    }
+
+    data = gc_palloc(sizeof(static_field_t) * i);
+    itr = static_field_itr(cl);
+    i = 0;
+
+    while (field_itr_has_next(itr)) {
+        field = field_itr_get_next(&itr);
+        const_index = field->offset;
+
+        if (const_index != 0) { // This field has a constant value
+            switch (field->descriptor[0]) {
+                case 'L':
+                    data[i].data.jref = cp_get_ref(cp, const_index);
+                    break;
+
+                case 'B': // This is a final static byte field
+                    data[i].data.jbyte = cp_get_integer(cp, const_index);
+                    break;
+
+                case 'Z': // This is a final static bool field
+                    if (cp_get_integer(cp, const_index)) {
+                        data[i].data.jbyte =  1;
+                    }
+
+                    break;
+
+                case 'C': // This is a final static char field
+                    data[i].data.jchar = cp_get_integer(cp, const_index);
+                    break;
+
+                case 'S': // This is a final static short field
+                    data[i].data.jshort = cp_get_integer(cp, const_index);
+                    break;
+
+                case 'I': // This is a final static float field
+                    data[i].data.jint = cp_get_integer(cp, const_index);
+                    break;
+
+#if JEL_FP_SUPPORT
+                case 'F': // This is a final static float field
+                    data[i].data.jfloat = cp_get_float(cp, const_index);
+                    break;
+#endif // JEL_FP_SUPPORT
+
+                case 'J': // This is a final static long field
+                    data[i].data.jlong = cp_get_long(cp, const_index);
+                    break;
+
+#if JEL_FP_SUPPORT
+                case 'D': // This is a final static double field
+                    data[i].data.jdouble = cp_get_double(cp, const_index);
+                    break;
+#endif // JEL_FP_SUPPORT
+
+                default:
+                    dbg_unreachable();
+            }
+        }
+
+        data[i].field = field;
+        field->offset = i;
+        i++;
+    }
+
+    cl->static_data = data;
+} // initialize_static_fields()
+
 /** Executes the static initialization of class
  * \param thread The thread trying to initialize the class
  * \param cl The class which will be initialized */
@@ -610,7 +722,8 @@ static void initialize_class(thread_t *thread, class_t *cl)
     }
 
     if (!class_is_object(cl)) {
-        // Initialize the class
+        // Do the actual initialization
+        initialize_static_fields(cl);
         clinit = mm_get(cl->method_manager, "<clinit>", "()V");
 
         if (clinit != NULL) {
@@ -851,50 +964,6 @@ static void load_attributes(class_t *cl, class_file_t *cf)
     }
 } // load_attributes()
 
-/** Checks that two classes belong to the same package
- * \param cl1 A class pointer
- * \param cl2 A class pointer
- * \returns True if both classes belong to the same package */
-
-static bool same_package(const class_t *cl1, const class_t *cl2)
-{
-    uint32_t i = 0;
-    uint32_t sl1 = 0;
-    uint32_t sl2 = 0;
-    const char *str1 = cl1->name;
-    const char *str2 = cl2->name;
-
-    while (str1[i] != 0) {
-        if (str1[i] == '/') {
-            sl1 = i;
-        }
-
-        i++;
-    }
-
-    i = 0;
-
-    while (str2[i] != 0) {
-        if (str2[i] == '/') {
-            sl2 = i;
-        }
-
-        i++;
-    }
-
-    if (sl1 != sl2) {
-        return false;
-    }
-
-    if ((sl1 == 0) && (sl2 == 0)) {
-        return true;
-    } else if (memcmp(str1, str2, sl1 + 1) == 0) {
-        return true;
-    }
-
-    return false;
-} // same_package()
-
 /** Finds a class by its name
  * \param name The class' name
  * \returns A pointer to the class or NULL if none is found */
@@ -935,8 +1004,8 @@ static void grow_class_table( void )
     bcl.class_table = new_ct; // Update the table pointer
 } // grow_class_table()
 
-/*******************************************************************************
- * Method related functions                                                    *
+/******************************************************************************
+ * Method related functions                                                   *
  ******************************************************************************/
 
 /** Returns the next index for an interface method
@@ -1592,75 +1661,50 @@ static exception_handler_t *load_exception_handlers(class_t *cl,
 } // load_exception_handlers()
 
 
-/*******************************************************************************
- * Field related functions                                                     *
+/******************************************************************************
+ * Field related functions                                                    *
  ******************************************************************************/
 
 /** Loads the class fields
- * \param cl A pointer to a class_t structure
- * \param cf A pointer to a class file */
+ * \param cl A pointer to a class being loaded
+ * \param cf A pointer to the corresponding class file */
 
 static void load_fields(class_t *cl, class_file_t *cf)
 {
-    char *name, *descriptor;
-    field_manager_t *fm;
-    field_attributes_t attr = { false, 0 };
-    long field_offset;
-    uint32_t count;
-    uint16_t instance_count = 0;
-    uint16_t static_count = 0;
-    uint16_t access_flags, name_index, descriptor_index;
+    uint32_t count = cf_load_u2(cf);
+    field_attributes_t attr;
+    field_info_t info;
 
-    count = cf_load_u2(cf);
-    field_offset = cf_tell(cf);
+    class_alloc_fields(cl, count);
 
     for (size_t i = 0; i < count; i++) {
-        access_flags = cf_load_u2(cf) & FIELD_ACC_FLAGS_MASK;
-
-        if (access_flags & ACC_STATIC) {
-            static_count++;
-        } else {
-            instance_count++;
-        }
-
-        cf_seek(cf, 4, SEEK_CUR);
+        load_field_info(cl, cf, &info);
         load_field_attributes(cl, cf, &attr);
+        verify_field(cl, &info, &attr);
+        class_add_field(cl, &info, &attr);
     }
-
-    cf_seek(cf, field_offset, SEEK_SET);
-
-    fm = fm_create(instance_count, static_count);
-
-    for (size_t i = 0; i < count; i++) {
-        access_flags = cf_load_u2(cf) & FIELD_ACC_FLAGS_MASK;
-        name_index = cf_load_u2(cf);
-        descriptor_index = cf_load_u2(cf);
-
-        name = cp_get_string(cl->const_pool, name_index);
-        descriptor = cp_get_string(cl->const_pool, descriptor_index);
-        check_field_access_flags(access_flags, class_is_interface(cl));
-
-        load_field_attributes(cl, cf, &attr);
-
-        if (access_flags & ACC_STATIC) {
-            if (attr.constant_value_found == true) {
-                fm_add_static(fm, name, descriptor, access_flags,
-                              cl->const_pool, attr.constant_value_index);
-            } else {
-                fm_add_static(fm, name, descriptor, access_flags, NULL, 0);
-            }
-        } else {
-            fm_add_instance(fm, name, descriptor, access_flags);
-        }
-    }
-
-    cl->field_manager = fm;
 } // load_fields()
+
+/** Load a field_info structure from the class file pointed by \a cf
+ * \param cl A pointer to the class being loaded
+ * \param cf A pointer to the class file from which to read the structure
+ * \param info The file_info structure to be filled */
+
+static void load_field_info(class_t *cl, class_file_t *cf, field_info_t *info)
+{
+    uint16_t access_flags = cf_load_u2(cf);
+    uint16_t name_index = cf_load_u2(cf);
+    uint16_t descriptor_index = cf_load_u2(cf);
+
+    info->access_flags = access_flags & FIELD_ACC_FLAGS_MASK;
+    info->name = cp_get_string(cl->const_pool, name_index);
+    info->descriptor = cp_get_string(cl->const_pool, descriptor_index);
+} // load_field_info()
 
 /**  Loads a field's attributes
  * \param cl A pointer to the class being loaded
- * \param cf A pointer to a class file
- * \param attr A pointer to a field_attributes_t structure
+ * \param cf A pointer to the class file from which to read the structure
+ * \param attr A pointer to a field_attributes structure to be filled
  *
  * The function stores the loaded attributes in the relevant fields of the
  * \a attr parameter */
@@ -1726,8 +1770,8 @@ static void load_field_attribute_ConstantValue(class_t *cl, class_file_t *cf,
 
 static void layout_fields(class_t *cl)
 {
-    field_t *curr;
     field_iterator_t itr;
+    field_t *field;
 
     uint32_t par_ref_n; // Parent's number of references
     uint32_t par_nref_size; // Parent's non-reference area size in bytes
@@ -1763,15 +1807,15 @@ static void layout_fields(class_t *cl)
     int_size = 0;
     long_size = 0;
 
-    itr = field_itr(cl->field_manager);
+    itr = instance_field_itr(cl);
 
     while (field_itr_has_next(itr)) {
-        curr = field_itr_get_next(&itr);
+        field = field_itr_get_next(&itr);
 
-        switch (curr->descriptor[0]) {
+        switch (field->descriptor[0]) {
             case '[':
             case 'L':
-                if (strcmp(curr->descriptor, "Ljelatine/VMPointer;") == 0) {
+                if (strcmp(field->descriptor, "Ljelatine/VMPointer;") == 0) {
 #if SIZEOF_VOID_P == 8
                     long_size += 8;
 #else // SIZEOF_VOID_P == 4 || SIZEOF_VOID_P == 2
@@ -1852,41 +1896,42 @@ static void layout_fields(class_t *cl)
     byte_offset = short_offset + short_size;
     bit_offset = (byte_offset + byte_size) << 3;
 
-    itr = field_itr(cl->field_manager);
+    itr = instance_field_itr(cl);
 
     while (field_itr_has_next(itr)) {
-        curr = field_itr_get_next(&itr);
+        field = field_itr_get_next(&itr);
 
-        switch (curr->descriptor[0]) {
+        switch (field->descriptor[0]) {
             case '[':
             case 'L':
-                if (strcmp(curr->descriptor, "Ljelatine/VMPointer;") == 0) {
+                if (strcmp(field->descriptor, "Ljelatine/VMPointer;") == 0) {
 #if SIZEOF_VOID_P == 8
-                    curr->offset = long_offset;
+                    field->offset = long_offset;
                     long_offset += 8;
 #else // SIZEOF_VOID_P == 4 || SIZEOF_VOID_P == 2
-                    curr->offset = int_offset;
+                    field->offset = int_offset;
                     int_offset += 4;
 #endif // SIZEOF_VOID_P == 8
                 } else {
-                    curr->offset = -((ref_offset + 1) * sizeof(uintptr_t));
+                    field->offset = -((ref_offset + 1) * sizeof(uintptr_t));
                     ref_offset++;
                 }
+
                 break;
 
             case 'B':
-                curr->offset = byte_offset;
+                field->offset = byte_offset;
                 byte_offset++;
                 break;
 
             case 'Z':
-                curr->offset = bit_offset;
+                field->offset = bit_offset;
                 bit_offset++;
                 break;
 
             case 'C':
             case 'S':
-                curr->offset = short_offset;
+                field->offset = short_offset;
                 short_offset += 2;
                 break;
 
@@ -1894,7 +1939,7 @@ static void layout_fields(class_t *cl)
 #if JEL_FP_SUPPORT
             case 'F':
 #endif // JEL_FP_SUPPORT
-                curr->offset = int_offset;
+                field->offset = int_offset;
                 int_offset += 4;
                 break;
 
@@ -1902,7 +1947,7 @@ static void layout_fields(class_t *cl)
 #if JEL_FP_SUPPORT
             case 'D':
 #endif // JEL_FP_SUPPORT
-                curr->offset = long_offset;
+                field->offset = long_offset;
                 long_offset += 8;
                 break;
 
@@ -1918,28 +1963,73 @@ static void layout_fields(class_t *cl)
 
     // HACK: The java.lang.ref.Reference class needs manual patching
     if (strcmp(cl->name, "java/lang/ref/Reference") == 0) {
-        assert(strcmp(cl->field_manager->instance_fields[0].name, "referent")
-               == 0);
-        cl->field_manager->instance_fields[0].offset = sizeof(header_t);
+        assert(strcmp(cl->fields[0].name, "referent") == 0);
+        cl->fields[0].offset = sizeof(header_t);
         cl->ref_n = 0;
         cl->nref_size = sizeof(uintptr_t);
     }
 } // layout_fields()
 
-/*******************************************************************************
- * Bytecode resolution methods                                                 *
- ******************************************************************************/
+/** Do a field lookup as described in the VM spec §5.4.3.2
+ * \param acl The class trying to access the field
+ * \param pcl A pointer to the class from which the lookup shall begin, filled
+ * with the class to which the field belongs when returning
+ * \param name The field name
+ * \param descriptor The field descriptor
+ * \param stat true if the field is a static field, false otherwise
+ * \returns The requested field or NULL if the field could not be found, if the
+ * field is found but is not accessible from \a acl the function will throw an
+ * exception */
+
+static field_t *lookup_field(class_t *acl, class_t **pcl, const char *name,
+                             const char *descriptor, bool stat)
+{
+    interface_iterator_t itr;
+    class_t *interface;
+    class_t *cl = *pcl;
+    field_t *field;
+
+    /* Look for the field in the current class and then in all its parent
+     * classes until it is found or we reach java.lang.Object */
+    while (!class_is_object(cl)) {
+        field = class_get_field(cl, name, descriptor, stat);
+
+        if (field) {
+            verify_field_access(acl, cl, field);
+            *pcl = cl;
+            return field;
+        } else if (stat) {
+            /* If we haven't found the field yet but it's a static field it
+             * could be in one of the direct superinterfaces */
+            itr = interface_itr(cl->interface_manager);
+
+            while (interface_itr_has_next(itr)) {
+                interface = interface_itr_get_next(&itr);
+                field = lookup_field(acl, &interface, name, descriptor, stat);
+
+                if (field) {
+                    *pcl = interface;
+                    return field;
+                }
+            }
+        }
+
+        cl = cl->parent;
+    }
+
+    return NULL;
+} // lookup_field()
 
 /**  Resolves an instance field
- * \param src A pointer to the class requesting the resolution
+ * \param acl A pointer to the class requesting the resolution
  * \param index An index in the class' constant pool holding the
  * CONSTANT_Fieldref structure describing the field to be resolved
  * \returns A pointer to the field, throws an exception if the field cannot be
  * resolved or isn't found */
 
-static field_t *resolve_instance_field(class_t *src, uint16_t index)
+static field_t *resolve_instance_field(class_t *acl, uint16_t index)
 {
-    const_pool_t *cp = src->const_pool;
+    const_pool_t *cp = acl->const_pool;
     class_t *cl;
     field_t *field;
     char *name, *desc;
@@ -1952,68 +2042,27 @@ static field_t *resolve_instance_field(class_t *src, uint16_t index)
     class_index = cp_get_fieldref_class(cp, index);
     name = cp_get_fieldref_name(cp, index);
     desc = cp_get_fieldref_type(cp, index);
-
-    cl = resolve_class(src, class_index);
-
-    /* Look for the field in the current class and then in all its parent
-     * classes until it is found or we reach java.lang.Object at which point the
-     * resolution procedure fails */
-    while (true) {
-        field = fm_get_instance(cl->field_manager, name, desc);
-
-        if (field != NULL) {
-            break;
-        } else {
-            if (class_is_object(cl)) {
-                c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                        "Unable to resolve field, field not found");
-            }
-
-            cl = cl->parent;
-        }
-    }
-
-    /* If we got here we actually found a field, let's check if we are allowed
-     * to access it */
-
-    if (field_is_private(field) && src != cl) {
-        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                "Trying to access a private field from an external class");
-    } else if (field_is_protected(field)) {
-        if (!((src == cl)
-              || class_is_parent(cl, src)
-              || same_package(cl, src)))
-        {
-            c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                    "Trying to access a protected field from a non-child class "
-                    "in a different package");
-        }
-    } else if (!field_is_public(field) && !same_package(cl, src)) {
-        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                "Trying to access a package-visible field from a different "
-                "package");
-    }
-
+    cl = resolve_class(acl, class_index);
+    field = lookup_field(acl, &cl, name, desc, false);
     cp_set_tag_and_data(cp, index, CONSTANT_Fieldref_resolved, field);
 
     return field;
 } // resolve_instance_field()
 
 /**  Resolves a static field
- * \param src A pointer to the class requesting the resolution
+ * \param acl A pointer to the class requesting the resolution
  * \param index An index in the class' constant pool holding the
  * CONSTANT_Fieldref structure describing the field to be resolved
  * \returns A pointer to the field, throws an exception if the field cannot be
  * resolved or isn't found */
 
-static static_field_t *resolve_static_field(class_t *src, uint16_t index)
+static field_t *resolve_static_field(class_t *acl, uint16_t index)
 {
-    const_pool_t *cp = src->const_pool;
-    class_t *cl, *interface;
-    static_field_t *field;
+    const_pool_t *cp = acl->const_pool;
+    class_t *cl;
+    field_t *field;
     char *name, *desc;
     uint16_t class_index;
-    interface_iterator_t itr;
 
     if (cp_get_tag(cp, index) == CONSTANT_Fieldref_resolved) {
         return cp_get_resolved_static_field(cp, index);
@@ -2022,69 +2071,19 @@ static static_field_t *resolve_static_field(class_t *src, uint16_t index)
     class_index = cp_get_fieldref_class(cp, index);
     name = cp_get_fieldref_name(cp, index);
     desc = cp_get_fieldref_type(cp, index);
-
-    cl = resolve_class(src, class_index);
+    cl = resolve_class(acl, class_index);
     initialize_class(thread_self(), cl);
-
-    /* Look for the field in the current class and then in all its parent
-     * classes until it is found or we reach java.lang.Object at which point the
-     * resolution procedure fails */
-    while (true) {
-        field = fm_get_static(cl->field_manager, name, desc);
-
-        if (field != NULL) {
-            break;
-        } else {
-            if (class_is_object(cl)) {
-                c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                        "Unable to resolve field, field not found");
-            }
-
-            itr = interface_itr(cl->interface_manager);
-
-            while (interface_itr_has_next(itr)) {
-                interface = interface_itr_get_next(&itr);
-                field = fm_get_static(interface->field_manager, name, desc);
-
-                if (field != NULL) {
-                    break;
-                }
-            }
-
-            if (field != NULL) {
-                break;
-            } else {
-                cl = cl->parent;
-            }
-        }
-    }
-
-    /* If we got here we actually found a field, let's check if we are allowed
-     * to access it */
-
-    if (sfield_is_private(field) && src != cl) {
-        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                "Trying to access a private field from an external class");
-    } else if (sfield_is_protected(field)
-               && !(cl == src
-                    || class_is_parent(cl, src)
-                    || same_package(cl, src)))
-    {
-        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                "Trying to access a protected field from a non-child class of "
-                "a different package");
-    } else if (!sfield_is_public(field) && !same_package(cl, src)) {
-        // Field is package visible, if ACC_PUBLIC is set no check is needed
-        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                "Trying to access a package-visible field from a different "
-                "package");
-    }
-
+    field = lookup_field(acl, &cl, name, desc, true);
     cp_set_tag_and_data(cp, index, CONSTANT_Fieldref_resolved,
-                        sfield_get_data_ptr(field));
+                        (void *) static_field_data_ptr(cl->static_data
+                                                       + field->offset));
 
     return field;
 } // resolve_static_field()
+
+/******************************************************************************
+ * Bytecode resolution methods                                                *
+ ******************************************************************************/
 
 /** Executes the actual linking of a method, implements the METHOD_LOAD field
  * \param cl The class owning the requesting method
@@ -2126,7 +2125,7 @@ void bcl_link_method(class_t *cl, method_t *method)
  * \param descriptor The field descriptor
  * \returns The new opcode */
 
-static uint8_t get_type_specific_opcode(uint8_t opcode, char *descriptor)
+static uint8_t get_type_specific_opcode(uint8_t opcode, const char *descriptor)
 {
     switch (descriptor[0]) {
         case 'B':
@@ -2266,7 +2265,6 @@ const uint8_t *bcl_link_opcode(const method_t *method, const uint8_t *lpc,
     const_pool_t *cp = method->cp;
     class_t *cl = cp_get_class(cp);
     class_t *init, *super_cl;
-    static_field_t *sfield;
     field_t *field;
 
     tm_lock();
@@ -2288,8 +2286,8 @@ const uint8_t *bcl_link_opcode(const method_t *method, const uint8_t *lpc,
     switch (opcode) {
         case GETSTATIC_PRELINK:
         case PUTSTATIC_PRELINK:
-            sfield = resolve_static_field(cl, index);
-            opcode = get_type_specific_opcode(opcode, sfield->descriptor);
+            field = resolve_static_field(cl, index);
+            opcode = get_type_specific_opcode(opcode, field->descriptor);
             store_int16_un(pc + 1, index);
             break;
 

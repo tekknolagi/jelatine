@@ -30,6 +30,7 @@
 #include "wrappers.h"
 
 #include "classfile.h"
+#include "field.h"
 #include "util.h"
 
 // Forward declarations
@@ -97,8 +98,6 @@ extern char *cp_get_name_and_type_type(const_pool_t *, uint16_t);
 extern uint16_t cp_get_fieldref_class(const_pool_t *, uint16_t);
 extern char *cp_get_fieldref_name(const_pool_t *, uint16_t);
 extern char *cp_get_fieldref_type(const_pool_t *, uint16_t);
-extern struct static_field_t *cp_get_resolved_static_field(const_pool_t *,
-                                                           uint16_t);
 extern uint16_t cp_get_methodref_class(const_pool_t *, uint16_t);
 extern char *cp_get_methodref_name(const_pool_t *, uint16_t);
 extern char *cp_get_methodref_descriptor(const_pool_t *, uint16_t);
@@ -384,6 +383,24 @@ static inline struct field_t *cp_get_resolved_instance_field(const_pool_t *cp,
 
     return (struct field_t *) cp_data_get_ptr(cp->data, entry);
 } // cp_get_resolved_instance_field()
+
+/** Gets the pointer of a resolved reference to a static field
+ * \param cp A pointer to a valid constant pool object
+ * \param entry The constant pool entry number
+ * \returns A pointer to the requested field */
+
+static inline struct field_t *cp_get_resolved_static_field(const_pool_t *cp,
+                                                           uint16_t entry)
+{
+    static_field_t *static_field;
+
+    assert(entry < cp->entries);
+    assert(cp_get_tag(cp, entry) == CONSTANT_Fieldref_resolved);
+
+    static_field = (static_field_t *) cp_data_get_ptr(cp->data, entry);
+
+    return static_field->field;
+} // cp_get_resolved_static_field()
 
 /** Gets the pointer of a resolved reference to a method
  * \param cp A pointer to a valid constant pool object

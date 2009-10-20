@@ -514,24 +514,6 @@ char *cp_get_fieldref_type(const_pool_t *cp, uint16_t entry) {
     return cp_get_name_and_type_type(cp, name_and_type_index);
 } // cp_get_fieldref_type()
 
-/** Gets the pointer of a resolved reference to a static field
- * \param cp A pointer to a valid constant pool object
- * \param entry The constant pool entry number
- * \returns A pointer to the requested field */
-
-static_field_t *cp_get_resolved_static_field(const_pool_t *cp, uint16_t entry)
-{
-    assert(entry < cp->entries);
-    assert(cp_get_tag(cp, entry) == CONSTANT_Fieldref_resolved);
-
-    uintptr_t ptr;
-
-    ptr = (uintptr_t) cp_data_get_ptr(cp->data, entry);
-    ptr -= offsetof(static_field_t, field);
-
-    return (static_field_t *) ptr;
-} // cp_get_resolved_static_field()
-
 /** Gets the method name from a CONSTANT_Methodref
  * \param cp A pointer to a valid constant pool object
  * \param entry The constant pool entry number

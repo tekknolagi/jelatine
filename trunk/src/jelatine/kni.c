@@ -102,12 +102,12 @@ jfieldID KNI_GetFieldID(jclass classHandle, const char *name,
     field_t *field;
 
     cl = bcl_get_class_by_id(JAVA_LANG_CLASS_REF2PTR(*classHandle)->id);
-    field = fm_get_instance(cl->field_manager, name, signature);
+    field = class_get_field(cl, name, signature, false);
 
-    if (field) {
+    if (field && !field_is_static(field)) {
         return field->offset;
     } else {
-        return (ptrdiff_t) NULL;
+        return (jfieldID) NULL;
     }
 } // KNI_GetFieldID()
 
@@ -130,16 +130,19 @@ jfieldID KNI_GetStaticFieldID(jclass classHandle, const char *name,
                               const char *signature)
 {
     class_t *cl;
-    static_field_t *field;
+    field_t *field;
+    static_field_t *static_field;
 
     cl = bcl_get_class_by_id(JAVA_LANG_CLASS_REF2PTR(*classHandle)->id);
-    field = fm_get_static(cl->field_manager, name, signature);
+    field = class_get_field(cl, name, signature, true);
 
-    if (field == NULL) {
-        return (uintptr_t) NULL;
+    if (field && field_is_static(field)) {
+        static_field = cl->static_data + field->offset;
+
+        return (jfieldID) static_field_data_ptr(static_field);
+    } else {
+        return (jfieldID) NULL;
     }
-
-    return (uintptr_t) sfield_get_data_ptr(field);
 } // KNI_GetStaticFieldID()
 
 /******************************************************************************

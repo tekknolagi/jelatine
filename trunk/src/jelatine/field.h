@@ -31,102 +31,73 @@
 
 #include "classfile.h"
 
+// Forward declarations
+
+struct class_t;
+
 /******************************************************************************
  * Field types definitions                                                    *
  ******************************************************************************/
 
-/** \struct field_t
- * Internal field representation */
+/** Internal field representation */
 
 struct field_t {
-    char *name; ///< Name pointer
-    char *descriptor; ///< Descriptor pointer
+    const char *name; ///< Name pointer
+    const char *descriptor; ///< Descriptor pointer
     uint16_t access_flags; ///< Access flags
-    int16_t offset; ///< Offset from the instance base
+    int16_t offset; ///< Offset in bytes
 };
 
 /** Typedef for ::struct field_t */
 typedef struct field_t field_t;
 
-/** \struct static_field_t
- * Internal byte-sized static field representation
- *
- * Note that the memory reserved for the actual field  */
+/** Static field data */
 
 struct static_field_t {
-    char *name; ///< Name pointer
-    char *descriptor; ///< Descriptor pointer
-    uint16_t access_flags; ///< Access flags
     union {
-        int8_t byte_data;
-        uint16_t char_data;
-        int16_t short_data;
-        int32_t int_data;
-        int64_t long_data;
+        int8_t jbyte;
+        uint16_t jchar;
+        int16_t jshort;
+        int32_t jint;
+        int64_t jlong;
 #if JEL_FP_SUPPORT
-        float float_data;
-        double double_data;
+        float jfloat;
+        double jdouble;
 #endif // JEL_FP_SUPPORT
-        uintptr_t reference_data;
-    } field; ///< Data used by the static field
+        uintptr_t jref;
+    } data; ///< Actual field data
+    field_t *field; ///< Related field structure
 };
 
 /** Typedef for ::struct static_field_t */
 typedef struct static_field_t static_field_t;
 
-/** Representation of a field attributes */
-
-struct field_attributes_t {
-    bool constant_value_found; ///< True when 'ConstantValue' attribute is found
-    uint16_t constant_value_index; ///< Index of the constant value
-};
-
-/** Typedef for ::struct field_attributes_t */
-typedef struct field_attributes_t field_attributes_t;
-
 /******************************************************************************
  * Field interface                                                            *
  ******************************************************************************/
 
-extern void check_field_access_flags(uint16_t, bool);
-extern void *sfield_get_data_ptr(static_field_t *);
+extern size_t field_size(const field_t *);
+extern void field_parse_descriptor(const char *);
+extern uintptr_t static_field_data_ptr(static_field_t *);
 
 /******************************************************************************
  * Field inlined functions                                                    *
  ******************************************************************************/
 
-/** Checks if a static field is private
- * \param field A pointer to a static field
- * \returns true if the field is private, false otherwise */
+/**  Checks if a field is static
+ * \param field A pointer to a field_t structure
+ * \returns true if the field is static, false otherwise */
 
-static inline bool sfield_is_private(static_field_t *field)
+static inline bool field_is_static(const field_t *field)
 {
-    return field->access_flags & ACC_PRIVATE;
-} // sfield_is_private()
-
-/** Checks if a static field is protected
- * \param field A pointer to a static field
- * \returns true if the field is protected */
-
-static inline bool sfield_is_protected(static_field_t *field)
-{
-    return field->access_flags & ACC_PROTECTED;
-} // sfield_is_protected()
-
-/** Checks if a static field is public
- * \param field A pointer to a static field
- * \returns true if the field is public, false otherwise */
-
-static inline bool sfield_is_public(static_field_t *field)
-{
-    return field->access_flags & ACC_PUBLIC;
-} // sfield_is_public()
+    return field->access_flags & ACC_STATIC;
+} // field_is_static()
 
 /**  Checks if a field is private
  * \param field A pointer to a field_t structure
  * \returns true if the field is private, false otherwise */
 
-static inline bool field_is_private(field_t *field)
+static inline bool field_is_private(const field_t *field)
 {
     return field->access_flags & ACC_PRIVATE;
 } // field_is_private()
@@ -135,7 +106,7 @@ static inline bool field_is_private(field_t *field)
  * \param field A pointer to a field_t structure
  * \returns true if the field is protected, false otherwise */
 
-static inline bool field_is_protected(field_t *field)
+static inline bool field_is_protected(const field_t *field)
 {
     return field->access_flags & ACC_PROTECTED;
 } // field_is_protected()
@@ -144,93 +115,71 @@ static inline bool field_is_protected(field_t *field)
  * \param field A pointer to a field_t structure
  * \returns true if the field is public, false otherwise */
 
-static inline bool field_is_public(field_t *field)
+static inline bool field_is_public(const field_t *field)
 {
     return field->access_flags & ACC_PUBLIC;
 } // field_is_public()
 
-/******************************************************************************
- * Field manager type definition                                              *
- ******************************************************************************/
+/**  Checks if a field is a reference to an object
+ * \param field A pointer to a field
+ * \returns true if the field holds a reference to an object, false otherwise */
 
-/** Represents the field manager of a class */
-
-struct field_manager_t {
-#ifndef NDEBUG
-    uint32_t reserved_instance; ///< Number of instance fields at creation time
-    uint32_t reserved_static; ///< Number of static fields at creation time
-#endif // !NDEBUG
-    uint32_t instance_count; ///< Number of instance fields
-    field_t *instance_fields; ///< Instance fields descriptors
-    uint32_t static_count; ///< Number of static fields
-    static_field_t *static_fields; ///< Static fields descriptors
-};
-
-/** Typedef for ::struct field_manager_t */
-typedef struct field_manager_t field_manager_t;
+static inline bool field_is_reference(const field_t *field)
+{
+    return (field->descriptor[0] == '[') || (field->descriptor[0] == 'L');
+} // field_is_public()
 
 /******************************************************************************
- * Field manager interface                                                    *
+ * Field iterators                                                            *
  ******************************************************************************/
 
-extern field_manager_t *fm_create(uint32_t, uint32_t);
-extern void fm_add_instance(field_manager_t *, char *, char *, uint16_t);
-void fm_add_static(field_manager_t *, char *, char *, uint16_t, const_pool_t *,
-                   uint16_t);
-extern field_t *fm_get_instance(field_manager_t *, const char *, const char *);
-extern static_field_t *fm_get_static(field_manager_t *, const char *,
-                                     const char *);
-extern void fm_mark_static(field_manager_t *);
-
-/******************************************************************************
- * Field iterator                                                             *
- ******************************************************************************/
-
-/** Instance field iterator, usually allocated on the stack when used */
+/** An iterator for navigating the fields of a class */
 
 struct field_iterator_t {
-    field_t *fields; ///< Pointer to the instance fields of a class
-    size_t entries; ///< Number of fields
-    size_t index; ///< Current index in the fields array
+    field_t *next; ///< Next field
+    field_t *end; ///< First pointer after the last field
+    bool stat; ///< true when iterating over static fields, false otherwise
 };
 
-/** Typedef for the ::struct field_iterator_t type */
+/** Typedef for the ::struct field_iterator_t */
 typedef struct field_iterator_t field_iterator_t;
 
-/** Creates an instance field iterator from the field manager \a fm
- * \param fm A pointer to a class' field manager
- * \returns An initialized instance field iterator */
+/******************************************************************************
+ * Field iterators interface                                                  *
+ ******************************************************************************/
 
-static inline field_iterator_t field_itr(field_manager_t *fm)
+extern field_iterator_t field_itr(struct class_t *, bool);
+extern field_t *field_itr_get_next(field_iterator_t *);
+
+/******************************************************************************
+ * Field iterators inlined functions                                          *
+ ******************************************************************************/
+
+/** Returns an iterator for navigating the instance fields of a class
+ * \param cl A pointer to a class
+ * \returns An initialized iterator */
+
+static inline field_iterator_t instance_field_itr(struct class_t *cl)
 {
-    field_iterator_t itr;
-
-    itr.fields = fm->instance_fields;
-    itr.entries = fm->instance_count;
-    itr.index = 0;
-
-    return itr;
+    return field_itr(cl, false);
 } // instance_field_itr()
 
-/** Returns true if another instance field is available
- * \param itr A field iterator
- * \returns true if there are more fields, false otherwise */
+/** Returns an iterator for navigating the static fields of a class
+ * \param cl A pointer to a class
+ * \returns An initialized iterator */
+
+static inline field_iterator_t static_field_itr(struct class_t *cl)
+{
+    return field_itr(cl, true);
+} // static_field_itr()
+
+/** Returns true if there are still fields which can be iterated over, false
+ * otherwise
+ * \param itr A field iterator */
 
 static inline bool field_itr_has_next(field_iterator_t itr)
 {
-    return itr.index < itr.entries;
+    return (itr.next != NULL);
 } // field_itr_has_next()
-
-/** Returns the next instance field, if the iterator has just been
- * created it returns the data of the first field (if it is present)
- * \param itr A pointer to the field iterator
- * \returns A pointer to an instance field */
-
-static inline field_t *field_itr_get_next(field_iterator_t *itr)
-{
-    assert(field_itr_has_next(*itr));
-
-    return itr->fields + itr->index++;
-} // field_itr_get_next()
 
 #endif // !JELATINE_FIELD_H
