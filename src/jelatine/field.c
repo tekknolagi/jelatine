@@ -24,27 +24,54 @@
 #include "wrappers.h"
 
 #include "class.h"
-#include "classfile.h"
-#include "constantpool.h"
 #include "field.h"
-#include "memory.h"
-#include "utf8_string.h"
-
-#include "java_lang_ref_Reference.h"
-#include "java_lang_ref_WeakReference.h"
-#include "java_lang_String.h"
-#include "java_lang_Thread.h"
-#include "java_lang_Throwable.h"
-#include "jelatine_VMResourceStream.h"
+#include "util.h"
 
 /******************************************************************************
  * Field implementation                                                       *
  ******************************************************************************/
 
-/** Checks if a field descriptor is valid
- * \param field A pointer to a field */
+/** Returns the size in bytes of a field
+ * \param field A pointer to a field
+ * \returns The size in bytes of the field */
 
-static void parse_field_descriptor(const char *desc)
+size_t field_size(const field_t *field)
+{
+    switch (field->descriptor[0]) {
+        case '[': // FALLTHROUGH
+        case 'L':
+            return SIZEOF_VOID_P;
+
+        case 'B': // FALLTHROUGH
+        case 'Z':
+            return 1;
+
+        case 'C': // FALLTHROUGH
+        case 'S':
+            return 2;
+
+        case 'I': // FALLTHROUGH
+#if JEL_FP_SUPPORT
+        case 'F':
+#endif // JEL_FP_SUPPORT
+            return 4;
+
+        case 'J': // FALLTHROUGH
+#if JEL_FP_SUPPORT
+        case 'D':
+#endif // JEL_FP_SUPPORT
+            return 8;
+
+        default:
+            dbg_unreachable();
+            return -1;
+    }
+} // field_size()
+
+/** Checks if a field descriptor is valid
+ * \param desc A field descriptor */
+
+void field_parse_descriptor(const char *desc)
 {
     uint32_t i, j; // A couple of counters
     uint32_t dimensions; // Dimensions of an array
@@ -138,264 +165,84 @@ basic:
 
 error:
     c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR, "Invalid field descriptor");
-} // parse_field_descriptor()
-
-/** Check that a field's access flag are coherent, throws an exception upon
- * failure
- * \param access_flags A field's access flags
- * \param interface True if the owning class is an interface */
-
-void check_field_access_flags(uint16_t access_flags, bool interface)
-{
-    if (((access_flags & ACC_PUBLIC) && (access_flags & ACC_PROTECTED))
-        || ((access_flags & ACC_PUBLIC) && (access_flags & ACC_PRIVATE))
-        || ((access_flags & ACC_PROTECTED) && (access_flags & ACC_PRIVATE))
-        || ((access_flags & ACC_FINAL) && (access_flags & ACC_VOLATILE)))
-    {
-        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR, "Illegal field's access flags");
-    }
-
-    if (interface) {
-        if (!((access_flags & ACC_PUBLIC) && (access_flags & ACC_STATIC)
-            && (access_flags & ACC_FINAL)))
-        {
-            c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                    "Interface has non-static, public, final field");
-        }
-
-        if (access_flags & ACC_TRANSIENT) {
-            c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                    "Interface field has ACC_TRANSIENT access flag set");
-        }
-    }
-} // check_field_access_flags()
+} // field_parse_descriptor()
 
 /** Returns a pointer to the actual data of a static field
- * \param field A pointer to a static field
+ * \param static_field A pointer to a static field
  * \returns The address of the static field data */
 
-void *sfield_get_data_ptr(static_field_t *field)
+uintptr_t static_field_data_ptr(static_field_t *static_field)
 {
-    switch (field->descriptor[0]) {
+    switch (static_field->field->descriptor[0]) {
         case 'L': // FALLTHROUGH
-        case '[': return &(field->field.reference_data);
+        case '[': return (uintptr_t) &(static_field->data.jref);
         case 'B': // FALLTHROUGH
-        case 'Z': return &(field->field.byte_data);
-        case 'C': return &(field->field.char_data);
-        case 'S': return &(field->field.short_data);
-        case 'I': return &(field->field.int_data);
-        case 'J': return &(field->field.long_data);
+        case 'Z': return (uintptr_t) &(static_field->data.jbyte);
+        case 'C': return (uintptr_t) &(static_field->data.jchar);
+        case 'S': return (uintptr_t) &(static_field->data.jshort);
+        case 'I': return (uintptr_t) &(static_field->data.jint);
+        case 'J': return (uintptr_t) &(static_field->data.jlong);
 #if JEL_FP_SUPPORT
-        case 'F': return &(field->field.float_data);
-        case 'D': return &(field->field.double_data);
+        case 'F': return (uintptr_t) &(static_field->data.jfloat);
+        case 'D': return (uintptr_t) &(static_field->data.jdouble);
 #endif // JEL_FP_SUPPORT
         default:
             dbg_unreachable();
-            return NULL;
+            return (uintptr_t) NULL;
     }
-} // sfield_get_data_ptr()
+} // static_field_data_ptr()
 
 /******************************************************************************
- * Field manager implementation                                               *
+ * Field iterators implementation                                             *
  ******************************************************************************/
 
-/** Creates the field manager
- * \param ic The number of instance fields which the manager will hold
- * \param sc The number of static fields which the manager will hold
- * \returns A pointer to a newly created field manager */
+/** Find the next field to iterate on unless there are no more available
+ * \param curr The current field
+ * \param end A pointer past the last field
+ * \param stat true if a static field is wanted, false otherwise
+ * returns A pointer to the next field or NULL if no more are available */
 
-field_manager_t *fm_create(uint32_t ic, uint32_t sc)
+static field_t *field_itr_find_next(field_t *curr, field_t *end, bool stat)
 {
-    field_manager_t *fm = gc_palloc(sizeof(field_manager_t));
-
-#ifndef NDEBUG
-    fm->reserved_instance = ic;
-    fm->reserved_static = sc;
-#endif // !NDEBUG
-
-    fm->instance_fields = gc_palloc(ic * sizeof(field_t));
-    fm->static_fields = gc_palloc(sc * sizeof(static_field_t));
-
-    return fm;
-} // fm_create()
-
-/** Adds an instance field to the manager
- * \param fm The field manager
- * \param name The field name
- * \param descriptor The field descriptor
- * \param access_flags The field access flags */
-
-void fm_add_instance(field_manager_t *fm, char *name, char *descriptor,
-                     uint16_t access_flags)
-{
-    assert(fm->instance_count < fm->reserved_instance);
-
-    field_t *field = fm->instance_fields + fm->instance_count;
-
-    if ((fm_get_instance(fm, name, descriptor) != NULL)
-        || (fm_get_static(fm, name, descriptor) != NULL))
-    {
-        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                "Duplicated fields with same name and descriptor");
-    }
-
-    parse_field_descriptor(descriptor);
-    field->name = name;
-    field->descriptor = descriptor;
-    field->access_flags = access_flags;
-    fm->instance_count++;
-} // fm_add_instance()
-
-/** Adds a static field to the manager
- * \param fm The field manager
- * \param name The field name
- * \param descriptor The field descriptor
- * \param access_flags The field access flags
- * \param cp A pointer to the constant pool
- * \param const_index The index of the constant field value, 0 if the field is
- * not constant */
-
-void fm_add_static(field_manager_t *fm, char *name, char *descriptor,
-                   uint16_t access_flags, const_pool_t *cp,
-                   uint16_t const_index)
-{
-    assert(fm->static_count < fm->reserved_static);
-
-    static_field_t *curr;
-
-    if ((fm_get_instance(fm, name, descriptor) != NULL)
-        || (fm_get_static(fm, name, descriptor) != NULL))
-    {
-        c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                "Duplicated fields with same name and descriptor");
-    }
-
-    parse_field_descriptor(descriptor);
-    curr = fm->static_fields + fm->static_count;
-
-    curr->name = name;
-    curr->descriptor = descriptor;
-    curr->access_flags = access_flags;
-
-    if (const_index != 0) {
-        switch (descriptor[0]) {
-            case '[':
-            case 'L': // This is a final static field pointing to a string
-                if (strcmp(descriptor, "Ljava/lang/String;") != 0) {
-                    c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
-                            "A final static reference with a constant "
-                            "initializer does not point to a java.lang.String "
-                            "object");
-                }
-
-                curr->field.reference_data = cp_get_ref(cp, const_index);
-                break;
-
-            case 'B': // This is a final static byte field
-                curr->field.byte_data = cp_get_integer(cp, const_index);
-                break;
-
-            case 'Z': // This is a final static bool field
-                if (cp_get_integer(cp, const_index)) {
-                    curr->field.byte_data = 1;
-                }
-
-                break;
-
-            case 'C': // This is a final static char field
-                curr->field.char_data = cp_get_integer(cp, const_index);
-                break;
-
-            case 'S': // This is a final static short field
-                curr->field.short_data = cp_get_integer(cp, const_index);
-                break;
-
-            case 'I': // This is a final static float field
-                curr->field.int_data = cp_get_integer(cp, const_index);
-                break;
-
-#if JEL_FP_SUPPORT
-            case 'F': // This is a final static float field
-                curr->field.float_data = cp_get_float(cp, const_index);
-                break;
-#endif // JEL_FP_SUPPORT
-
-            case 'J': // This is a final static long field
-                curr->field.long_data = cp_get_long(cp, const_index);
-                break;
-
-#if JEL_FP_SUPPORT
-            case 'D': // This is a final static double field
-                curr->field.double_data = cp_get_double(cp, const_index);
-                break;
-#endif // JEL_FP_SUPPORT
-
-            default:
-                dbg_unreachable();
-        }
-    }
-
-    fm->static_count++;
-} // fm_add_static()
-
-/** Finds an instance field by its name and descriptor
- * \param fm A pointer to the field manager
- * \param name The field name
- * \param descriptor The descriptor name
- * \returns A pointer to the field or NULL */
-
-field_t *fm_get_instance(field_manager_t *fm, const char *name,
-                         const char *descriptor)
-{
-    field_t *fields = fm->instance_fields;
-    uint32_t count = fm->instance_count;
-
-    for (size_t i = 0; i < count; i++) {
-        if ((strcmp(fields[i].name, name) == 0)
-            && (strcmp(fields[i].descriptor, descriptor) == 0))
-        {
-            return fields + i;
-        }
-    }
-
-    return NULL;
-} // fm_get_instance()
-
-/** Finds a static field by its name and descriptor
- * \param fm A pointer to the field manager
- * \param name The field name
- * \param descriptor The descriptor name
- * \returns A pointer to the field or NULL */
-
-static_field_t *fm_get_static(field_manager_t *fm, const char *name,
-                              const char *descriptor)
-{
-    static_field_t *fields = fm->static_fields;
-    uint32_t count = fm->static_count;
-
-    for (size_t i = 0; i < count; i++) {
-        if ((strcmp(fields[i].name, name) == 0)
-            && (strcmp(fields[i].descriptor, descriptor) == 0))
-        {
-            return fields + i;
-        }
-    }
-
-    return NULL;
-} // fm_get_static()
-
-/** Marks the objects pointed by the static fields of a class
- * \param fm A pointer to the class' field manager */
-
-void fm_mark_static(field_manager_t *fm)
-{
-    static_field_t *curr = fm->static_fields;
-
-    for (size_t i = 0; i < fm->static_count; i++) {
-        if ((curr->descriptor[0] == '[') || (curr->descriptor[0] == 'L')) {
-            gc_mark_reference(curr->field.reference_data);
+    while (curr < end) {
+        if (field_is_static(curr) == stat) {
+            return curr;
         }
 
         curr++;
     }
-} // fm_mark_static()
+
+    return NULL;
+} // field_itr_find_next()
+
+/** Returns an iterator for navigating the instance or static fields of a class
+ * depending on the value of stat
+ * \param cl A pointer to a class
+ * \param stat true if a static field iterator is needed, false otherwise
+ * \returns An initialized iterator */
+
+field_iterator_t field_itr(class_t *cl, bool stat)
+{
+    field_iterator_t itr;
+    field_t *end = cl->fields + cl->fields_n;
+
+    itr.next = field_itr_find_next(cl->fields, end, stat);
+    itr.end = end;
+    itr.stat = stat;
+
+    return itr;
+} // field_itr()
+
+/** Returns the next field of this iteration
+ * \param itr A field iterator
+ * \returns The next field available */
+
+field_t *field_itr_get_next(field_iterator_t *itr)
+{
+    field_t *field = itr->next;
+
+    assert(field_itr_has_next(*itr));
+    itr->next = field_itr_find_next(field + 1, itr->end, itr->stat);
+
+    return field;
+} // field_itr_get_next()

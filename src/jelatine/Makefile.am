@@ -53,5 +53,6 @@ jelatine_SOURCES = \
     thread.c thread.h \
     utf8_string.c utf8_string.h \
     util.c util.h \
+    verifier.c verifier.h \
     vm.c vm.h \
     wrappers.h

@@ -164,4 +164,44 @@ extern long cf_tell(class_file_t *);
 extern ZZIP_FILE *jar_get_resource(const char *);
 #endif // JEL_JARFILE_SUPPORT
 
+/******************************************************************************
+ * Class file components                                                      *
+ ******************************************************************************/
+
+/** Representation of a field description */
+
+struct field_info_t {
+    uint16_t access_flags; ///< Access flags
+    const char *name; ///< Field name
+    const char *descriptor; ///< Field descriptor
+};
+
+/** Typedef for ::struct field_info_t */
+typedef struct field_info_t field_info_t;
+
+/** Representation of a field attributes */
+
+struct field_attributes_t {
+    bool constant_value_found; ///< True when 'ConstantValue' attribute is found
+    uint16_t constant_value_index; ///< Index of the constant value
+};
+
+/** Typedef for ::struct field_attributes_t */
+typedef struct field_attributes_t field_attributes_t;
+
+/** Represents the attributes of a method */
+
+struct method_attributes_t {
+    bool code_found; ///< true if the Code attribute was found
+    uint16_t max_stack; ///< Holds the maximum number of stack slots used
+    uint16_t max_locals; ///< Holds the maximum number of locals used
+    uint16_t code_length; ///< Length of the code (in bytes)
+    long code_offset; ///< Offset inside the class file of the Code attribute
+    bool exceptions_found; ///< true Exceptions attribute was found
+    uint16_t exception_table_length; ///< Number of exception handlers
+};
+
+/** Typedef for ::struct method_attributes_t */
+typedef struct method_attributes_t method_attributes_t;
+
 #endif // !JELATINE_CLASSFILE_H

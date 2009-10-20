@@ -34,8 +34,8 @@
 #include "field.h"
 #include "header.h"
 #include "method.h"
+#include "memory.h"
 #include "thread.h"
-#include "util.h"
 
 #include "java_lang_Class.h"
 
@@ -158,7 +158,9 @@ struct class_t {
     // Field related data
     uint32_t ref_n; ///< Number of reference fields in the instance
     uint32_t nref_size; ///< Size in bytes of the non-reference area
-    field_manager_t *field_manager;///< Field manager of this class
+    uint32_t fields_n; ///< Number of instance fields
+    field_t *fields; ///< Field descriptors
+    static_field_t *static_data; ///< Static fields data
 
     // Method related data
     method_manager_t *method_manager; ///< Method manager of this class
@@ -177,7 +179,11 @@ typedef struct class_t class_t;
  * Class interface                                                            *
  ******************************************************************************/
 
-extern bool class_is_parent(class_t *, class_t *);
+extern bool class_is_parent(const class_t *, const class_t *);
+extern void class_add_field(class_t *, const field_info_t *,
+                            const field_attributes_t *);
+extern field_t *class_get_field(const class_t *, const char *, const char *,
+                                bool);
 extern void class_purge_initializer(class_t *);
 
 /******************************************************************************
@@ -371,5 +377,16 @@ static inline uintptr_t class_get_object(const class_t *cl)
 {
     return cl->obj;
 } // class_get_object()
+
+/** Pre-allocate enough space for holding \a count fields
+ * \param cl A pointer to a class being loaded
+ * \param count The number of fields to be pre-allocated */
+
+static inline void class_alloc_fields(class_t *cl, size_t count)
+{
+    assert((cl->fields_n == 0) && (cl->fields == NULL));
+
+    cl->fields = gc_palloc(sizeof(field_t) * count);
+} // class_alloc_fields()
 
 #endif // !JELATINE_CLASS_H

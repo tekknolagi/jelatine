@@ -105,7 +105,7 @@ bool im_is_present(interface_manager_t *im, class_t *interface)
  * \param child The potentially child class
  * \returns true if \a child inherits from \a parent, false otherwise  */
 
-bool class_is_parent(class_t *parent, class_t *child)
+bool class_is_parent(const class_t *parent, const class_t *child)
 {
     do {
         if (parent == child->parent) {
@@ -117,6 +117,57 @@ bool class_is_parent(class_t *parent, class_t *child)
 
     return false;
 } // class_is_parent()
+
+/** Adds a field to the class
+ * \param cl A pointer to a class being loaded
+ * \param info A pointer to the information of the new field
+ * \param attr A pointer to the field attributes of the new field */
+
+void class_add_field(class_t *cl, const field_info_t *info,
+                     const field_attributes_t *attr)
+{
+    field_t *field = cl->fields + cl->fields_n;
+
+    field->access_flags = info->access_flags;
+    field->name = info->name;
+    field->descriptor = info->descriptor;
+
+    if (field_is_static(field) && attr->constant_value_found) {
+        /* Store the constant value index in the offset making it non-zero,
+         * this will be used during initialization when static fields are
+         * laid out and initialized */
+        field->offset = attr->constant_value_index;
+    }
+
+    cl->fields_n++;
+} // class_add_field()
+
+/** Finds a field by its name and descriptor, this function will only
+ * look for the field inside the specified class, not its parents
+ * \param cl A pointer to the class where to look for the field
+ * \param name The field name
+ * \param descriptor The descriptor name
+ * \param stat true if the field looked for is static, false otherwise
+ * \returns A pointer to the field or NULL if none was found */
+
+field_t *class_get_field(const class_t *cl, const char *name,
+                         const char *descriptor, bool stat)
+{
+    field_t *field;
+
+    for (size_t i = 0; i < cl->fields_n; i++) {
+        field = cl->fields + i;
+
+        if ((strcmp(field->name, name) == 0)
+            && (strcmp(field->descriptor, descriptor) == 0)
+            && (field_is_static(field) == stat))
+        {
+            return field;
+        }
+    }
+
+    return NULL;
+} // class_get_field()
 
 /** This function unloads the class initializer method
  * \param cl A pointer to a class_t structure */

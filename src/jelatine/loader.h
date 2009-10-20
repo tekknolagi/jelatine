@@ -55,6 +55,10 @@ extern void bcl_link_method(class_t *, method_t *);
 extern const uint8_t *bcl_link_opcode(const method_t *, const uint8_t *,
                                       internal_opcode_t);
 
+/******************************************************************************
+ * Inlined loader functions                                                   *
+ ******************************************************************************/
+
 /** Return the class of a basic array type.
  * The class must have already been resolved otherwise this function will
  * return a NULL pointer

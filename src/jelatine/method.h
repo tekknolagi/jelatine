@@ -117,21 +117,6 @@ struct method_t {
 /** Typedef for ::struct method_t */
 typedef struct method_t method_t;
 
-/** Represents the attributes of a method */
-
-struct method_attributes_t {
-    bool code_found; ///< true if the Code attribute was found
-    uint16_t max_stack; ///< Holds the maximum number of stack slots used
-    uint16_t max_locals; ///< Holds the maximum number of locals used
-    uint16_t code_length; ///< Length of the code (in bytes)
-    long code_offset; ///< Offset inside the class file of the Code attribute
-    bool exceptions_found; ///< true Exceptions attribute was found
-    uint16_t exception_table_length; ///< Number of exception handlers
-};
-
-/** Typedef for ::struct method_attributes_t */
-typedef struct method_attributes_t method_attributes_t;
-
 /** Represents the method manager of a class */
 
 struct method_manager_t {
@@ -145,8 +130,8 @@ struct method_manager_t {
 /** Typedef for ::struct method_manager_t */
 typedef struct method_manager_t method_manager_t;
 
-/*******************************************************************************
- * Global variables                                                            *
+/******************************************************************************
+ * Global variables                                                           *
  ******************************************************************************/
 
 /** Dummy method used to halt the interpreter
@@ -159,8 +144,8 @@ typedef struct method_manager_t method_manager_t;
 
 extern method_t halt_method;
 
-/*******************************************************************************
- * Function prototypes                                                         *
+/******************************************************************************
+ * Function prototypes                                                        *
  ******************************************************************************/
 
 extern method_manager_t *mm_create(uint32_t);
