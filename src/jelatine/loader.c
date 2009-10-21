@@ -127,8 +127,7 @@ static void load_field_attributes(class_t *, class_file_t *,
 static void load_field_attribute_ConstantValue(class_t *, class_file_t *,
                                                field_attributes_t *);
 static void layout_fields(class_t *);
-static field_t *lookup_field(class_t *, class_t **, const char *, const char *,
-                             bool);
+static field_t *lookup_field(class_t **, const char *, const char *, bool);
 static field_t *resolve_instance_field(class_t *, uint16_t);
 static field_t *resolve_static_field(class_t *, uint16_t);
 
@@ -1971,7 +1970,6 @@ static void layout_fields(class_t *cl)
 } // layout_fields()
 
 /** Do a field lookup as described in the VM spec §5.4.3.2
- * \param acl The class trying to access the field
  * \param pcl A pointer to the class from which the lookup shall begin, filled
  * with the class to which the field belongs when returning
  * \param name The field name
@@ -1981,7 +1979,7 @@ static void layout_fields(class_t *cl)
  * field is found but is not accessible from \a acl the function will throw an
  * exception */
 
-static field_t *lookup_field(class_t *acl, class_t **pcl, const char *name,
+static field_t *lookup_field(class_t **pcl, const char *name,
                              const char *descriptor, bool stat)
 {
     interface_iterator_t itr;
@@ -1995,7 +1993,6 @@ static field_t *lookup_field(class_t *acl, class_t **pcl, const char *name,
         field = class_get_field(cl, name, descriptor, stat);
 
         if (field) {
-            verify_field_access(acl, cl, field);
             *pcl = cl;
             return field;
         } else if (stat) {
@@ -2005,7 +2002,7 @@ static field_t *lookup_field(class_t *acl, class_t **pcl, const char *name,
 
             while (interface_itr_has_next(itr)) {
                 interface = interface_itr_get_next(&itr);
-                field = lookup_field(acl, &interface, name, descriptor, stat);
+                field = lookup_field(&interface, name, descriptor, stat);
 
                 if (field) {
                     *pcl = interface;
@@ -2043,7 +2040,8 @@ static field_t *resolve_instance_field(class_t *acl, uint16_t index)
     name = cp_get_fieldref_name(cp, index);
     desc = cp_get_fieldref_type(cp, index);
     cl = resolve_class(acl, class_index);
-    field = lookup_field(acl, &cl, name, desc, false);
+    field = lookup_field(&cl, name, desc, false);
+    verify_field_access(acl, cl, field);
     cp_set_tag_and_data(cp, index, CONSTANT_Fieldref_resolved, field);
 
     return field;
@@ -2073,7 +2071,8 @@ static field_t *resolve_static_field(class_t *acl, uint16_t index)
     desc = cp_get_fieldref_type(cp, index);
     cl = resolve_class(acl, class_index);
     initialize_class(thread_self(), cl);
-    field = lookup_field(acl, &cl, name, desc, true);
+    field = lookup_field(&cl, name, desc, true);
+    verify_field_access(acl, cl, field);
     cp_set_tag_and_data(cp, index, CONSTANT_Fieldref_resolved,
                         (void *) static_field_data_ptr(cl->static_data
                                                        + field->offset));
