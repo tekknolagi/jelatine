@@ -350,6 +350,23 @@ char *java_to_utf8(const uint16_t *data, size_t length)
     return str;
 } // java_to_utf8()
 
+/** Turns a class or package name in the classfile internal format
+ * \param src The source string
+ * \returns The pointer passed to this function */
+
+char *utf8_slashify(char *src)
+{
+    size_t len = strlen(src);
+
+    for (size_t i = 0; i < len; i++) {
+        if (src[i] == '.') {
+            src[i] = '/';
+        }
+    }
+
+    return src;
+} // utf8_slashify()
+
 /** Calculates the hash value of an UTF-8 string
  * \param data The string's data
  * \param len The number of characters in the string */

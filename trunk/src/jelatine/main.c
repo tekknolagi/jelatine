@@ -26,6 +26,7 @@
 
 #include "vm.h"
 #include "memory.h"
+#include "utf8_string.h"
 
 /******************************************************************************
  * Local function declarations                                                *
@@ -39,10 +40,8 @@ static void parse_command_line_args(int, char **);
 
 int main(int argc, char *argv[])
 {
-    int i, len;
     int jargs_n;
     char **jargs;
-    char *main_class;
 
     parse_command_line_args(argc, argv);
 
@@ -86,22 +85,11 @@ int main(int argc, char *argv[])
             opts_set_jargs_n(0);
         }
 
-        /* Check that the class name is given in the internal format,
-         * otherwise convert it */
-
-        main_class = opts_get_main_class();
-        len = strlen(main_class);
-
-        for (i = 0; i < len; i++) {
-            if (main_class[i] == '.') {
-                main_class[i] = '/';
-            }
-        }
-
         /* Create the vm and load the classes from the current directory
          * if the classpath is NULL or from the classpath directory */
-        vm_run(opts_get_classpath(), opts_get_boot_classpath(), main_class,
-               opts_get_heap_size(), opts_get_jargs_n(), opts_get_jargs());
+        vm_run(opts_get_classpath(), opts_get_boot_classpath(),
+               opts_get_main_class(), opts_get_heap_size(),
+               opts_get_jargs_n(), opts_get_jargs());
     }
 
     exit(0);
@@ -174,7 +162,7 @@ static void parse_command_line_args(int argc, char *argv[])
     }
 
     if (i < argc) {
-        opts_set_main_class(argv[i]);
+        opts_set_main_class(utf8_slashify(argv[i]));
         i++;
 
         if (i < argc) {

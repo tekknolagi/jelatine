@@ -38,8 +38,8 @@ struct java_lang_Class_t {
     uintptr_t name; ///< Java name
     header_t header; ///< Object header
     int32_t id; ///< Id in the class table corresponding to this class
-    int8_t is_array; ///< Set to one if this class is an array
-    int8_t is_interface; ///< Set to one if this class is an interface
+    int8_t is_array; ///< true if this class is an array
+    int8_t is_interface; ///< true if this class is an interface
 };
 
 /** Typedef for ::struct java_lang_Class_t */
