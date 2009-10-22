@@ -209,8 +209,19 @@ public final class Class
      */
     public String getName()
     {
+        if (name == null) {
+            name = getInternalName().replace('/', '.');
+        }
+
         return name;
     }
+
+    /**
+     * Get the name of this class in the classfile internal format.
+     *
+     * @return the name of this class in the classfile internal format
+     */
+    private native String getInternalName();
 
     /**
      * Finds a resource with a given name in the application's JAR file and
@@ -231,9 +242,9 @@ public final class Class
             path.deleteCharAt(0);
         } else {
             /* Relative path, prepend the directory where the class is found */
-            StringBuffer dir = new StringBuffer(this.name);
+            StringBuffer dir = new StringBuffer(getName());
             int last_slash = 0;
-            
+
             for (int i = 0; i < dir.length(); i++) {
                 if (dir.charAt(i) == '.') {
                     dir.setCharAt(i, '/');

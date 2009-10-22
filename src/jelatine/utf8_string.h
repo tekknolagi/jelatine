@@ -42,6 +42,7 @@ extern bool utf8_check(const char *);
 extern size_t utf8_to_java_length(const char *);
 extern void utf8_to_java(uint16_t *, const char *);
 extern char *java_to_utf8(const uint16_t *, size_t);
+extern char *utf8_slashify(char *);
 
 #if JEL_PRINT
 extern void string_manager_print( void );

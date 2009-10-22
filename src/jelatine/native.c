@@ -68,6 +68,7 @@ typedef struct native_method_desc_t native_method_desc_t;
 
 // java.lang.Class methods
 static KNI_RETURNTYPE_OBJECT java_lang_Class_forName( void );
+static KNI_RETURNTYPE_OBJECT java_lang_Class_getInternalName( void );
 static KNI_RETURNTYPE_OBJECT java_lang_Class_newInstance( void );
 static KNI_RETURNTYPE_BOOLEAN java_lang_Class_isInstance( void );
 static KNI_RETURNTYPE_BOOLEAN java_lang_Class_isAssignableFrom( void );
@@ -169,6 +170,12 @@ native_method_desc_t native_desc[] = {
         "forName",
         "(Ljava/lang/String;)Ljava/lang/Class;",
         java_lang_Class_forName
+    },
+    {
+        "java/lang/Class",
+        "getInternalName",
+        "()Ljava/lang/String;",
+        java_lang_Class_getInternalName
     },
     {
         "java/lang/Class",
@@ -553,7 +560,7 @@ static KNI_RETURNTYPE_OBJECT java_lang_Class_forName( void )
     class_t *cl;
     uint16_t *data;
     size_t length;
-    char *str, *tmp;
+    char *str;
 
     KNI_StartHandles(2);
     KNI_DeclareHandle(str_ref);
@@ -567,14 +574,7 @@ static KNI_RETURNTYPE_OBJECT java_lang_Class_forName( void )
         data = array_get_data(JAVA_LANG_STRING_REF2PTR(*str_ref)->value);
         data += JAVA_LANG_STRING_REF2PTR(*str_ref)->offset;
         length = JAVA_LANG_STRING_REF2PTR(*str_ref)->count;
-        str = java_to_utf8(data, length);
-
-        // Turn the dots in the classname into slashes
-        for (tmp = str; *tmp != 0; tmp++) {
-            if (*tmp == '.') {
-                *tmp = '/';
-            }
-        }
+        str = utf8_slashify(java_to_utf8(data, length));
 
         // Try to resolve the class
         c_try {
@@ -601,6 +601,22 @@ static KNI_RETURNTYPE_OBJECT java_lang_Class_forName( void )
 
     KNI_EndHandlesAndReturnObject(cl_ref);
 } // java_lang_Class_forName()
+
+/** Implementation of java.lang.Class.getInternalName() */
+
+static KNI_RETURNTYPE_OBJECT java_lang_Class_getInternalName( void )
+{
+    class_t *cl;
+
+    KNI_StartHandles(2);
+    KNI_DeclareHandle(cl_ref);
+    KNI_DeclareHandle(str_ref);
+
+    KNI_GetThisPointer(cl_ref);
+    cl = bcl_get_class_by_id(JAVA_LANG_CLASS_REF2PTR(*cl_ref)->id);
+    *str_ref = JAVA_LANG_STRING_PTR2REF(jstring_create_from_utf8(cl->name));
+    KNI_EndHandlesAndReturnObject(str_ref);
+} // java_lang_Class_getInternalName()
 
 /** Implementation of java.lang.Class.newInstance() */
 

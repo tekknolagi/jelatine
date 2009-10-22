@@ -303,7 +303,8 @@ static void load_class(class_t *cl)
 {
     class_file_t *cf;
     class_t *tcl, *elem;
-    char *str, *jname;
+    java_lang_Class_t *jcl;
+    char *str;
     size_t len, i;
 
     class_set_state(cl, CS_LINKING); // Put the class in the linking state
@@ -336,9 +337,8 @@ static void load_class(class_t *cl)
             // Multi-dimensional array
             cl->elem_type = PT_REFERENCE;
 
-            str = gc_malloc(sizeof(char) * len);
-            memcpy(str, cl->name + 1, len - 1);
-            str[len - 1] = 0;
+            str = gc_malloc(len);
+            memcpy(str, cl->name + 1, len); // Copies the nul terminator
 
             elem = bcl_resolve_class(NULL, str);
             cl->elem_class = elem;
@@ -354,7 +354,7 @@ static void load_class(class_t *cl)
 
             cl->elem_type = PT_REFERENCE;
 
-            str = gc_malloc(sizeof(char) * (len - 2));
+            str = gc_malloc(len - 2);
             memcpy(str, cl->name + 2, len - 3);
             str[len - 3] = 0;
 
@@ -409,25 +409,10 @@ static void load_class(class_t *cl)
     // Create the embedded Java class object
     tcl = bcl_find_class("java/lang/Class");
     cl->obj = gc_new(tcl);
-    JAVA_LANG_CLASS_REF2PTR(cl->obj)->id = cl->id;
-    JAVA_LANG_CLASS_REF2PTR(cl->obj)->is_array = class_is_array(cl) ? 1 : 0;
-    JAVA_LANG_CLASS_REF2PTR(cl->obj)->is_interface =
-        class_is_interface(cl) ? 1 : 0;
-
-    jname = gc_malloc(sizeof(char) * (len + 1));
-
-    for (i = 0; i < len; i++) {
-        if (cl->name[i] == '/') {
-            jname[i] = '.';
-        } else {
-            jname[i] = cl->name[i];
-        }
-    }
-
-    jname[len] = 0;
-    JAVA_LANG_CLASS_REF2PTR(cl->obj)->name =
-        JAVA_LANG_STRING_PTR2REF(jstring_create_literal(jname));
-    gc_free(jname);
+    jcl = JAVA_LANG_CLASS_REF2PTR(cl->obj);
+    jcl->id = cl->id;
+    jcl->is_array = class_is_array(cl) ? 1 : 0;
+    jcl->is_interface = class_is_interface(cl) ? 1 : 0;
 
     // Put the class in the linked state
     class_set_state(cl, CS_LINKED);
