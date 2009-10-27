@@ -7,7 +7,7 @@ GNU Classpath is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2, or (at your option)
 any later version.
- 
+
 GNU Classpath is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -40,13 +40,13 @@ package java.io;
 
 /**
  * This class reads characters from a byte input stream.   The characters
- * read are converted from bytes in the underlying stream by a 
+ * read are converted from bytes in the underlying stream by a
  * decoding layer.  The decoding layer transforms bytes to chars according
- * to an encoding standard.  There are many available encodings to choose 
+ * to an encoding standard.  There are many available encodings to choose
  * from.  The desired encoding can either be specified by name, or if no
  * encoding is selected, the system default encoding will be used.  The
  * system default encoding name is determined from the system property
- * <code>file.encoding</code>.  The only encodings that are guaranteed to 
+ * <code>file.encoding</code>.  The only encodings that are guaranteed to
  * be availalbe are "8859_1" (the Latin-1 character set) and "UTF8".
  * Unforunately, Java does not provide a mechanism for listing the
  * ecodings that are supported in a given implementation.
@@ -59,7 +59,7 @@ package java.io;
  * <li>More later</li>
  * </ul>
  * <p>
- * It is recommended that applications do not use 
+ * It is recommended that applications do not use
  * <code>InputStreamReader</code>'s
  * directly.  Rather, for efficiency purposes, an object of this class
  * should be wrapped by a <code>BufferedReader</code>.
@@ -84,7 +84,7 @@ public class InputStreamReader extends Reader
      * This method initializes a new instance of <code>InputStreamReader</code>
      * to read from the specified stream using the default encoding.
      *
-     * @param in The <code>InputStream</code> to read from 
+     * @param in The <code>InputStream</code> to read from
      */
     public InputStreamReader(InputStream in)
     {
@@ -96,19 +96,23 @@ public class InputStreamReader extends Reader
      * to read from the specified stream using a caller supplied character
      * encoding scheme.  Note that due to a deficiency in the Java language
      * design, there is no way to determine which encodings are supported.
-     * 
-     * @param in The <code>InputStream</code> to read from
-     * @param encoding_name The name of the encoding scheme to use
      *
-     * @exception UnsupportedEncodingException If the encoding scheme 
+     * @param in The <code>InputStream</code> to read from
+     * @param encoding The name of the encoding scheme to use
+     *
+     * @exception UnsupportedEncodingException If the encoding scheme
      * requested is not available.
      */
-    public InputStreamReader(InputStream in, String encoding_name)
+    public InputStreamReader(InputStream in, String encoding)
         throws UnsupportedEncodingException
     {
-        if (encoding_name != "ISO8859_1" && encoding_name != "US_ASCII")
+        if (!encoding.equals("ISO8859_1")
+            && !encoding.equals("US_ASCII")
+            && !encoding.equals("UTF-8"))
+        {
             throw new UnsupportedEncodingException();
-    
+        }
+
         this.in = in;
     }
 
@@ -127,7 +131,7 @@ public class InputStreamReader extends Reader
     {
         char[] buf = new char[1];
         int count = read(buf, 0, 1);
-        
+
         return count > 0 ? buf[0] : -1;
     }
 
@@ -148,7 +152,7 @@ public class InputStreamReader extends Reader
     {
         if (in == null)
             throw new IOException("Reader has been closed");
-            
+
         byte[] bytes = new byte[length];
         int read = in.read(bytes);
 
@@ -174,10 +178,10 @@ public class InputStreamReader extends Reader
      {
          if (in == null)
              throw new IOException();
-             
+
          if (count < 0)
              throw new IllegalArgumentException();
-     
+
          return super.skip(count);
      }
 
@@ -187,7 +191,7 @@ public class InputStreamReader extends Reader
      * If the stream is not ready to be read, it could (although is not required
      * to) block on the next read attempt.
      *
-     * @return <code>true</code> if the stream is ready to be read, 
+     * @return <code>true</code> if the stream is ready to be read,
      * <code>false</code> otherwise
      *
      * @exception IOException If an error occurs
@@ -196,7 +200,7 @@ public class InputStreamReader extends Reader
     {
         if (in == null)
             throw new IOException();
-    
+
         return in.available() != 0;
     }
 
@@ -223,7 +227,7 @@ public class InputStreamReader extends Reader
     }
 
     /**
-     * This method closes this stream, as well as the underlying 
+     * This method closes this stream, as well as the underlying
      * <code>InputStream</code>.
      *
      * @exception IOException If an error occurs
@@ -243,7 +247,7 @@ public class InputStreamReader extends Reader
     {
         if (in == null)
             throw new IOException();
-        
+
         if (in.markSupported() == false)
             throw new IOException();
     }
