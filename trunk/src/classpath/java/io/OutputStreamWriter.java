@@ -7,7 +7,7 @@ GNU Classpath is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2, or (at your option)
 any later version.
- 
+
 GNU Classpath is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
@@ -74,19 +74,23 @@ public class OutputStreamWriter extends Writer
      * design, there is no way to determine which encodings are supported.
      *
      * @param out The <code>OutputStream</code> to write to
-     * @param encoding_scheme The name of the encoding scheme to use for 
-     * character to byte translation
+     * @param encoding The name of the encoding scheme to use for character to
+     * byte translation
      *
-     * @throws UnsupportedEncodingException If the named encoding is 
+     * @throws UnsupportedEncodingException If the named encoding is
      * not available.
      */
-    public OutputStreamWriter(OutputStream out, String encoding_scheme) 
+    public OutputStreamWriter(OutputStream out, String encoding)
         throws UnsupportedEncodingException
     {
-        this.out = out;
-        
-        if (encoding_scheme != "ISO8859_1" && encoding_scheme != "US_ASCII")
+        if (!encoding.equals("ISO8859_1")
+            && !encoding.equals("US_ASCII")
+            && !encoding.equals("UTF-8"))
+        {
             throw new UnsupportedEncodingException();
+        }
+
+        this.out = out;
     }
 
     /**
@@ -129,7 +133,7 @@ public class OutputStreamWriter extends Writer
             throw new IOException();
 
         byte[] b = new byte[count];
-    
+
         for (int i = 0; i < count; i++)
             b[i] = (byte) ((buf[offset + i] <= 0xFF) ? buf[offset + i] : '?');
 
@@ -137,12 +141,12 @@ public class OutputStreamWriter extends Writer
     }
 
     /**
-     * This method writes <code>count</code> bytes from the specified 
+     * This method writes <code>count</code> bytes from the specified
      * <code>String</code> starting at position <code>offset</code> into the
      * <code>String</code>.
      *
      * @param str The <code>String</code> to write chars from
-     * @param offset The position in the <code>String</code> to start 
+     * @param offset The position in the <code>String</code> to start
      * writing chars from
      * @param count The number of chars to write
      *
@@ -170,7 +174,7 @@ public class OutputStreamWriter extends Writer
     }
 
     /**
-     * This method closes this stream, and the underlying 
+     * This method closes this stream, and the underlying
      * <code>OutputStream</code>
      *
      * @throws IOException If an error occurs

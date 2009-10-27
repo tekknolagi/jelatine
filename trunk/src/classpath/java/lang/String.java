@@ -191,8 +191,12 @@ public final class String
 
         // Only ISO 8859-1 support is requested by the CLDC specification but
         // since ASCII is a subset of it we can support it as well
-        if ((! encoding.equals("ISO8859_1")) && (! encoding.equals("US_ASCII")))
+        if (!encoding.equals("ISO8859_1")
+            && !encoding.equals("US_ASCII")
+            && !encoding.equals("UTF-8"))
+        {
             throw new UnsupportedEncodingException();
+        }
 
         value = new char[count];
 
@@ -404,16 +408,20 @@ public final class String
      * the String. Unsupported characters get replaced by an encoding specific
      * byte.
      *
-     * @param enc encoding name
+     * @param encoding encoding name
      * @return the resulting byte array
      * @throws NullPointerException if enc is null
      * @throws UnsupportedEncodingException if encoding is not supported
      * @since 1.1
      */
-    public byte[] getBytes(String enc) throws UnsupportedEncodingException
+    public byte[] getBytes(String encoding) throws UnsupportedEncodingException
     {
-        if ((! enc.equals("ISO8859_1")) && (! enc.equals("US_ASCII")))
+        if (!encoding.equals("ISO8859_1")
+            && !encoding.equals("US_ASCII")
+            && !encoding.equals("UTF-8"))
+        {
             throw new UnsupportedEncodingException();
+        }
 
         byte result[] = new byte[count];
 
