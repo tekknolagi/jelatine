@@ -32,6 +32,7 @@
 #include "array.h"
 #include "class.h"
 #include "loader.h"
+#include "thread.h"
 
 #include "java_lang_String.h"
 

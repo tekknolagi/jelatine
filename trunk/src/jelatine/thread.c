@@ -96,7 +96,7 @@ struct thread_manager_t {
 typedef struct thread_manager_t thread_manager_t;
 
 /******************************************************************************
- * Local declarations                                                         *
+ * Globals                                                                    *
  ******************************************************************************/
 
 /** \var self
@@ -104,14 +104,14 @@ typedef struct thread_manager_t thread_manager_t;
 
 #if JEL_THREAD_POSIX
 #   ifdef TLS
-static TLS thread_t *self;
+TLS thread_t *self;
 #   else
-static pthread_key_t self;
+pthread_key_t self;
 #   endif // TLS
 #elif JEL_THREAD_PTH
-static pth_key_t self;
+pth_key_t self;
 #else
-static thread_t *self;
+thread_t *self;
 #endif
 
 /** Thread manager singleton */
@@ -625,24 +625,6 @@ static void thread_set_self(thread_t *thread)
     self = thread;
 #endif
 } // thread_set_self()
-
-/** Return a pointer to the execution thread's ::thread_t structure
- * \returns A pointer to this thread own structure */
-
-thread_t *thread_self( void )
-{
-#if JEL_THREAD_POSIX
-#   ifdef TLS
-    return self;
-#else
-    return (thread_t *) pthread_getspecific(self);
-#endif // TLS
-#elif JEL_THREAD_PTH
-    return (thread_t *) pth_key_getdata(self);
-#else
-    return self;
-#endif
-} // thread_self()
 
 /** Push a temporary root on the current thread's stack
  * \param ref A pointer to an object reference to be pushed on the temporary
