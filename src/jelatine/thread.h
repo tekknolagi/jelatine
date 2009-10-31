@@ -101,6 +101,22 @@ struct thread_t {
 typedef struct thread_t thread_t;
 
 /******************************************************************************
+ * Globals                                                                    *
+ ******************************************************************************/
+
+#if JEL_THREAD_POSIX
+#   ifdef TLS
+extern TLS thread_t *self;
+#   else
+extern pthread_key_t self;
+#   endif // TLS
+#elif JEL_THREAD_PTH
+extern pth_key_t self;
+#else
+extern thread_t *self;
+#endif
+
+/******************************************************************************
  * Thread manager interface                                                   *
  ******************************************************************************/
 
@@ -136,7 +152,6 @@ extern bool monitor_exit(thread_t *, uintptr_t);
  * Thread interface                                                           *
  ******************************************************************************/
 
-extern thread_t *thread_self( void ) ATTRIBUTE_CONST;
 extern void thread_push_root(uintptr_t *);
 extern void thread_pop_root( void );
 extern void thread_init(thread_t *);
@@ -173,5 +188,27 @@ static inline bool thread_notify(uintptr_t ref, bool broadcast)
 } // thread_notify()
 
 #endif
+
+/******************************************************************************
+ * Thread inlined functions                                                   *
+ ******************************************************************************/
+
+/** Return a pointer to the execution thread's ::thread_t structure
+ * \returns A pointer to this thread own structure */
+
+static inline thread_t *thread_self( void )
+{
+#if JEL_THREAD_POSIX
+#   ifdef TLS
+    return self;
+#else
+    return (thread_t *) pthread_getspecific(self);
+#endif // TLS
+#elif JEL_THREAD_PTH
+    return (thread_t *) pth_key_getdata(self);
+#else
+    return self;
+#endif
+} // thread_self()
 
 #endif // JELATINE_THREAD_H
