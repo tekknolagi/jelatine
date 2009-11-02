@@ -104,6 +104,25 @@ void dbg_unreachable_internal(const char *filename, int lineno)
 #endif // !NDEBUG
 
 /******************************************************************************
+ * String functions                                                           *
+ ******************************************************************************/
+
+/** Replacement function for strchrnul() which is a GNU extension
+ * \param s String to search for the character \a c
+ * \param c The character to look for
+ * \returns A pointer to the first instance of \a c or a pointer to the nul
+ * terminator if \a c is not found in the string */
+
+char *cstrchrnul(char *s, int c)
+{
+    while ((*s != '\0') && (*s != c)) {
+        s++;
+    }
+
+    return s;
+} // cstrchrnul()
+
+/******************************************************************************
  * Utility functions                                                          *
  ******************************************************************************/
 

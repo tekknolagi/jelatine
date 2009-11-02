@@ -27,6 +27,7 @@
 #include "classfile.h"
 #include "memory.h"
 #include "util.h"
+#include "vm.h"
 
 /******************************************************************************
  * Classpath type definitions                                                 *
@@ -67,78 +68,59 @@ static classpath_t *classpath;
  * Local functions prototypes                                                 *
  ******************************************************************************/
 
-static void adapt_classpath_string(path_t *, const char *, size_t);
+static void set_classpath_string(path_t *, const char *);
 
 /******************************************************************************
  * Classpath implementation                                                   *
  ******************************************************************************/
 
-static void adapt_classpath_string(path_t *path, const char *str, size_t len)
+static void set_classpath_string(path_t *path, const char *str)
 {
-    char *tmp;
+    size_t len = strlen(str);
 
-    if (len == 0) {
-        c_throw(JAVA_LANG_VIRTUALMACHINEERROR, "Invalid classpath string");
-    }
+    path->str = str;
 
 #if JEL_JARFILE_SUPPORT
-    if ((len > 4) && (strncmp(str + len - 4, ".jar", 4) == 0)) {
+    if ((len > 4) && (strcmp(str + len - 4, ".jar") == 0)) {
         // This is a JAR file
-        tmp = gc_palloc(len + 1);
-        strncpy(tmp, str, len);
-        path->str = tmp;
-        path->jar = zzip_dir_open(tmp, 0);
+        path->str = str;
+        path->jar = zzip_dir_open(str, 0);
 
         if (path->jar == NULL) {
             c_throw(JAVA_LANG_VIRTUALMACHINEERROR,
-                    "Unable to open JAR file: %s", tmp);
+                    "Unable to open JAR file: %s", str);
         }
-
-        return;
     }
 #endif // JEL_JARFILE_SUPPORT
+} // set_classpath_string()
 
-    if (str[len - 1] != '/') {
-        len++;
-    }
+/** Initializes the classpath by processing the related options */
 
-    tmp = gc_palloc(len + 1);
-    strncpy(tmp, str, len);
-    tmp[len - 1] = '/';
-    path->str = tmp;
-} // adapt_classpath_string()
-
-/** Initializes the classpath by processing the \a cp and \a bcp strings
- * \param cp A string holding the application classpath directories and
- * JAR files
- * \param bcp A string holding the system classpath directory or JAR
- * file */
-
-void classpath_init(const char *cp, const char *bcp)
+void classpath_init( void )
 {
-    size_t count = 0;
-    const char *idx = cp;
+    size_t count = 1;
+    char *bcp = opts_get_boot_classpath();
+    char *cp = opts_get_classpath();
+    char *idx = cp ? cp : ".";
 
     // Count the number of directories/JAR files in the classpath
-    while ((idx = strchr(idx, ':')) != NULL) {
+    while (*(idx = cstrchrnul(idx, ':')) != '\0') {
         count++;
+        *idx = '\0';
         idx++;
     }
 
     classpath = gc_palloc(sizeof(classpath_t) + sizeof(path_t) * (count + 1));
-    classpath->entries = count + 1;
+    classpath->entries = count;
 
-    adapt_classpath_string(&classpath->boot, bcp, strlen(bcp));
-    idx = cp;
+    set_classpath_string(&classpath->boot, bcp);
 
-    for (size_t i = 0; i < count; i++) {
-        idx = strchr(idx, ':');
-        adapt_classpath_string(&classpath->user[i], cp, idx - cp);
+    for (size_t i = 0, idx = cp; i < count; i++) {
+        idx = cstrchrnul(idx, ':');
+        set_classpath_string(&classpath->user[i], cp);
         idx++;
         cp = idx;
     }
-
-    adapt_classpath_string(&classpath->user[count], cp, strlen(cp));
 } // classpath_init()
 
 /** Tear down the classpath */
@@ -195,10 +177,11 @@ static class_file_t *cf_open_with_classpath(const char *name, const path_t *cp)
         /* Append the class name to the classpath and add the .class suffix to
          * the resulting string */
         cp_len = strlen(cp->str);
-        path = gc_malloc(cp_len + cl_len + strlen(".class") + 1);
+        path = gc_malloc(cp_len + cl_len + strlen(".class") + 2);
         strncpy(path, cp->str, cp_len + 1);
-        strncat(path, name, cp_len + cl_len + 1);
-        strncat(path, ".class", cp_len + cl_len + strlen(".class") + 1);
+        strncat(path, "/", cp_len + 2);
+        strncat(path, name, cp_len + cl_len + 2);
+        strncat(path, ".class", cp_len + cl_len + strlen(".class") + 2);
 
         file = fopen(path, "r");
 
