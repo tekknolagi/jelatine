@@ -40,7 +40,7 @@
  * Classpath interface                                                        *
  ******************************************************************************/
 
-extern void classpath_init(const char *, const char *);
+extern void classpath_init( void );
 extern void classpath_teardown( void );
 
 /******************************************************************************

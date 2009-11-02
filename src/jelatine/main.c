@@ -85,11 +85,7 @@ int main(int argc, char *argv[])
             opts_set_jargs_n(0);
         }
 
-        /* Create the vm and load the classes from the current directory
-         * if the classpath is NULL or from the classpath directory */
-        vm_run(opts_get_classpath(), opts_get_boot_classpath(),
-               opts_get_main_class(), opts_get_heap_size(),
-               opts_get_jargs_n(), opts_get_jargs());
+        vm_run();
     }
 
     exit(0);

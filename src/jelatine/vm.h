@@ -36,7 +36,7 @@
  * Virtual machine interface                                                  *
  ******************************************************************************/
 
-extern void vm_run(const char *, const char *, char *, size_t, int, char **);
+extern void vm_run( void );
 
 #if JEL_TRACE
 extern bool vm_opt_trace_bytecodes( void );

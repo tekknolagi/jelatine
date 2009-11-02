@@ -94,31 +94,19 @@ virtual_machine_t vm;
  * Local function prototypes                                                  *
  ******************************************************************************/
 
-static void vm_init(size_t, const char *, const char *);
+static void vm_init( void );
 static void vm_teardown( void );
 
 /******************************************************************************
  * Virtual machine related functions implementation                           *
  ******************************************************************************/
 
-/** Launches the JVM
- *
- * The \a main parameter used by vm_run() must be a class name in the Java
- * internal format (es: java/lang/Object), the class-path must end with a
- * trailing slash (es: /usr/java/classpath/)
- *
- * \param main Class containing the main() method using the internal name format
- * \param jargc Number of arguments to be passed to the JVM
- * \param jargv Actual arguments passed to the JVM
- * \param heap_size The size of the heap in bytes
- * \param classpath Colon separated list of directories and JAR files where to
- * find the application classes
- * \param bootclasspath Single directory or JAR file where to find the system
- * classes */
+/** Launches the JVM */
 
-void vm_run(const char *classpath, const char *bootclasspath, char *main,
-            size_t heap_size, int jargc, char **jargv)
+void vm_run( void )
 {
+    int jargc = opts_get_jargs_n();
+    char * const *jargv = opts_get_jargs();
     char *main_class;
     thread_t main_thread;
     class_t *cl, *thread_cl;
@@ -133,7 +121,7 @@ void vm_run(const char *classpath, const char *bootclasspath, char *main,
     tm_register(&main_thread);
 
     c_try {
-        vm_init(heap_size, classpath, bootclasspath);
+        vm_init();
 
         /* We initialize the temporary root pointers storage of the main thread
          * so that we can push temporary roots early in the bootstrap process */
@@ -141,7 +129,8 @@ void vm_run(const char *classpath, const char *bootclasspath, char *main,
         main_thread.roots.pointers = gc_malloc(THREAD_TMP_ROOTS
                                                * sizeof(uintptr_t *));
 
-        main_class = utf8_intern(main, strlen(main));
+        main_class = utf8_intern(opts_get_main_class(),
+                                 strlen(opts_get_main_class()));
 
         /* Check if the 'main' string purged from the trailing '0' is in the
          * limited UTF8 format supported by Java */
@@ -234,20 +223,16 @@ void vm_run(const char *classpath, const char *bootclasspath, char *main,
     vm_teardown();
 } // vm_run()
 
-/** Initializes the basic subsystems of the virtual machine.
- * \param heap_size The size of the heap in bytes
- * \param classpath The classpath for user classes
- * \param bootclasspath The classpath for system classes */
+/** Initializes the basic subsystems of the virtual machine */
 
-static void vm_init(size_t heap_size, const char *classpath,
-                    const char *bootclasspath)
+static void vm_init( void )
 {
     // Initialize the various subsystems
-    gc_init(heap_size);
+    gc_init(opts_get_heap_size());
     monitor_init();
     string_manager_init(6, 2);
     jsm_init(6, 2);
-    classpath_init(classpath ? classpath : ".", bootclasspath);
+    classpath_init();
     bcl_init();
 
     // Initialize the VM structure
