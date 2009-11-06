@@ -400,8 +400,7 @@ AC_FUNC_MALLOC
 AC_FUNC_MEMCMP
 AC_FUNC_VPRINTF
 AC_CHECK_FUNC([vsnprintf], , [AC_MSG_ERROR([snprintf() is required])])
-AC_CHECK_FUNC([memcpy], , [AC_LIBOBJ([memcpy])])
-AC_CHECK_FUNC([memmove], , [AC_LIBOBJ([memmove])])
+AC_REPLACE_FUNCS([memcpy memmove])
 AC_CHECK_FUNCS([gettimeofday clock_gettime])
 ACX_FUNC_VA_COPY
 
