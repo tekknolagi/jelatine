@@ -21,5 +21,4 @@
 ###############################################################################
 
 EXTRA_DIST = acx_attribute.m4 acx_builtin.m4 acx_func_va_copy.m4 \
-             acx_pthread.m4 ax_c_float_words_bigendian.m4 ax_tls.m4 pth.m4 \
-             zziplib.m4
+             ax_pthread.m4 ax_c_float_words_bigendian.m4 ax_tls.m4 zziplib.m4

@@ -22,7 +22,7 @@ AC_INIT([Jelatine], [0.9.4], [gabriele.svelto@gmail.com], [jelatine])
 AM_INIT_AUTOMAKE
 
 # Prerequisite autoconf version
-AC_PREREQ([2.60])
+AC_PREREQ([2.63])
 
 # Inform autoconf to output a config.h file
 AC_CONFIG_HEADERS([config.h])
@@ -69,7 +69,7 @@ AS_VAR_SET(fp_support, yes)
 
 AC_ARG_ENABLE(
     [preverifier],
-    [AC_HELP_STRING(
+    [AS_HELP_STRING(
         [--disable-preverifier],
         [Do not build the preverifier]
     )],
@@ -78,7 +78,7 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
     [jar],
-    [AC_HELP_STRING(
+    [AS_HELP_STRING(
         [--disable-jar],
         [Disables JAR file support in the VM]
     )],
@@ -87,7 +87,7 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
     [socket],
-    [AC_HELP_STRING(
+    [AS_HELP_STRING(
         [--disable-socket],
         [Disables socket support in the VM]
     )],
@@ -96,7 +96,7 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
     [threaded],
-    [AC_HELP_STRING(
+    [AS_HELP_STRING(
         [--disable-threaded],
         [Disables optimized threaded interpreter]
     )],
@@ -105,15 +105,16 @@ AC_ARG_ENABLE(
 
 AC_ARG_WITH(
     [thread-model],
-    [AC_HELP_STRING(
+    [AS_HELP_STRING(
         [--with-thread-model=<model>],
-        [Selects the thread model used by the VM (pthread, pth, none) [default=auto]])],
+        [Selects the thread model used by the VM (pthread, pth, none) [default=auto]]
+    )],
     [AS_VAR_SET(thread_model, $withval)],
 )
 
 AC_ARG_ENABLE(
     [finalizer],
-    [AC_HELP_STRING(
+    [AS_HELP_STRING(
         [--disable-finalizer],
         [Disables object finalization support]
     )],
@@ -122,7 +123,7 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
     [fp-support],
-    [AC_HELP_STRING(
+    [AS_HELP_STRING(
         [--disable-fp-support],
         [Disables fp support in the VM]
     )],
@@ -131,7 +132,7 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
     [prgc],
-    [AC_HELP_STRING(
+    [AS_HELP_STRING(
         [--disable-prgc],
         [Disables the pointer reversal algorythm in the garbage collector]
     )],
@@ -141,7 +142,7 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
     [debug],
-    [AC_HELP_STRING(
+    [AS_HELP_STRING(
         [--enable-debug],
         [Enables debugging code]
     )],
@@ -152,7 +153,7 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
     [tracing],
-    [AC_HELP_STRING(
+    [AS_HELP_STRING(
         [--enable-tracing],
         [Enables bytecode/method tracing facilities]
     )],
@@ -161,7 +162,7 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
     [printing],
-    [AC_HELP_STRING(
+    [AS_HELP_STRING(
         [--enable-printing],
         [Enables bytecode/method printing facilites]
     )],
@@ -186,13 +187,6 @@ AC_USE_SYSTEM_EXTENSIONS
 # Check for a usable 'jar' program
 AC_CHECK_PROGS([JAR], [jar fastjar], [no])
 
-AS_IF([test "x$JAR" = xno],
-    [AS_IF([test "x$jar_support" = xyes],
-        [AC_MSG_WARN(['jar' not found, JAR file support disabled])]
-    )
-    AS_VAR_SET(jar_support, no)]
-)
-
 ################################################################################
 # Check for libraries                                                          #
 ################################################################################
@@ -204,79 +198,11 @@ PKG_CHECK_ZZIPLIB([ZZIP],
    [AS_VAR_SET(have_zzip, no)]
 )
 
-AS_IF([test "x$jar_support" = xyes],
-    [AS_IF([test "x$have_zzip" = xyes],
-        [LIBS="$LIBS $ZZIP_LIBS"
-        CFLAGS="$CFLAGS $ZZIP_CFLAGS"
-        AC_SUBST([LIBS])
-        AC_SUBST([CFLAGS])
-        AC_DEFINE([JEL_JARFILE_SUPPORT], [1])],
-        [AS_VAR_SET(jar_support, no)
-        AC_MSG_WARN([JAR file support disabled, zziplib may not be installed or you may have an outdated version])]
-    )],
-)
-
 # POSIX threads
-ACX_PTHREAD([AS_VAR_SET(have_pthread, yes)])
+AX_PTHREAD([AS_VAR_SET(have_pthread, yes)])
 
 # libpth
-AC_CHECK_PTH([2.0.0], [], [], [no], [AS_VAR_SET(have_pth, yes)])
-
-# Select the thread model
-AS_IF([test "x$thread_model" = xauto],
-    [AS_IF([test "x$have_pthread" = xyes],
-        [AS_VAR_SET(thread_model, pthread)],
-        [AS_IF([test "x$have_pth" = xyes],
-            [AS_VAR_SET(thread_model, pth)],
-            [AS_VAR_SET(thread_model, none)]
-        )]
-    )]
-)
-
-AS_CASE(AS_VAR_GET(thread_model),
-    [pthread],
-    [AS_IF([test "x$have_pthread" = xyes],
-        [AC_DEFINE([JEL_THREAD_POSIX], [1])
-        LIBS="$LIBS $PTHREAD_LIBS"
-        CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
-        CC="$PTHREAD_CC"
-        AC_SUBST([LIBS])
-        AC_SUBST([CFLAGS])
-        AC_SUBST([CC])],
-        [AC_MSG_ERROR([POSIX threads headers and libraries were not found])]
-    )],
-    [pth],
-    [AS_IF([test "x$have_pth" = xyes],
-        [AC_DEFINE([JEL_THREAD_PTH], [1])
-        CPPFLAGS="$CPPFLAGS $PTH_CPPFLAGS"
-        CFLAGS="$CFLAGS $PTH_CFLAGS"
-        LDFLAGS="$LDFLAGS $PTH_LDFLAGS"
-        LIBS="$LIBS $PTH_LIBS"
-        AC_SUBST([CPPFLAGS])
-        AC_SUBST([CFLAGS])
-        AC_SUBST([LDFLAGS])
-        AC_SUBST([LIBS])],
-        [AC_MSG_ERROR([GNU Pth was not found])]
-    )],
-    [none],
-    [AC_DEFINE([JEL_THREAD_NONE], [1])],
-    [AC_MSG_ERROR([Unknown thread model: AS_VAR_GET(thread_model)])]
-)
-
-# Deal with finalization support
-AS_IF([test "x$finalizer" = xyes],
-    [AS_IF([test "x$thread_model" = xnone],
-        [AS_VAR_SET(finalizer, no)
-        AC_MSG_WARN([Finalization disabled, thread support is required])]
-    )],
-    [AS_IF([test "x$jar_support" = xyes],
-        [AC_MSG_WARN([JAR support enabled without finalization, this might cause problems when using java.class.GetResourceAsStream()])]
-    )]
-)
-
-AS_IF([test "x$finalizer" = xyes],
-    [AC_DEFINE([JEL_FINALIZER], [1])]
-)
+AC_SEARCH_LIBS([pth_init], [pth])
 
 # Floating point support
 AC_CHECK_LIBM
@@ -306,8 +232,12 @@ AC_HEADER_TIME
 
 AC_CHECK_HEADERS([arpa/inet.h dirent.h fcntl.h iconv.h inttypes.h langinfo.h math.h stdarg.h sys/stat.h sys/types.h unistd.h])
 
+# Socket support
 AC_CHECK_HEADERS([sys/socket.h netinet/in.h netdb.h], [],
     [AS_VAR_SET(socket_support, no)])
+
+# libpth
+AC_CHECK_HEADER([pth.h])
 
 ################################################################################
 # Check for types                                                              #
@@ -434,8 +364,27 @@ AS_IF([test "x$fp_support" = xyes],
 
 # Check for jar support
 
+AS_IF([test "x$JAR" = xno],
+    [AS_IF([test "x$jar_support" = xyes],
+        [AC_MSG_WARN(['jar' not found, JAR file support disabled])]
+    )
+    AS_VAR_SET(jar_support, no)]
+)
+
 AS_IF([test "x$jar_support" = xyes],
-    [AS_VAR_SET(classpath, "classpath.jar")],
+    [AS_IF([test "x$have_zzip" = xyes],
+        [LIBS="$LIBS $ZZIP_LIBS"
+        CFLAGS="$CFLAGS $ZZIP_CFLAGS"
+        AC_SUBST([LIBS])
+        AC_SUBST([CFLAGS])],
+        [AS_VAR_SET(jar_support, no)
+        AC_MSG_WARN([JAR file support disabled, zziplib may not be installed or you may have an outdated version])]
+    )],
+)
+
+AS_IF([test "x$jar_support" = xyes],
+    [AS_VAR_SET(classpath, "classpath.jar")
+    AC_DEFINE([JEL_JARFILE_SUPPORT], [1])],
     [AS_VAR_SET(classpath, "classpath/")]
 )
 
@@ -443,6 +392,49 @@ AS_IF([test "x$jar_support" = xyes],
 
 AS_IF([test "x$socket_support" = xyes],
     [AC_DEFINE([JEL_SOCKET_SUPPORT], [1])]
+)
+
+# Select the thread model
+
+AS_IF([test "x$thread_model" = xauto],
+    [AS_IF([test "x$have_pthread" = xyes],
+        [AS_VAR_SET(thread_model, pthread)],
+        [AS_IF([test "x$ac_cv_search_pth_init" != xno -a "x$ac_cv_header_pth_h" != xno],
+            [AS_VAR_SET(thread_model, pth)],
+            [AS_VAR_SET(thread_model, none)]
+        )]
+    )]
+)
+
+AS_CASE(AS_VAR_GET(thread_model),
+    [pthread],
+    [AS_IF([test "x$have_pthread" = xyes],
+        [AC_DEFINE([JEL_THREAD_POSIX], [1])
+        LIBS="$LIBS $PTHREAD_LIBS"
+        CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+        CC="$PTHREAD_CC"
+        AC_SUBST([LIBS])
+        AC_SUBST([CFLAGS])
+        AC_SUBST([CC])],
+        [AC_MSG_ERROR([POSIX threads headers and libraries were not found])]
+    )],
+    [pth],
+    [AS_IF([test "x$ac_cv_search_pth_init" = xno -o "x$ac_cv_header_pth_h" = xno],
+        [AC_MSG_ERROR([GNU Pth was not found])]
+    )],
+    [none],
+    [AC_DEFINE([JEL_THREAD_NONE], [1])],
+    [AC_MSG_ERROR([Unknown thread model: AS_VAR_GET(thread_model)])]
+)
+
+# Deal with finalization support
+
+AS_IF([test "x$finalizer" = xyes],
+    [AS_IF([test "x$thread_model" = xnone],
+        [AS_VAR_SET(finalizer, no)
+        AC_MSG_WARN([Finalization disabled, thread support is required])],
+        [AC_DEFINE([JEL_FINALIZER], [1])]
+    )]
 )
 
 # Set preverifier path
