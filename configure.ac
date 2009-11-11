@@ -420,7 +420,8 @@ AS_CASE(AS_VAR_GET(thread_model),
     )],
     [pth],
     [AS_IF([test "x$ac_cv_search_pth_init" = xno -o "x$ac_cv_header_pth_h" = xno],
-        [AC_MSG_ERROR([GNU Pth was not found])]
+        [AC_MSG_ERROR([GNU Pth was not found])],
+        [AC_DEFINE([JEL_THREAD_PTH], [1])]
     )],
     [none],
     [AC_DEFINE([JEL_THREAD_NONE], [1])],
