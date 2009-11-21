@@ -1062,299 +1062,299 @@ void print_bytecode(thread_t *thread, const uint8_t *pc, const_pool_t *cp)
             }
                 break;
 
-            case MULTIANEWARRAY:
-                fprintf(stderr, "MULTIANEWARRAY\n");
-                break;
+        case MULTIANEWARRAY:
+            fprintf(stderr, "MULTIANEWARRAY\n");
+            break;
 
-            case IFNULL:
-                fprintf(stderr, "IFNULL offset = %d\n", load_int16_un(pc + 1));
-                break;
+        case IFNULL:
+            fprintf(stderr, "IFNULL offset = %d\n", load_int16_un(pc + 1));
+            break;
 
-            case IFNONNULL:
-                fprintf(stderr, "IFNONNULL offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case IFNONNULL:
+            fprintf(stderr, "IFNONNULL offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GOTO_W:
-                fprintf(stderr, "GOTO_W offset = %d\n", load_int32_un(pc + 1));
-                break;
+        case GOTO_W:
+            fprintf(stderr, "GOTO_W offset = %d\n", load_int32_un(pc + 1));
+            break;
 
-            case GETSTATIC_BYTE:
-            // case GETSTATIC_BOOL:
-                fprintf(stderr, "GETSTATIC_BYTE/BOOL offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETSTATIC_BYTE:
+        // case GETSTATIC_BOOL:
+            fprintf(stderr, "GETSTATIC_BYTE/BOOL offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETSTATIC_CHAR:
-                fprintf(stderr, "GETSTATIC_CHAR offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETSTATIC_CHAR:
+            fprintf(stderr, "GETSTATIC_CHAR offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETSTATIC_SHORT:
-                fprintf(stderr, "GETSTATIC_SHORT offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETSTATIC_SHORT:
+            fprintf(stderr, "GETSTATIC_SHORT offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETSTATIC_INT:
-                fprintf(stderr, "GETSTATIC_INT offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETSTATIC_INT:
+            fprintf(stderr, "GETSTATIC_INT offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETSTATIC_FLOAT:
-                fprintf(stderr, "GETSTATIC_FLOAT offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETSTATIC_FLOAT:
+            fprintf(stderr, "GETSTATIC_FLOAT offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETSTATIC_LONG:
-                fprintf(stderr, "GETSTATIC_LONG offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETSTATIC_LONG:
+            fprintf(stderr, "GETSTATIC_LONG offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETSTATIC_DOUBLE:
-                fprintf(stderr, "GETSTATIC_DOUBLE offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETSTATIC_DOUBLE:
+            fprintf(stderr, "GETSTATIC_DOUBLE offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETSTATIC_REFERENCE:
-                fprintf(stderr, "GETSTATIC_REFERENCE offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETSTATIC_REFERENCE:
+            fprintf(stderr, "GETSTATIC_REFERENCE offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTSTATIC_BYTE:
-                fprintf(stderr, "PUTSTATIC_BYTE offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTSTATIC_BYTE:
+            fprintf(stderr, "PUTSTATIC_BYTE offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTSTATIC_BOOL:
-                fprintf(stderr, "PUTSTATIC_BOOL offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTSTATIC_BOOL:
+            fprintf(stderr, "PUTSTATIC_BOOL offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTSTATIC_CHAR:
-            // case PUTSTATIC_SHORT:
-                fprintf(stderr, "PUTSTATIC_CHAR/SHORT offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTSTATIC_CHAR:
+        // case PUTSTATIC_SHORT:
+            fprintf(stderr, "PUTSTATIC_CHAR/SHORT offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTSTATIC_INT:
-                fprintf(stderr, "PUTSTATIC_INT offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTSTATIC_INT:
+            fprintf(stderr, "PUTSTATIC_INT offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTSTATIC_FLOAT:
-                fprintf(stderr, "PUTSTATIC_FLOAT offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTSTATIC_FLOAT:
+            fprintf(stderr, "PUTSTATIC_FLOAT offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTSTATIC_LONG:
-                fprintf(stderr, "PUTSTATIC_LONG offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTSTATIC_LONG:
+            fprintf(stderr, "PUTSTATIC_LONG offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTSTATIC_DOUBLE:
-                fprintf(stderr, "PUTSTATIC_DOUBLE offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTSTATIC_DOUBLE:
+            fprintf(stderr, "PUTSTATIC_DOUBLE offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTSTATIC_REFERENCE:
-                fprintf(stderr, "PUTSTATIC_REFERENCE offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTSTATIC_REFERENCE:
+            fprintf(stderr, "PUTSTATIC_REFERENCE offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETFIELD_BYTE:
-                fprintf(stderr, "GETFIELD_BYTE offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETFIELD_BYTE:
+            fprintf(stderr, "GETFIELD_BYTE offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETFIELD_BOOL:
-                fprintf(stderr, "GETFIELD_BOOL offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETFIELD_BOOL:
+            fprintf(stderr, "GETFIELD_BOOL offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETFIELD_CHAR:
-                fprintf(stderr, "GETFIELD_CHAR offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETFIELD_CHAR:
+            fprintf(stderr, "GETFIELD_CHAR offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETFIELD_SHORT:
-                fprintf(stderr, "GETFIELD_SHORT offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETFIELD_SHORT:
+            fprintf(stderr, "GETFIELD_SHORT offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETFIELD_INT:
-                fprintf(stderr, "GETFIELD_INT offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETFIELD_INT:
+            fprintf(stderr, "GETFIELD_INT offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETFIELD_FLOAT:
-                fprintf(stderr, "GETFIELD_FLOAT offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETFIELD_FLOAT:
+            fprintf(stderr, "GETFIELD_FLOAT offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETFIELD_LONG:
-                fprintf(stderr, "GETFIELD_LONG offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETFIELD_LONG:
+            fprintf(stderr, "GETFIELD_LONG offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETFIELD_DOUBLE:
-                fprintf(stderr, "GETFIELD_DOUBLE offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETFIELD_DOUBLE:
+            fprintf(stderr, "GETFIELD_DOUBLE offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case GETFIELD_REFERENCE:
-                fprintf(stderr, "GETFIELD_REFERENCE offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case GETFIELD_REFERENCE:
+            fprintf(stderr, "GETFIELD_REFERENCE offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTFIELD_BYTE:
-                fprintf(stderr, "PUTFIELD_BYTE offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTFIELD_BYTE:
+            fprintf(stderr, "PUTFIELD_BYTE offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTFIELD_BOOL:
-                fprintf(stderr, "PUTFIELD_BOOL offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTFIELD_BOOL:
+            fprintf(stderr, "PUTFIELD_BOOL offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTFIELD_CHAR:
-            // case PUTFIELD_SHORT:
-                fprintf(stderr, "PUTFIELD_CHAR/SHORT offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTFIELD_CHAR:
+        // case PUTFIELD_SHORT:
+            fprintf(stderr, "PUTFIELD_CHAR/SHORT offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTFIELD_INT:
-                fprintf(stderr, "PUTFIELD_INT offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTFIELD_INT:
+            fprintf(stderr, "PUTFIELD_INT offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTFIELD_FLOAT:
-                fprintf(stderr, "PUTFIELD_FLOAT offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTFIELD_FLOAT:
+            fprintf(stderr, "PUTFIELD_FLOAT offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTFIELD_LONG:
-                fprintf(stderr, "PUTFIELD_LONG offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTFIELD_LONG:
+            fprintf(stderr, "PUTFIELD_LONG offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTFIELD_DOUBLE:
-                fprintf(stderr, "PUTFIELD_DOUBLE offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTFIELD_DOUBLE:
+            fprintf(stderr, "PUTFIELD_DOUBLE offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case PUTFIELD_REFERENCE:
-                fprintf(stderr, "PUTFIELD_REFERENCE offset = %d\n",
-                        load_int16_un(pc + 1));
-                break;
+        case PUTFIELD_REFERENCE:
+            fprintf(stderr, "PUTFIELD_REFERENCE offset = %d\n",
+                    load_int16_un(pc + 1));
+            break;
 
-            case INVOKESUPER:
-                fprintf(stderr, "INVOKESUPER\n");
-                break;
+        case INVOKESUPER:
+            fprintf(stderr, "INVOKESUPER\n");
+            break;
 
-            case INVOKEVIRTUAL_PRELINK:
-                fprintf(stderr, "INVOKEVIRTUAL_PRELINK\n");
-                break;
+        case INVOKEVIRTUAL_PRELINK:
+            fprintf(stderr, "INVOKEVIRTUAL_PRELINK\n");
+            break;
 
-            case INVOKESPECIAL_PRELINK:
-                fprintf(stderr, "INVOKESPECIAL_PRELINK\n");
-                break;
+        case INVOKESPECIAL_PRELINK:
+            fprintf(stderr, "INVOKESPECIAL_PRELINK\n");
+            break;
 
-            case INVOKESTATIC_PRELINK:
-                fprintf(stderr, "INVOKESTATIC_PRELINK\n");
-                break;
+        case INVOKESTATIC_PRELINK:
+            fprintf(stderr, "INVOKESTATIC_PRELINK\n");
+            break;
 
-            case INVOKEINTERFACE_PRELINK:
-                fprintf(stderr, "INVOKEINTERFACE_PRELINK\n");
-                break;
+        case INVOKEINTERFACE_PRELINK:
+            fprintf(stderr, "INVOKEINTERFACE_PRELINK\n");
+            break;
 
-            case NEW_PRELINK:
-                fprintf(stderr, "NEW_PRELINK\n");
-                break;
+        case NEW_PRELINK:
+            fprintf(stderr, "NEW_PRELINK\n");
+            break;
 
 
-            case NEWARRAY_PRELINK:
-                fprintf(stderr, "NEWARRAY_PRELINK type = ");
+        case NEWARRAY_PRELINK:
+            fprintf(stderr, "NEWARRAY_PRELINK type = ");
 
-                switch (*(pc + 1)) {
-                    case T_BOOLEAN: fprintf(stderr, "T_BOOLEAN\n"); break;
-                    case T_CHAR:    fprintf(stderr, "T_CHAR\n");    break;
+            switch (*(pc + 1)) {
+                case T_BOOLEAN: fprintf(stderr, "T_BOOLEAN\n"); break;
+                case T_CHAR:    fprintf(stderr, "T_CHAR\n");    break;
 #if JEL_FP_SUPPORT
-                    case T_FLOAT:   fprintf(stderr, "T_FLOAT\n");   break;
-                    case T_DOUBLE:  fprintf(stderr, "T_DOUBLE\n");  break;
+                case T_FLOAT:   fprintf(stderr, "T_FLOAT\n");   break;
+                case T_DOUBLE:  fprintf(stderr, "T_DOUBLE\n");  break;
 #endif // JEL_FP_SUPPORT
-                    case T_BYTE:    fprintf(stderr, "T_BYTE\n");    break;
-                    case T_SHORT:   fprintf(stderr, "T_SHORT\n");   break;
-                    case T_INT:     fprintf(stderr, "T_INT\n");     break;
-                    case T_LONG:    fprintf(stderr, "T_LONG\n");    break;
-                    default:        dbg_unreachable();
-                }
+                case T_BYTE:    fprintf(stderr, "T_BYTE\n");    break;
+                case T_SHORT:   fprintf(stderr, "T_SHORT\n");   break;
+                case T_INT:     fprintf(stderr, "T_INT\n");     break;
+                case T_LONG:    fprintf(stderr, "T_LONG\n");    break;
+                default:        dbg_unreachable();
+            }
 
-                break;
+            break;
 
-            case ANEWARRAY_PRELINK:
-                fprintf(stderr, "ANEWARRAY_PRELINK\n");
-                break;
+        case ANEWARRAY_PRELINK:
+            fprintf(stderr, "ANEWARRAY_PRELINK\n");
+            break;
 
-            case CHECKCAST_PRELINK:
-                fprintf(stderr, "CHECKCAST_PRELINK\n");
-                break;
+        case CHECKCAST_PRELINK:
+            fprintf(stderr, "CHECKCAST_PRELINK\n");
+            break;
 
-            case INSTANCEOF_PRELINK:
-                fprintf(stderr, "INSTANCEOF_PRELINK\n");
-                break;
+        case INSTANCEOF_PRELINK:
+            fprintf(stderr, "INSTANCEOF_PRELINK\n");
+            break;
 
-            case MULTIANEWARRAY_PRELINK:
-                fprintf(stderr, "MULTIANEWARRAY_PRELINK\n");
-                break;
+        case MULTIANEWARRAY_PRELINK:
+            fprintf(stderr, "MULTIANEWARRAY_PRELINK\n");
+            break;
 
-            case MONITORENTER_SPECIAL:
-                fprintf(stderr, "MONITORENTER_SPECIAL\n");
-                break;
+        case MONITORENTER_SPECIAL:
+            fprintf(stderr, "MONITORENTER_SPECIAL\n");
+            break;
 
-            case MONITORENTER_SPECIAL_STATIC:
-                fprintf(stderr, "MONITORENTER_SPECIAL_STATIC\n");
-                break;
+        case MONITORENTER_SPECIAL_STATIC:
+            fprintf(stderr, "MONITORENTER_SPECIAL_STATIC\n");
+            break;
 
-            case IRETURN_MONITOREXIT:
-                fprintf(stderr, "IRETURN_MONITOREXIT\n");
-                break;
+        case IRETURN_MONITOREXIT:
+            fprintf(stderr, "IRETURN_MONITOREXIT\n");
+            break;
 
-            case LRETURN_MONITOREXIT:
-                fprintf(stderr, "LRETURN_MONITOREXIT\n");
-                break;
+        case LRETURN_MONITOREXIT:
+            fprintf(stderr, "LRETURN_MONITOREXIT\n");
+            break;
 
-            case FRETURN_MONITOREXIT:
-                fprintf(stderr, "FRETURN_MONITOREXIT\n");
-                break;
+        case FRETURN_MONITOREXIT:
+            fprintf(stderr, "FRETURN_MONITOREXIT\n");
+            break;
 
-            case DRETURN_MONITOREXIT:
-                fprintf(stderr, "DRETURN_MONITOREXIT\n");
-                break;
+        case DRETURN_MONITOREXIT:
+            fprintf(stderr, "DRETURN_MONITOREXIT\n");
+            break;
 
-            case ARETURN_MONITOREXIT:
-                fprintf(stderr, "ARETURN_MONITOREXIT\n");
-                break;
+        case ARETURN_MONITOREXIT:
+            fprintf(stderr, "ARETURN_MONITOREXIT\n");
+            break;
 
-            case RETURN_MONITOREXIT:
-                fprintf(stderr, "RETURN_MONITOREXIT\n");
-                break;
+        case RETURN_MONITOREXIT:
+            fprintf(stderr, "RETURN_MONITOREXIT\n");
+            break;
 
-            case NEW_FINALIZER: // TODO: Improve
-                fprintf(stderr, "NEW_FINALIZER index = %u\n",
-                        load_uint16_un(pc + 1));
-                break;
+        case NEW_FINALIZER: // TODO: Improve
+            fprintf(stderr, "NEW_FINALIZER index = %u\n",
+                    load_uint16_un(pc + 1));
+            break;
 
-            case LDC_PRELINK:
-                fprintf(stderr, "LDC_PRELINK\n");
-                break;
+        case LDC_PRELINK:
+            fprintf(stderr, "LDC_PRELINK\n");
+            break;
 
-            case LDC_W_PRELINK:
-                fprintf(stderr, "LDC_W_PRELINK\n");
-                break;
+        case LDC_W_PRELINK:
+            fprintf(stderr, "LDC_W_PRELINK\n");
+            break;
 
-            default:
-                fprintf(stderr, "UNKNOWN OPCODE\n");
-                abort();
+        default:
+            fprintf(stderr, "UNKNOWN OPCODE\n");
+            abort();
         }
     }
 } // print_bytecode()
