@@ -130,9 +130,9 @@ public class Vector extends Object
 
     /**
      * Copies the contents of the Vector into the provided array.  If the
-     * array is too small to fit all the elements in the Vector, an 
+     * array is too small to fit all the elements in the Vector, an
      * <code>IndexOutOfBoundsException</code> is thrown without modifying the
-     * array.  
+     * array.
      * Old elements in the array are overwritten by the new elements.
      *
      * @param a target array for the copy
@@ -176,7 +176,7 @@ public class Vector extends Object
             return;
 
         int newCapacity;
-    
+
         if (capacityIncrement <= 0)
             newCapacity = elementData.length * 2;
         else
@@ -203,13 +203,13 @@ public class Vector extends Object
         // vector since that is a much less likely case; it's more efficient to
         // not do the check and lose a bit of performance in that infrequent case
         ensureCapacity(newSize);
-      
+
         if (newSize < elementCount)
         {
             for (int i = newSize; i < elementCount; i++)
                 elementData[i] = null;
         } /* if */
-     
+
         elementCount = newSize;
     }
 
@@ -266,7 +266,7 @@ public class Vector extends Object
             {
                 if (i >= elementCount)
                     throw new NoSuchElementException();
-        
+
                 return elementData[i++];
             }
         };
@@ -307,11 +307,21 @@ public class Vector extends Object
      */
     public synchronized int indexOf(Object e, int index)
     {
-        for (int i = index; i < elementCount; i++)
-            if (e.equals(elementData[i]))
-                return i;
+        if (e == null) {
+            for (int i = index; i < elementCount; i++) {
+                if (elementData[i] == null) {
+                    return i;
+                }
+            }
+        } else {
+            for (int i = index; i < elementCount; i++) {
+                if (e.equals(elementData[i])) {
+                    return i;
+                }
+            }
+        }
 
-       return -1;
+        return -1;
     }
 
     /**
@@ -344,7 +354,7 @@ public class Vector extends Object
         for (int i = index; i >= 0; i--)
             if (e.equals(elementData[i]))
                 return i;
-    
+
         return -1;
     }
 
@@ -359,7 +369,7 @@ public class Vector extends Object
         throws ArrayIndexOutOfBoundsException
     {
         checkBoundExclusive(index);
-      
+
         return elementData[index];
     }
 
@@ -426,10 +436,10 @@ public class Vector extends Object
     public synchronized void insertElementAt(Object obj, int index)
     {
         checkBoundInclusive(index);
-      
+
         if (elementCount == elementData.length)
             ensureCapacity(elementCount + 1);
-  
+
         System.arraycopy(elementData, index, elementData, index + 1,
             elementCount - index);
         elementCount++;
@@ -446,7 +456,7 @@ public class Vector extends Object
     {
         if (elementCount == elementData.length)
             ensureCapacity(elementCount + 1);
-   
+
         elementData[elementCount++] = obj;
     }
 
@@ -461,13 +471,13 @@ public class Vector extends Object
     public synchronized boolean removeElement(Object obj)
     {
         int idx = indexOf(obj, 0);
-      
+
         if (idx >= 0)
         {
             remove(idx);
             return true;
         }
-      
+
         return false;
     }
 
@@ -523,7 +533,7 @@ public class Vector extends Object
             System.arraycopy(elementData, index + 1, elementData, index,
                  elementCount - index);
         }
-    
+
         elementData[elementCount] = null;
 
         return temp;
