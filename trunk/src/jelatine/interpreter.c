@@ -3642,7 +3642,7 @@ exception_handler:
                 if (method_is_static(method)) {
                     res = monitor_exit(thread, class_get_object(fp->cl));
                 } else {
-                    res = monitor_exit(thread, *((uintptr_t *) locals));
+                    res = monitor_exit(thread, *((uintptr_t *) fp->locals));
                 }
             }
 
