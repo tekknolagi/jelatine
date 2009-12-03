@@ -113,13 +113,13 @@ void dbg_unreachable_internal(const char *filename, int lineno)
  * \returns A pointer to the first instance of \a c or a pointer to the nul
  * terminator if \a c is not found in the string */
 
-char *cstrchrnul(char *s, int c)
+char *cstrchrnul(const char *s, int c)
 {
     while ((*s != '\0') && (*s != c)) {
         s++;
     }
 
-    return s;
+    return (char *) s;
 } // cstrchrnul()
 
 /******************************************************************************

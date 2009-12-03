@@ -87,7 +87,7 @@ do { \
  * String functions                                                           *
  ******************************************************************************/
 
-extern char *cstrchrnul(char *, int);
+extern char *cstrchrnul(const char *, int);
 
 /******************************************************************************
  * Utility functions                                                          *
