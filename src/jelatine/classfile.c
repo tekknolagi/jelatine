@@ -101,7 +101,7 @@ void classpath_init( void )
     size_t count = 1;
     char *bcp = opts_get_boot_classpath();
     char *cp = opts_get_classpath();
-    char *idx = cp ? cp : ".";
+    char *idx = cp;
 
     // Count the number of directories/JAR files in the classpath
     while (*(idx = cstrchrnul(idx, ':')) != '\0') {
@@ -114,8 +114,9 @@ void classpath_init( void )
     classpath->entries = count;
 
     set_classpath_string(&classpath->boot, bcp);
+    idx = cp;
 
-    for (size_t i = 0, idx = cp; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
         idx = cstrchrnul(idx, ':');
         set_classpath_string(&classpath->user[i], cp);
         idx++;

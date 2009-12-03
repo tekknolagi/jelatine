@@ -64,7 +64,7 @@ typedef struct virtual_machine_t virtual_machine_t;
 /** Global options of the VM */
 
 options_t options = {
-    NULL, // classpath
+    ".", // classpath
     JEL_CLASSPATH_DIR, // boot_classpath
     128 * 1024, // heap_size
     4096, // stack_size
