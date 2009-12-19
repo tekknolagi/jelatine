@@ -34,6 +34,281 @@
 #include "java_lang_Thread.h"
 
 /******************************************************************************
+ * Native thread wrapper function prototypes                                  *
+ ******************************************************************************/
+
+static void native_key_create(native_key_t *);
+static void native_key_dispose(native_key_t);
+static void native_thread_create(native_thread_t *, void *(*)(void *), void *);
+static void native_thread_exit( void );
+static void native_thread_yield( void );
+static void native_mutex_create(native_mutex_t *);
+static void native_mutex_dispose(native_mutex_t *);
+static void native_mutex_lock(native_mutex_t *);
+static void native_mutex_unlock(native_mutex_t *);
+static void native_cond_create(native_cond_t *);
+static void native_cond_dispose(native_cond_t *);
+static void native_cond_wait(native_cond_t *, native_mutex_t *);
+static void native_cond_timed_wait(native_cond_t *, native_mutex_t *,
+                                   uint64_t, uint32_t);
+static void native_cond_signal(native_cond_t *);
+static void native_cond_broadcast(native_cond_t *);
+
+/******************************************************************************
+ * Native thread wrapper functions                                            *
+ ******************************************************************************/
+
+ /** Creates a new native thread-local storage key
+  * \param key The address of the key to be initialized */
+
+static void native_key_create(native_key_t *key)
+{
+#if JEL_THREAD_POSIX && !defined(TLS)
+    pthread_key_create(key, NULL);
+#elif JEL_THREAD_PTH
+    pth_key_create(key, NULL);
+#endif
+} // native_key_create()
+
+/** Disposes of a native thread-local storage key
+ * \param key The key to be disposed of */
+
+static void native_key_dispose(native_key_t key)
+{
+#if JEL_THREAD_POSIX && !defined(TLS)
+    pthread_key_delete(key);
+#elif JEL_THREAD_PTH
+    pth_key_delete(key);
+#endif
+} // native_key_dispose()
+
+/** Spawn a new native thread
+ * \param thread A pointer to the native thread structure
+ * \param start The new thread entry point
+ * \param arg A pointer to be passed to the new thread */
+
+static void native_thread_create(native_thread_t *thread,
+                                 void *(*start)(void *), void *arg)
+{
+#if JEL_THREAD_POSIX
+    int res;
+    pthread_attr_t attr;
+
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+    res = pthread_create(thread, &attr, start, arg);
+
+    if (res) {
+        dbg_error("Unable to create a new thread");
+        vm_fail();
+    }
+
+    pthread_attr_destroy(&attr);
+#elif JEL_THREAD_PTH
+    pth_attr_t attr;
+
+    attr = pth_attr_new();
+    pth_attr_set(attr, PTH_ATTR_JOINABLE, FALSE);
+
+    *thread = pth_spawn(attr, start, arg);
+
+    if (*thread == NULL) {
+        dbg_error("Unable to create a new thread");
+        vm_fail();
+    }
+
+    pth_attr_destroy(attr);
+#endif
+} // native_thread_start()
+
+/** Terminates the calling native thread */
+
+static void native_thread_exit( void )
+{
+#if JEL_THREAD_POSIX
+    pthread_exit(NULL);
+#elif JEL_THREAD_PTH
+    pth_exit(NULL);
+#endif
+} // native_thread_exit()
+
+/** Yield execution of the current native thread */
+
+static void native_thread_yield( void )
+{
+#if JEL_THREAD_POSIX
+#   if HAVE_PTHREAD_YIELD_NP
+    pthread_yield_np();
+#   else
+    pthread_yield();
+#endif // JEL_THREAD_POSIX
+#elif JEL_THREAD_PTH
+    pth_yield(NULL);
+#endif
+} // native_thread_yield()
+
+/** Creates a new recursive native mutex
+ * \param mutex A pointer to a native mutex structure */
+
+static void native_mutex_create(native_mutex_t *mutex)
+{
+#if JEL_THREAD_POSIX
+    pthread_mutexattr_t attr;
+
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(mutex, &attr);
+    pthread_mutexattr_destroy(&attr);
+#elif JEL_THREAD_PTH
+    pth_mutex_init(mutex);
+#endif
+} // native_mutex_create()
+
+/** Disposes of a native mutex
+ * \param A pointer to the native mutex structure */
+
+static void native_mutex_dispose(native_mutex_t *mutex)
+{
+#if JEL_THREAD_POSIX
+    pthread_mutex_destroy(mutex);
+#endif // JEL_THREAD_POSIX
+} // native_mutex_dispose()
+
+/** Acquire the lock on a native mutex
+ * \param A pointer to the native mutex structure */
+
+static void native_mutex_lock(native_mutex_t *mutex)
+{
+#if JEL_THREAD_POSIX
+    pthread_mutex_lock(mutex);
+#elif JEL_THREAD_PTH
+    pth_mutex_acquire(mutex, FALSE, NULL);
+#endif
+} // native_mutex_lock()
+
+/** Release the lock on a native mutex
+ * \param A pointer to the native mutex structure */
+
+static void native_mutex_unlock(native_mutex_t *mutex)
+{
+#if JEL_THREAD_POSIX
+    pthread_mutex_unlock(mutex);
+#elif JEL_THREAD_PTH
+    pth_mutex_release(mutex);
+ #endif
+} // native_mutex_unlock()
+
+/** Creates a native condition variable
+ * \param A pointer to the native condition variable structure */
+
+static void native_cond_create(native_cond_t *cond)
+{
+#if JEL_THREAD_POSIX
+    pthread_cond_init(cond, NULL);
+#elif JEL_THREAD_PTH
+    pth_cond_init(cond);
+#endif
+} // native_cond_dispose()
+
+/** Disposes of a native condition variable
+ * \param A pointer to the native condition variable structure */
+
+static void native_cond_dispose(native_cond_t *cond)
+{
+#if JEL_THREAD_POSIX
+    while (pthread_cond_destroy(cond) != 0) {
+        ;
+    }
+#elif JEL_THREAD_PTH
+    /* HACK, GROSS: This relies on internal information of GNU/Pth, we should
+     * find a better way for checking that there are no more waiters */
+    while (cond->cn_waiters != 0) {
+        pth_yield(NULL);
+    }
+#endif
+} // native_cond_dispose()
+
+/** Wait on the specified native condition variable until the variable is
+ * signaled
+ * \param cond A pointer to a native condition variable
+ * \param mutex A pointer to a native mutex structure */
+
+static void native_cond_wait(native_cond_t *cond, native_mutex_t *mutex)
+{
+#if JEL_THREAD_POSIX
+    pthread_cond_wait(cond, mutex);
+#elif JEL_THREAD_PTH
+    pth_cond_await(cond, mutex, NULL);
+#endif
+} // native_cond_wait()
+
+/** Wait on the specified native condition variable until the variable is
+ * signaled or the specified timout expires
+ * \param cond A pointer to a native condition variable
+ * \param mutex A pointer to a native mutex structure
+ * \param millis The timeout in milliseconds
+ * \param nanos The timeout in nanoseconds */
+
+static void native_cond_timed_wait(native_cond_t *cond, native_mutex_t *mutex,
+                                   uint64_t millis, uint32_t nanos)
+{
+#if JEL_THREAD_POSIX
+    if ((millis == 0) && (nanos == 0)) {
+        pthread_cond_wait(cond, mutex);
+    } else {
+        struct timespec req = get_time_with_offset(millis, nanos);
+
+        pthread_cond_timedwait(cond, mutex, &req);
+    }
+#elif JEL_THREAD_PTH
+    if ((millis == 0) && (nanos == 0)) {
+          pth_cond_await(cond, mutex, NULL);
+    } else {
+        pth_event_t ev;
+
+        ev = pth_event(PTH_EVENT_TIME,
+                       pth_timeout(millis / 1000,
+                                   (millis % 1000) * 1000000 + nanos));
+        pth_cond_await(cond, mutex, ev);
+        pth_event_free(ev, PTH_FREE_ALL);
+    }
+#else
+    struct timespec req = {
+        millis / 1000,
+        (millis % 1000) * 1000000 + nanos
+    };
+
+    // Threading is disabled
+    nanosleep(&req, NULL);
+#endif
+} // native_cond_timed_wait()
+
+/** Signal a thread waiting on a native condition variable
+ * \param cond A pointer to a native condition variable */
+
+static void native_cond_signal(native_cond_t *cond)
+{
+#if JEL_THREAD_POSIX
+    pthread_cond_signal(cond);
+#elif JEL_THREAD_PTH
+    pth_cond_notify(cond, false);
+#endif
+} // native_cond_signal()
+
+/** Signals all the threads waiting on a native condition variable
+ * \param A pointer to the native condition variable */
+
+static void native_cond_broadcast(native_cond_t *cond)
+{
+#if JEL_THREAD_POSIX
+    pthread_cond_broadcast(cond);
+#elif JEL_THREAD_PTH
+    pth_cond_notify(cond, true);
+#endif
+} // native_cond_broadcast()
+
+/******************************************************************************
  * Thread manager                                                             *
  ******************************************************************************/
 
@@ -43,13 +318,8 @@
 struct thread_payload_t {
     method_t *run; ///< The run() method of the thread
     uintptr_t *ref; ///< A pointer to the thread object
-#if JEL_THREAD_POSIX
-    pthread_t pthread; ///< POSIX thread
-    pthread_cond_t pthread_cond; ///< POSIX condition variable
-#elif JEL_THREAD_PTH
-    pth_t pth; ///< GNU/Pth thread
-    pth_cond_t pth_cond; ///< GNU/Pth condition variable
-#endif
+    native_thread_t thread; ///< Newly created thread
+    native_cond_t cond; ///< Synchronization condition variable
 };
 
 /** Typedef for the ::struct thread_payload_t type */
@@ -62,11 +332,7 @@ struct monitor_t {
     uintptr_t ref; ///< Object associated with this monitor
     thread_t *owner; ///< Owner thread, NULL if the monitor is unlocked
     size_t count; ///< Number of times the monitor was acquired
-#if JEL_THREAD_POSIX
-    pthread_cond_t *pthread_cond; ///< POSIX condition variable
-#elif JEL_THREAD_PTH
-    pth_cond_t *pth_cond; ///< GNU/Pth condition variable
-#endif
+    native_cond_t *cond; ///< Condition variable associated with the monitor
 };
 
 /** Typedef for the ::struct monitor_t type */
@@ -79,12 +345,10 @@ typedef struct monitor_t monitor_t;
  * globally */
 
 struct thread_manager_t {
-#if JEL_THREAD_POSIX
-    pthread_mutex_t lock; ///< Global VM lock
-#elif JEL_THREAD_PTH
-    pth_mutex_t lock; ///< Global VM lock
+    native_mutex_t lock; ///< Global VM lock
+#if JEL_THREAD_PTH
     size_t switch_n; ///< Number of context switches
-#endif
+#endif // JEL_THREAD_PTH
     size_t active; ///< Number of active threads
     thread_t *queue; ///< Doubly-linked queue of active threads
     size_t capacity; ///< Capacity of the monitor hash-table
@@ -99,20 +363,8 @@ typedef struct thread_manager_t thread_manager_t;
  * Globals                                                                    *
  ******************************************************************************/
 
-/** \var self
- * Thread-local self pointer of a thread */
-
-#if JEL_THREAD_POSIX
-#   ifdef TLS
-TLS thread_t *self;
-#   else
-pthread_key_t self;
-#   endif // TLS
-#elif JEL_THREAD_PTH
-pth_key_t self;
-#else
-thread_t *self;
-#endif
+/** Thread-local self pointer of a thread */
+JEL_TLS native_key_t self;
 
 /** Thread manager singleton */
 static thread_manager_t tm;
@@ -131,33 +383,20 @@ static thread_manager_t tm;
 
 void tm_init( void )
 {
-#if JEL_THREAD_POSIX
-    pthread_mutexattr_t attr;
-#endif // JEL_THREAD_POSIX
-
     memset(&tm, 0, sizeof(thread_manager_t));
 
-    /* When using multi-threading the global machine lock is recursive so that
-     * the code can enter more than one syncrhonized sections safely */
-#if JEL_THREAD_POSIX
-    pthread_mutexattr_init(&attr);
-    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-    pthread_mutex_init(&tm.lock, &attr);
-    pthread_mutexattr_destroy(&attr);
-#elif JEL_THREAD_PTH
+#if JEL_THREAD_PTH
     if (!pth_init()) {
         vm_fail();
     }
 
-    pth_mutex_init(&tm.lock);
     tm.switch_n = PTH_SWITCH_N;
-#endif
+#endif // JEL_THREAD_PTH
 
-#if JEL_THREAD_POSIX && !defined(TLS)
-    pthread_key_create(&self, NULL);
-#elif JEL_THREAD_PTH
-    pth_key_create(&self, NULL);
-#endif
+    /* When using multi-threading the global machine lock is recursive so that
+     * the code can enter more than one syncrhonized sections safely */
+    native_mutex_create(&tm.lock);
+    native_key_create(&self);
 } // tm_init()
 
 /** Tears down the thread manager */
@@ -167,22 +406,25 @@ void tm_teardown( void )
 #if JEL_THREAD_POSIX
     thread_t *thread;
 
+    /* FIXME: We should wait for all threads to complete instead of canceling
+     * them */
+
     tm_lock();
     tm_stop_the_world();
 
     for (thread = tm.queue; thread != NULL; thread = thread->next) {
-        pthread_cancel(thread->pthread);
+        pthread_cancel(thread->native);
     }
 
     tm_unlock();
-    pthread_mutex_destroy(&tm.lock);
-#   ifndef TLS
-    pthread_key_delete(self);
-#   endif // !TLS
-#elif JEL_THREAD_PTH
-    pth_key_delete(self);
+#endif // JEL_THREAD_POSIX
+
+    native_key_dispose(self);
+    native_mutex_dispose(&tm.lock);
+
+#if JEL_THREAD_PTH
     pth_kill();
-#endif
+#endif // JEL_THREAD_PTH
 } // tm_teardown()
 
 /** Register a new thread in the thread manager
@@ -288,20 +530,12 @@ void tm_purge( void )
             if (!header_is_marked(header)) {
                 /* The object referenced by this monitor is dead, let's purge
                  * the monitor then */
-#if JEL_THREAD_POSIX
-                if (entry->pthread_cond) {
-                    pthread_cond_destroy(entry->pthread_cond);
-                    gc_free(entry->pthread_cond);
+
+                if (entry->cond) {
+                    native_cond_dispose(entry->cond);
+                    gc_free(entry->cond);
                 }
-#elif JEL_THREAD_PTH
-                if (entry->pth_cond) {
-                    /* HACK, GROSS: This relies on internal information of
-                     * GNU/Pth, we should find a better way for checking that
-                     * there are no waiters */
-                    assert(entry->pth_cond->cn_waiters == 0);
-                    gc_free(entry->pth_cond);
-                }
-#endif
+
                 memset(entry, 0, sizeof(monitor_t));
             } else {
                 entries++;
@@ -389,11 +623,7 @@ static void tm_rehash(bool grow)
             buckets[j].ref = entry->ref;
             buckets[j].owner = entry->owner;
             buckets[j].count = entry->count;
-#if JEL_THREAD_POSIX
-            buckets[j].pthread_cond = entry->pthread_cond;
-#elif JEL_THREAD_PTH
-            buckets[j].pth_cond = entry->pth_cond;
-#endif
+            buckets[j].cond = entry->cond;
 
             // Chain the entry if there was a clash
             if (j == hash) {
@@ -410,7 +640,7 @@ static void tm_rehash(bool grow)
     tm.buckets = buckets;
 } // tm_rehash()
 
-#if JEL_THREAD_POSIX || JEL_THREAD_PTH
+#if !JEL_THREAD_NONE
 
 /** Try to gain the ownership of the machine-wide lock.
  * This function will return only when the caller has the ownership of the lock
@@ -422,11 +652,7 @@ static void tm_rehash(bool grow)
 void tm_lock( void )
 {
     thread_self()->safe++; // Enter or re-enter into a safe zone
-#if JEL_THREAD_POSIX
-    pthread_mutex_lock(&tm.lock);
-#elif JEL_THREAD_PTH
-    pth_mutex_acquire(&tm.lock, FALSE, NULL);
-#endif
+    native_mutex_lock(&tm.lock);
 } // tm_lock()
 
 /** Release the ownership of the machine-wide lock */
@@ -435,16 +661,14 @@ void tm_unlock( void )
 {
     assert(thread_self()->safe != 0);
     thread_self()->safe--; // Exit a safe zone if 'safe' drops to 0
-#if JEL_THREAD_POSIX
-    pthread_mutex_unlock(&tm.lock);
-#elif JEL_THREAD_PTH
-    pth_mutex_release(&tm.lock);
+    native_mutex_unlock(&tm.lock);
 
+#if JEL_THREAD_PTH
     if (--tm.switch_n == 0) {
         tm.switch_n = PTH_SWITCH_N;
         pth_yield(NULL);
     }
-#endif
+#endif // JEL_THREAD_PTH
 } // tm_unlock()
 
 /** Returns a pointer to the VM global lock. We should do away with this method
@@ -452,7 +676,7 @@ void tm_unlock( void )
  * finalizable objects
  * \returns A pointer to the VM global lock */
 
-void *tm_get_lock( void )
+native_mutex_t *tm_get_lock( void )
 {
     return &tm.lock;
 } // tm_get_lock()
@@ -481,7 +705,7 @@ void tm_stop_the_world( void )
     }
 } // tm_stop_the_world()
 
-#endif // JEL_THREAD_POSIX || JEL_THREAD_PTH
+#endif // !JEL_THREAD_NONE
 
 /******************************************************************************
  * Monitors                                                                   *
@@ -613,17 +837,7 @@ bool monitor_exit(thread_t *thread, uintptr_t ref)
 
 static void thread_set_self(thread_t *thread)
 {
-#if JEL_THREAD_POSIX
-#   ifdef TLS
-    self = thread;
-#   else
-    pthread_setspecific(self, thread);
-#   endif // TLS
-#elif JEL_THREAD_PTH
-    pth_key_setdata(self, thread);
-#else
-    self = thread;
-#endif
+    native_key_set(&self, thread);
 } // thread_set_self()
 
 /** Push a temporary root on the current thread's stack
@@ -665,12 +879,7 @@ void thread_init(thread_t *thread)
 {
     memset(thread, 0, sizeof(thread_t));
     thread_set_self(thread);
-
-#if JEL_THREAD_POSIX
-    pthread_cond_init(&thread->pthread_cond, NULL);
-#elif JEL_THREAD_PTH
-    pth_cond_init(&thread->pth_cond);
-#endif
+    native_cond_create(&thread->cond);
 } // thread_init()
 
 /** Creates the main thread. This function doesn't return until the main thread
@@ -712,11 +921,7 @@ uintptr_t thread_create_main(thread_t *thread, method_t *run, uintptr_t *args)
 
     // Mark the thread as dead, none can join on it anymore after this point
     tm_lock();
-#if JEL_THREAD_POSIX
-    pthread_cond_broadcast(&thread->pthread_cond);
-#elif JEL_THREAD_PTH
-    pth_cond_notify(&thread->pth_cond, true);
-#endif
+    native_cond_broadcast(&thread->cond);
     tm_unregister(thread);
     JAVA_LANG_THREAD_REF2PTR(thread->obj)->vmThread = JNULL;
     tm_unlock();
@@ -738,29 +943,12 @@ void thread_sleep(int64_t ms)
     tm_lock();
 
     if (!self->interrupted) {
-#if JEL_THREAD_PTH
-        pth_event_t ev;
-        pth_cond_t cond = PTH_COND_INIT; // Dummy condition variable
+        native_cond_t cond; // Dummy condition variable
 
-        ev = pth_event(PTH_EVENT_TIME,
-                       pth_timeout(ms / 1000,
-                                   (ms % 1000) * 1000));
-        self->pth_int = &cond;
-        pth_cond_await(&cond, &tm.lock, ev);
-        self->pth_int = NULL;
-        pth_event_free(ev, PTH_FREE_ALL);
-#elif JEL_THREAD_POSIX
-        struct timespec req = get_time_with_offset(ms, 0);
-        pthread_cond_t cond = PTHREAD_COND_INITIALIZER; // Dummy condition variable
-
-        self->pthread_int = &cond;
-        pthread_cond_timedwait(&cond, &tm.lock, &req);
-        self->pthread_int = NULL;
-#else
-        struct timespec req = { ms / 1000, (ms % 1000) * 1000000 };
-
-        nanosleep(&req, NULL);
-#endif
+        native_cond_create(&cond);
+        self->cond_int = &cond;
+        native_cond_timed_wait(&cond, &tm.lock, ms, 0);
+        self->cond_int = NULL;
     }
 
     if (self->interrupted) {
@@ -771,7 +959,7 @@ void thread_sleep(int64_t ms)
     tm_unlock();
 } // thread_sleep()
 
-#if JEL_THREAD_POSIX || JEL_THREAD_PTH
+#if !JEL_THREAD_NONE
 
 /** Startup function used as the entry point of a new thread. Both the payload
  * passed in \a arg and the new thread structures (including the stack) will be
@@ -809,13 +997,8 @@ static void *thread_start(void *arg)
     tm_register(&thread);
 
     // Inform the parent thread that we're starting execution
-#if JEL_THREAD_POSIX
-    thread.pthread = payload->pthread;
-    pthread_cond_signal(&payload->pthread_cond);
-#elif JEL_THREAD_PTH
-    thread.pth = payload->pth;
-    pth_cond_notify(&payload->pth_cond, false);
-#endif
+    thread.native = payload->thread;
+    native_cond_signal(&payload->cond);
     tm_unlock();
 
     // HACK: Push the 'this' pointer on top of the stack
@@ -832,11 +1015,7 @@ static void *thread_start(void *arg)
     // Mark the thread as dead, none can join on it anymore after this point
     tm_lock();
 
-#if JEL_THREAD_POSIX
-    pthread_cond_broadcast(&thread.pthread_cond);
-#elif JEL_THREAD_PTH
-    pth_cond_notify(&thread.pth_cond, true);
-#endif
+    native_cond_broadcast(&thread.cond);
     tm_unregister(&thread);
     JAVA_LANG_THREAD_REF2PTR(thread.obj)->vmThread = JNULL;
 
@@ -848,17 +1027,7 @@ static void *thread_start(void *arg)
     tm_unlock();
 
     // Wait for the joining thread to wake up
-#if JEL_THREAD_POSIX
-    while (pthread_cond_destroy(&thread.pthread_cond) != 0) {
-        ;
-    }
-#elif JEL_THREAD_PTH
-    /* HACK, GROSS: This relies on internal information of GNU/Pth, we should
-     * find a better way for checking that there are no more waiters */
-    while (thread.pth_cond.cn_waiters != 0) {
-        pth_yield(NULL);
-    }
-#endif
+    native_cond_dispose(&thread.cond);
 
     if (thread.exception != JNULL) {
         // TODO: Print the exception and stack trace
@@ -866,81 +1035,37 @@ static void *thread_start(void *arg)
         vm_fail();
     }
 
-#if JEL_THREAD_POSIX
-    pthread_exit(NULL);
-#elif JEL_THREAD_PTH
-    pth_exit(NULL);
-#endif
+    native_thread_exit();
 
     return NULL;
 } // thread_start()
 
 /** Creates a new thread executing the provided method
- * \param obj The java.lang.Thread object associated with this thread
+ * \param ref The java.lang.Thread object associated with this thread
  * \param run The first method executed by this thread */
 
 void thread_launch(uintptr_t *ref, method_t *run)
 {
     thread_payload_t *payload;
-#if JEL_THREAD_POSIX
-    int res;
-    pthread_attr_t attr;
-#elif JEL_THREAD_PTH
-    pth_attr_t attr;
-#endif
 
     // Prepare the thread payload
     payload = gc_malloc(sizeof(thread_payload_t));
     payload->run = run;
     payload->ref = ref;
-#if JEL_THREAD_POSIX
-    pthread_cond_init(&payload->pthread_cond, NULL);
-#elif JEL_THREAD_PTH
-    pth_cond_init(&payload->pth_cond);
-#endif
+    native_cond_create(&payload->cond);
 
     // We take the global lock for we will be waiting for the new thread
     tm_lock();
 
     // FIXME: Check if thread creation fails and shut down the machine 'cleanly'
-#if JEL_THREAD_POSIX
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
-    res = pthread_create(&payload->pthread, &attr, thread_start, payload);
-
-    if (res) {
-        dbg_error("Unable to create a new thread");
-        vm_fail();
-    }
-
-    pthread_attr_destroy(&attr);
-#elif JEL_THREAD_PTH
-    attr = pth_attr_new();
-    pth_attr_set(attr, PTH_ATTR_JOINABLE, FALSE);
-
-    payload->pth = pth_spawn(attr, thread_start, payload);
-
-    if (payload->pth == NULL) {
-        dbg_error("Unable to create a new thread");
-        vm_fail();
-    }
-
-    pth_attr_destroy(attr);
-#endif
+    native_thread_create(&payload->thread, thread_start, payload);
 
     // Wait for the new thread
-#if JEL_THREAD_POSIX
-    pthread_cond_wait(&payload->pthread_cond, &tm.lock);
-#else
-    pth_cond_await(&payload->pth_cond, &tm.lock, NULL);
-#endif
+    native_cond_wait(&payload->cond, &tm.lock);
     tm_unlock();
 
     // Cleanup
-#if JEL_THREAD_POSIX
-    pthread_cond_destroy(&payload->pthread_cond);
-#endif // JEL_THREAD_POSIX
+    native_cond_dispose(&payload->cond);
     gc_free(payload);
 } // thread_launch()
 
@@ -955,15 +1080,9 @@ void thread_interrupt(thread_t *thread)
     tm_lock();
     thread->interrupted = true;
 
-#if JEL_THREAD_POSIX
-    if (thread->pthread_int) {
-        pthread_cond_signal(thread->pthread_int);
+    if (thread->cond_int) {
+        native_cond_signal(thread->cond_int);
     }
-#elif JEL_THREAD_PTH
-    if (thread->pth_int) {
-        pth_cond_notify(thread->pth_int, false);
-    }
-#endif
 
     tm_unlock();
 } // thread_interrupt()
@@ -973,15 +1092,7 @@ void thread_interrupt(thread_t *thread)
 
 void thread_yield( void )
 {
-#if JEL_THREAD_POSIX
-#   if HAVE_PTHREAD_YIELD_NP
-    pthread_yield_np();
-#   else
-    pthread_yield();
-#endif // JEL_THREAD_POSIX
-#elif JEL_THREAD_PTH
-    pth_yield(NULL);
-#endif
+    native_thread_yield();
 } // thread_yield()
 
 /** Joins on the passed thread
@@ -1000,15 +1111,9 @@ void thread_join(uintptr_t *thread)
         target = (thread_t *) JAVA_LANG_THREAD_REF2PTR(*thread)->vmThread;
 
         if (target != NULL) {
-#if JEL_THREAD_POSIX
-            self->pthread_int = &target->pthread_cond;
-            pthread_cond_wait(&target->pthread_cond, &tm.lock);
-            self->pthread_int = NULL;
-#elif JEL_THREAD_PTH
-            self->pth_int = &target->pth_cond;
-            pth_cond_await(&target->pth_cond, &tm.lock, NULL);
-            self->pth_int = NULL;
-#endif
+            self->cond_int = &target->cond;
+            native_cond_wait(&target->cond, &tm.lock);
+            self->cond_int = NULL;
         }
     }
 
@@ -1052,46 +1157,20 @@ bool thread_wait(uintptr_t ref, uint64_t millis, uint32_t nanos)
             entry->owner = NULL;
             entry->count = 0;
 
-#if JEL_THREAD_POSIX
-            if (entry->pthread_cond == NULL) {
-                entry->pthread_cond = gc_malloc(sizeof(pthread_cond_t));
-                pthread_cond_init(entry->pthread_cond, NULL);
+            if (entry->cond == NULL) {
+                entry->cond = gc_malloc(sizeof(native_cond_t));
+                native_cond_create(entry->cond);
             }
 
-            self->pthread_int = entry->pthread_cond;
+            self->cond_int = entry->cond;
 
             if ((millis == 0) && (nanos == 0)) {
-                pthread_cond_wait(entry->pthread_cond, &tm.lock);
+                native_cond_wait(entry->cond, &tm.lock);
             } else {
-                struct timespec req = get_time_with_offset(millis, nanos);
-
-                pthread_cond_timedwait(entry->pthread_cond, &tm.lock, &req);
+                native_cond_timed_wait(entry->cond, &tm.lock, millis, nanos);
             }
 
-            self->pthread_int = NULL;
-
-#elif JEL_THREAD_PTH
-            if (entry->pth_cond == NULL) {
-                entry->pth_cond = gc_malloc(sizeof(pth_cond_t));
-                pth_cond_init(entry->pth_cond);
-            }
-
-            self->pth_int = entry->pth_cond;
-
-            if ((millis == 0) && (nanos == 0)) {
-                pth_cond_await(entry->pth_cond, &tm.lock, NULL);
-            } else {
-                pth_event_t ev;
-
-                ev = pth_event(PTH_EVENT_TIME,
-                               pth_timeout(millis / 1000,
-                                           (millis % 1000) * 1000000 + nanos));
-                pth_cond_await(entry->pth_cond, &tm.lock, ev);
-                pth_event_free(ev, PTH_FREE_ALL);
-            }
-
-            self->pth_int = NULL;
-#endif
+            self->cond_int = NULL;
 
             // Re-acquire the monitor
             tm_unlock();
@@ -1137,19 +1216,14 @@ bool thread_notify(uintptr_t ref, bool broadcast)
     if (entry) {
         if (entry->owner == self) {
             // Notify the waiting thread
-#if JEL_THREAD_POSIX
-            if (entry->pthread_cond != NULL) {
+            if (entry->cond != NULL) {
                 if (broadcast) {
-                    pthread_cond_broadcast(entry->pthread_cond);
+                    native_cond_broadcast(entry->cond);
                 } else {
-                    pthread_cond_signal(entry->pthread_cond);
+                    native_cond_signal(entry->cond);
                 }
             }
-#elif JEL_THREAD_PTH
-            if (entry->pth_cond != NULL) {
-                pth_cond_notify(entry->pth_cond, broadcast);
-            }
-#endif
+
             res = true;
         }
     }

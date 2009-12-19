@@ -32,6 +32,95 @@
 #include "method.h"
 
 /******************************************************************************
+ * Native threads wrapper type definitions                                    *
+ ******************************************************************************/
+
+/** \typedef native_key_t
+ * Represents a thread-local storage key of the host machine */
+
+/** \typedef native_thread_t
+ * Represents a thread structure of the host machine */
+
+/** \typedef native_mutex_t
+ * Represents a mutex structure of the host machine */
+
+/** \typedef native_cond_t
+ * Represents a condition variable structure of the host machine */
+
+#if JEL_THREAD_POSIX
+#   ifdef TLS
+typedef void *native_key_t;
+#   else
+typedef pthread_key_t native_key_t;
+#   endif // TLS
+typedef pthread_t native_thread_t;
+typedef pthread_mutex_t native_mutex_t;
+typedef pthread_cond_t native_cond_t;
+#elif JEL_THREAD_PTH
+typedef pth_key_t native_key_t;
+typedef pth_t native_thread_t;
+typedef pth_mutex_t native_mutex_t;
+typedef pth_cond_t native_cond_t;
+#else
+typedef void *native_key_t;
+typedef int native_thread_t;
+typedef int native_mutex_t;
+typedef int native_cond_t;
+#endif
+
+/** \def JEL_TLS
+ * Thread-local storage class if one is available, otherwise set to an empty
+ * definition */
+
+#ifdef TLS
+#   define JEL_TLS TLS
+#else
+#   define JEL_TLS
+#endif // TLS
+
+/******************************************************************************
+ * Native threads wrapper inlined functions                                   *
+ ******************************************************************************/
+
+ /** Returns the value of a native thread-local storage key
+  * \param key The TLS key to be read
+  * \returns The value held in the TLS key */
+
+static inline void *native_key_get(native_key_t key)
+{
+#if JEL_THREAD_POSIX
+#   ifdef TLS
+    return key;
+#else
+    return pthread_getspecific(key);
+#endif // TLS
+#elif JEL_THREAD_PTH
+    return pth_key_getdata(key);
+#else
+    return key;
+#endif
+} // native_key_get()
+
+/** Sets the value of native thread-local storage key
+ * \param key A pointer to the TLS key
+ * \param value The value to be stored in the key */
+
+static inline void native_key_set(native_key_t *key, void *value)
+{
+#if JEL_THREAD_POSIX
+#   ifdef TLS
+    *key = value;
+#   else
+    pthread_setspecific(*key, value);
+#   endif // TLS
+#elif JEL_THREAD_PTH
+    pth_key_setdata(*key, value);
+#else
+    *key = value;
+#endif
+} // native_key_set()
+
+/******************************************************************************
  * Type definitions                                                           *
  ******************************************************************************/
 
@@ -81,15 +170,9 @@ struct thread_t {
         uintptr_t **pointers; ///< Array of pointers to the roots
     } roots; ///< Area used for storing temporary root pointers
 
-#if JEL_THREAD_POSIX
-    pthread_t pthread; ///< Embedded POSIX thread
-    pthread_cond_t pthread_cond; ///< Synchronization condition
-    pthread_cond_t *pthread_int; ///< Condition on which this thread is waiting
-#elif JEL_THREAD_PTH
-    pth_t pth; ///< Embedded GNU/Pth thread
-    pth_cond_t pth_cond; ///< Synchronization condition
-    pth_cond_t *pth_int; ///< Condition on which this thread is waiting
-#endif
+    native_thread_t native;  ///< Embedded native thread
+    native_cond_t cond; ///< Embedded native condition variable
+    native_cond_t *cond_int; ///< Condition on which this thread is waiting
     bool interrupted; ///< True if this thread was interrupted
 
 #if JEL_PRINT
@@ -104,17 +187,7 @@ typedef struct thread_t thread_t;
  * Globals                                                                    *
  ******************************************************************************/
 
-#if JEL_THREAD_POSIX
-#   ifdef TLS
-extern TLS thread_t *self;
-#   else
-extern pthread_key_t self;
-#   endif // TLS
-#elif JEL_THREAD_PTH
-extern pth_key_t self;
-#else
-extern thread_t *self;
-#endif
+extern JEL_TLS native_key_t self;
 
 /******************************************************************************
  * Thread manager interface                                                   *
@@ -128,17 +201,17 @@ extern uint32_t tm_active( void );
 extern void tm_mark( void );
 extern void tm_purge( void );
 
-#if JEL_THREAD_POSIX || JEL_THREAD_PTH
+#if !JEL_THREAD_NONE
 extern void tm_lock();
 extern void tm_unlock();
-extern void *tm_get_lock();
+extern native_mutex_t *tm_get_lock();
 extern void tm_stop_the_world( void );
-#else
+#else // JEL_THREAD_NONE
 static inline void tm_lock( void ) {}
 static inline void tm_unlock( void ) {}
 static inline void *tm_get_lock( void ) { return NULL; }
 static inline void tm_stop_the_world( void ) {}
-#endif // JEL_THREAD_POSIX
+#endif // !JEL_THREAD_NONE
 
 /******************************************************************************
  * Monitor interface                                                          *
@@ -158,7 +231,7 @@ extern void thread_init(thread_t *);
 extern uintptr_t thread_create_main(thread_t *, method_t *, uintptr_t *);
 extern void thread_sleep(int64_t);
 
-#if JEL_THREAD_POSIX || JEL_THREAD_PTH
+#if !JEL_THREAD_NONE
 
 extern void thread_launch(uintptr_t *, method_t *);
 extern void thread_interrupt(thread_t *);
@@ -198,17 +271,7 @@ static inline bool thread_notify(uintptr_t ref, bool broadcast)
 
 static inline thread_t *thread_self( void )
 {
-#if JEL_THREAD_POSIX
-#   ifdef TLS
-    return self;
-#else
-    return (thread_t *) pthread_getspecific(self);
-#endif // TLS
-#elif JEL_THREAD_PTH
-    return (thread_t *) pth_key_getdata(self);
-#else
-    return self;
-#endif
+    return native_key_get(self);
 } // thread_self()
 
 #endif // JELATINE_THREAD_H
