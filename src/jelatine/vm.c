@@ -166,6 +166,7 @@ void vm_run( void )
         /* Create the finalizer Java thread object, since it is not created
          * by VMThread.start() we have to do it by hand */
         ref = gc_new(thread_cl);
+        gc_register_finalizer(ref);
         JAVA_LANG_THREAD_REF2PTR(ref)->priority = 5;
         thread_push_root(&ref);
         // After this call has returned the finalizer thread will be running

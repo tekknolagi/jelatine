@@ -59,6 +59,7 @@ extern uintptr_t gc_new_multiarray(struct class_t *, uint8_t, jword_t *);
 
 // Finalization
 #if JEL_FINALIZER
+extern void gc_register_finalizer(uintptr_t);
 extern void gc_register_finalizable(uintptr_t);
 extern uintptr_t gc_get_finalizable( void );
 #endif // JEL_FINALIZER

@@ -102,13 +102,9 @@ struct heap_t {
     small_chunk_t *bin[BIN_ENTRIES]; ///< Bin used for storing small free chunks
 
 #if JEL_FINALIZER
+    uintptr_t finalizer; ///< A reference to the finalizer thread's object
     finalizable_t *finalizable; ///< List of finalizer objects still alive
     finalizable_t *finalizing; ///< Objects waiting to be finalized
-#   if JEL_THREAD_POSIX
-    pthread_cond_t pthread_cond; ///< POSIX threads wait condition
-#   elif JEL_THREAD_PTH
-    pth_cond_t pth_cond; ///< GNU/Pth wait condition
-#   endif
 #endif // JEL_FINALIZER
 };
 
@@ -212,13 +208,9 @@ void gc_init(size_t size)
     heap.collect = false;
 
 #if JEL_FINALIZER
+    heap.finalizer = JNULL;
     heap.finalizable = NULL;
     heap.finalizing = NULL;
-#   if JEL_THREAD_POSIX
-    pthread_cond_init(&heap.pthread_cond, NULL);
-#   elif JEL_THREAD_PTH
-    pth_cond_init(&heap.pth_cond);
-#   endif
 #endif // JEL_FINALIZER
 } // gc_init()
 
@@ -226,9 +218,6 @@ void gc_init(size_t size)
 
 void gc_teardown( void )
 {
-#if JEL_FINALIZER && JEL_THREAD_POSIX
-    pthread_cond_destroy(&heap.pthread_cond);
-#endif // JEL_FINALIZER && JEL_THREAD_POSIX
     free(heap.memory);
 } // gc_teardown()
 
@@ -402,6 +391,15 @@ uintptr_t gc_new_multiarray(class_t *cl, uint8_t dimensions, jword_t *counts)
 
 #if JEL_FINALIZER
 
+/** Stores a reference to the finalizer's thread Java object, it will be used
+ * to wake up the finalizer thread when a new object is ready to be finalized
+ * \param A reference to the finalizer thread's Thread object */
+
+void gc_register_finalizer(uintptr_t ref)
+{
+    heap.finalizer = ref;
+} // gc_register_finalizer()
+
 /** Registers a newly created finalizable object
  * \param ref A reference to the object to be registered */
 
@@ -416,7 +414,6 @@ void gc_register_finalizable(uintptr_t ref)
     fin->next = heap.finalizable;
     heap.finalizable = fin;
     thread_pop_root();
-
     tm_unlock();
 } // gc_register_finalizable()
 
@@ -426,29 +423,23 @@ void gc_register_finalizable(uintptr_t ref)
 
 uintptr_t gc_get_finalizable( void )
 {
+    thread_t *self = thread_self();
     uintptr_t ref = JNULL;
     finalizable_t *fin;
 
-    tm_lock();
-    fin = heap.finalizing;
+    monitor_enter(self, heap.finalizer);
 
     if (heap.finalizing == NULL) {
-#if JEL_THREAD_POSIX
-        pthread_mutex_t *vm_lock = tm_get_lock();
-        pthread_cond_wait(&heap.pthread_cond, vm_lock);
-#elif JEL_THREAD_PTH
-        pth_mutex_t *vm_lock = tm_get_lock() ;
-        pth_cond_await(&heap.pth_cond, vm_lock, NULL);
-#endif
+        thread_wait(heap.finalizer, 0, 0);
     }
 
     assert(heap.finalizing != NULL);
     fin = heap.finalizing;
     heap.finalizing = fin->next;
+    monitor_exit(self, heap.finalizer);
     ref = fin->ref;
     gc_free(fin);
 
-    tm_unlock();
     return ref;
 } // gc_get_finalizable()
 
@@ -519,6 +510,7 @@ void gc_collect(size_t grow)
         gc_grow(heap.end, grow); // Just grow the heap
     }
 
+    // If a collection happened this will also restart the stopped threads
     tm_unlock();
 } // gc_collect()
 
@@ -833,6 +825,7 @@ static void gc_mark( void )
 static void gc_mark_finalizable( void )
 {
 #if JEL_FINALIZER
+    thread_t *self = thread_self();
     finalizable_t *curr = heap.finalizable;
     finalizable_t *prev = NULL;
     finalizable_t *next;
@@ -845,11 +838,9 @@ static void gc_mark_finalizable( void )
             heap.finalizing = curr;
 
             if (curr->next == NULL) {
-#if JEL_THREAD_POSIX
-                pthread_cond_signal(&heap.pthread_cond);
-#elif JEL_THREAD_PTH
-                pth_cond_notify(&heap.pth_cond, FALSE);
-#endif
+                monitor_enter(self, heap.finalizer);
+                thread_notify(heap.finalizer, false);
+                monitor_exit(self, heap.finalizer);
             }
 
             if (prev == NULL) {

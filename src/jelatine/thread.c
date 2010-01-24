@@ -644,23 +644,21 @@ static void tm_rehash(bool grow)
 
 /** Try to gain the ownership of the machine-wide lock.
  * This function will return only when the caller has the ownership of the lock
- * in the meantime the calling thread is considered in a safe zone if. It is
- * safe to call this function repeatedly from the same thread as long as
- * tm_unlock() is called the same number of times to release the lock
- * multithreading is enabled */
+ * in the meantime the calling thread is considered blocked. It is safe to call
+ * this function repeatedly from the same thread as long as tm_unlock() is
+ * called the same number of times to release the lock */
 
 void tm_lock( void )
 {
-    thread_self()->safe++; // Enter or re-enter into a safe zone
+    thread_may_block();
     native_mutex_lock(&tm.lock);
+    thread_resumes();
 } // tm_lock()
 
 /** Release the ownership of the machine-wide lock */
 
 void tm_unlock( void )
 {
-    assert(thread_self()->safe != 0);
-    thread_self()->safe--; // Exit a safe zone if 'safe' drops to 0
     native_mutex_unlock(&tm.lock);
 
 #if JEL_THREAD_PTH
@@ -686,23 +684,29 @@ native_mutex_t *tm_get_lock( void )
 
 void tm_stop_the_world( void )
 {
+    thread_t *self = thread_self();
     thread_t *thread;
     bool stopped = false;
+
+    // Inform all threads that they must stop
+    self->blocked = true;
+
+    for (thread = tm.queue; thread != NULL; thread = thread->next) {
+        thread->stopped = true;
+    }
 
     // Wait for all the threads to stop
     while (!stopped) {
         stopped = true;
 
         for (thread = tm.queue; thread != NULL; thread = thread->next) {
-            /* If the 'safe' field is 1 then the thread has been stopped, the
-             * calling thread will have safe >= 1. */
-            if (thread->safe == 0) {
-                stopped = false;
-            }
+            stopped &= thread->blocked;
         }
 
         thread_yield();
     }
+
+    self->blocked = false;
 } // tm_stop_the_world()
 
 #endif // !JEL_THREAD_NONE
@@ -947,7 +951,9 @@ void thread_sleep(int64_t ms)
 
         native_cond_create(&cond);
         self->cond_int = &cond;
+        thread_may_block();
         native_cond_timed_wait(&cond, &tm.lock, ms, 0);
+        thread_resumes();
         self->cond_int = NULL;
     }
 
@@ -1009,6 +1015,8 @@ static void *thread_start(void *arg)
     } c_catch (exception) {
         c_print_exception(exception);
         c_clear_exception();
+        /* FIXME: The thread must shut down but the rest of the VM should be
+         * kept running and joining threads must be woken up. */
         vm_fail();
     }
 
@@ -1061,13 +1069,59 @@ void thread_launch(uintptr_t *ref, method_t *run)
     native_thread_create(&payload->thread, thread_start, payload);
 
     // Wait for the new thread
+    thread_may_block();
     native_cond_wait(&payload->cond, &tm.lock);
+    thread_resumes();
     tm_unlock();
 
     // Cleanup
     native_cond_dispose(&payload->cond);
     gc_free(payload);
 } // thread_launch()
+
+/** Flags the calling thread as potentially blocked. This function must be
+ * called every time a thread might block for a long time in order to avoid
+ * livelocks. Two examples might be when the thread takes a lock or when it
+ * calls a blocking native method like recv(). When the thread has finished the
+ * blocking operation thread_resumes() must be called */
+
+void thread_may_block( void )
+{
+    thread_t *self = thread_self();
+
+    assert(!self->blocked);
+    self->blocked = true;
+} // thread_may_block()
+
+/** Restores a thread to its steady state after a blocking operation. Before
+ * returning however this function checks if a global stop-the-world has been
+ * requested, if so it waits until it is asked to resume execution. This
+ * function must be always called after a blocking operation and coupled with a
+ * previous call to  thread_may_block() */
+
+void thread_resumes( void )
+{
+    thread_t *self = thread_self();
+
+    assert(self->blocked);
+    self->blocked = false;
+
+    // Check if a stop-the world has been requested
+    if (self->stopped) {
+        /* Mark the thread as blocked again so that the tm_stop_the_world() can
+         * make sure that this thread is effectively blocked */
+        self->blocked = true;
+
+        /* The global lock is already held by the thread that called
+         * tm_stop_the_world() so this thread will block until the lock has
+         * been released */
+        native_mutex_lock(&tm.lock);
+        native_mutex_unlock(&tm.lock);
+
+        self->stopped = false;
+        self->blocked = false;
+    }
+} // thread_resumes()
 
 /** Interrupts a thread. This function is used for implementing the
  * java.lang.Thread.interrupt() method and can interrupt immediately the
@@ -1112,7 +1166,9 @@ void thread_join(uintptr_t *thread)
 
         if (target != NULL) {
             self->cond_int = &target->cond;
+            thread_may_block();
             native_cond_wait(&target->cond, &tm.lock);
+            thread_resumes();
             self->cond_int = NULL;
         }
     }
@@ -1163,6 +1219,7 @@ bool thread_wait(uintptr_t ref, uint64_t millis, uint32_t nanos)
             }
 
             self->cond_int = entry->cond;
+            thread_may_block();
 
             if ((millis == 0) && (nanos == 0)) {
                 native_cond_wait(entry->cond, &tm.lock);
@@ -1170,6 +1227,7 @@ bool thread_wait(uintptr_t ref, uint64_t millis, uint32_t nanos)
                 native_cond_timed_wait(entry->cond, &tm.lock, millis, nanos);
             }
 
+            thread_resumes();
             self->cond_int = NULL;
 
             // Re-acquire the monitor
