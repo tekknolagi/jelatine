@@ -1377,6 +1377,7 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_open( void )
     jboolean timeoutEnabled;
     jint port;
     int sock = -1;
+    int res;
 
     KNI_StartHandles(1);
     KNI_DeclareHandle(str_ref);
@@ -1401,16 +1402,21 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_open( void )
             struct sockaddr_in name;
             name.sin_family = AF_INET;
             name.sin_port = htons(port);
+            thread_may_block();
             struct hostent *hostinfo = gethostbyname(hostname);
+            thread_resumes();
 
             if (hostinfo == NULL) {
                 KNI_ThrowNew("java/io/IOException", "Host can't be resolved");
                 sock = -1;
             } else {
                 name.sin_addr = *(struct in_addr *) hostinfo->h_addr;
+                thread_may_block();
+                res = connect(sock, (struct sockaddr *) &name,
+                              sizeof(struct sockaddr_in));
+                thread_resumes();
 
-                if(connect(sock, (struct sockaddr *) &name,
-                           sizeof(struct sockaddr_in)) < 0)
+                if (res < 0)
                 {
                     KNI_ThrowNew("java/io/IOException",
                                  "Host is not reachable");
@@ -1440,7 +1446,9 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_read( void )
     int sock = KNI_GetParameterAsInt(1);
     char b;
 
+    thread_may_block();
     ssize_t result = recv(sock, &b, 1, 0);
+    thread_resumes();
 
     if (result == 0) {
        KNI_ReturnInt(-1);
@@ -1476,7 +1484,9 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_readBuf( void )
         array = (array_t *) *src_ref;
         data = (array_get_data(array) + offset);
 
+        thread_may_block();
         result = recv(sock, data, len, 0);
+        thread_resumes();
 
         if (result == 0) {
             result = -1;
@@ -1497,7 +1507,9 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_write( void )
     int sock = KNI_GetParameterAsInt(1);
     uint8_t byte = KNI_GetParameterAsInt(2);
 
+    thread_may_block();
     ssize_t result = send(sock, &byte, 1, 0);
+    thread_resumes();
 
     if (result == 0) {
         result = -1;
@@ -1534,7 +1546,9 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_writeBuf( void )
         array = (array_t *) *src_ref;
         data = (array_get_data(array) + offset);
 
+        thread_may_block();
         result = send(sock, data, len, 0);
+        thread_resumes();
 
         if (result == 0) {
             result = -1;

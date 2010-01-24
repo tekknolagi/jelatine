@@ -143,7 +143,8 @@ typedef struct stack_frame_t stack_frame_t;
 
 struct thread_t {
     struct thread_t *next; ///< Next thread in the list
-    uint32_t safe; ///< How many times a safe zone was entered
+    bool blocked; ///< Indicates whethever the thread might be blocked
+    bool stopped; ///< Indicates whethever the thread must stop execution
 
     uintptr_t obj; ///< The associated java.lang.Thread object
 
@@ -234,6 +235,8 @@ extern void thread_sleep(int64_t);
 #if !JEL_THREAD_NONE
 
 extern void thread_launch(uintptr_t *, method_t *);
+extern void thread_may_block( void );
+extern void thread_resumes( void );
 extern void thread_interrupt(thread_t *);
 extern void thread_yield( void );
 extern void thread_join(uintptr_t *);
@@ -246,6 +249,9 @@ static inline void thread_launch(uintptr_t ref, method_t *run)
 {
     return;
 } // thread_launch()
+
+static inline void thread_may_block( void ) {}
+static inline void thread_resumes( void ) {}
 
 static inline void thread_yield( void ) {}
 static inline void thread_join(uintptr_t *thread) {}
