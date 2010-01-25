@@ -669,16 +669,6 @@ void tm_unlock( void )
 #endif // JEL_THREAD_PTH
 } // tm_unlock()
 
-/** Returns a pointer to the VM global lock. We should do away with this method
- * but the garbage collector still uses it explicitely when registering
- * finalizable objects
- * \returns A pointer to the VM global lock */
-
-native_mutex_t *tm_get_lock( void )
-{
-    return &tm.lock;
-} // tm_get_lock()
-
 /** Waits for all threads to stop. The calling thread must have taken the VM
  * lock for this to happen safely */
 

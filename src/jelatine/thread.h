@@ -205,7 +205,6 @@ extern void tm_purge( void );
 #if !JEL_THREAD_NONE
 extern void tm_lock();
 extern void tm_unlock();
-extern native_mutex_t *tm_get_lock();
 extern void tm_stop_the_world( void );
 #else // JEL_THREAD_NONE
 static inline void tm_lock( void ) {}
