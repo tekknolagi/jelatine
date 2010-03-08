@@ -499,7 +499,7 @@ void method_link_native(method_t *method, char *class_name)
         ;
 
     switch (*desc) {
-        case 'V': method->return_type = RET_VOID;
+        case 'V': method->return_type = RET_VOID;   break;
         case 'B': // FALLTHROUGH
         case 'C': // FALLTHROUGH
         case 'S': // FALLTHROUGH
