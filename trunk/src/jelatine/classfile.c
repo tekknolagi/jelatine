@@ -184,7 +184,7 @@ static class_file_t *cf_open_with_classpath(const char *name, const path_t *cp)
         strncat(path, name, cp_len + cl_len + 2);
         strncat(path, ".class", cp_len + cl_len + strlen(".class") + 2);
 
-        file = fopen(path, "r");
+        file = fopen(path, "rb");
 
         if (file == NULL) {
             return NULL;
