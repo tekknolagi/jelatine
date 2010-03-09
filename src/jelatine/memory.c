@@ -604,7 +604,7 @@ void gc_mark_reference(uintptr_t ref)
 
     header = (header_t *) ref;
 
-    if (header_is_cobject(header)) {
+    if (!header_is_object(header)) {
         return;
     }
 
