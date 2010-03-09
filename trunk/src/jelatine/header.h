@@ -105,7 +105,7 @@ extern uint32_t header_get_class_index(const header_t *);
 static inline bool header_is_object(header_t *header)
 {
     return (*header >> HEADER_JAVA_OBJECT_SHIFT) & 1;
-} // header_is_cobject()
+} // header_is_object()
 
 /** Creates a Java object header from the pointer to the class the object
  * belongs to
