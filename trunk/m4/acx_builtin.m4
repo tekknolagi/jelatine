@@ -20,7 +20,7 @@
 #
 # COPYLEFT
 #
-#   Copyright © 2008-2009 Gabriele Svelto <gabriele.svelto@gmail.com>
+#   Copyright © 2008-2011 Gabriele Svelto <gabriele.svelto@gmail.com>
 #
 #   Copying and distribution of this file, with or without
 #   modification, are permitted in any medium without royalty provided
