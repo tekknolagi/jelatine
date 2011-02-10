@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright © 2005-2009 by Gabriele Svelto                              *
+ *   Copyright © 2005-2011 by Gabriele Svelto                              *
  *   gabriele.svelto@gmail.com                                             *
  *                                                                         *
  *   This file is part of Jelatine.                                        *
