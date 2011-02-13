@@ -35,7 +35,7 @@ struct java_lang_Throwable_t {
     header_t header; ///< Object header
 };
 
-/** Typedef for ::struct java_lang_Throwable_t */
+/** Typedef for struct java_lang_Throwable_t */
 typedef struct java_lang_Throwable_t java_lang_Throwable_t;
 
 /** Turns a reference to a Java Throwable object into a C pointer */

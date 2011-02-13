@@ -73,7 +73,7 @@ enum return_value_t {
     RET_DOUBLE = 5  ///< Double return value
 };
 
-/** Typedef for the ::enum return_value_t type */
+/** Typedef for the enum return_value_t type */
 typedef enum return_value_t return_value_t;
 
 /** Represents an exception handle for a Java method */
@@ -85,7 +85,7 @@ struct exception_handler_t {
     struct class_t *catch_type; ///<  Type of exception catched
 };
 
-/** Typedef for ::struct exception_handler_t */
+/** Typedef for struct exception_handler_t */
 typedef struct exception_handler_t exception_handler_t;
 
 /** Native methods function pointer type */
@@ -114,7 +114,7 @@ struct method_t {
     } data; ///< Extra method data
 };
 
-/** Typedef for ::struct method_t */
+/** Typedef for struct method_t */
 typedef struct method_t method_t;
 
 /** Represents the method manager of a class */
@@ -127,7 +127,7 @@ struct method_manager_t {
     method_t *methods; ///< Methods held by the manager
 };
 
-/** Typedef for ::struct method_manager_t */
+/** Typedef for struct method_manager_t */
 typedef struct method_manager_t method_manager_t;
 
 /******************************************************************************
@@ -309,19 +309,19 @@ struct method_iterator_t {
     size_t index; ///< Current index in the fields array
 };
 
-/** Typedef for the ::struct method_iterator_t type */
+/** Typedef for the     struct method_iterator_t type */
 typedef struct method_iterator_t method_iterator_t;
 
-/** Creates a method iterator from the method manager \a fm
+/** Creates a method iterator from the method manager \a mm
  * \param mm A pointer to the method manager
  * \returns An initialized method iterator */
 
-static inline method_iterator_t method_itr(method_manager_t *fm)
+static inline method_iterator_t method_itr(method_manager_t *mm)
 {
     method_iterator_t itr;
 
-    itr.methods = fm->methods;
-    itr.entries = fm->entries;
+    itr.methods = mm->methods;
+    itr.entries = mm->entries;
     itr.index = 0;
 
     return itr;

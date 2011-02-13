@@ -32,7 +32,7 @@
  * Local function declarations                                                *
  ******************************************************************************/
 
-static void parse_command_line_args(int, char **);
+static void parse_command_line_args(int, char *[]);
 
 /** Self explanatory
  * \param argc Number of arguments

@@ -53,7 +53,7 @@ struct fieldref_t {
     uint16_t name_and_type_index; ///< Name-and-type index of the ref
 };
 
-/** Typedef for ::struct fieldref_t */
+/** Typedef for struct fieldref_t */
 typedef struct fieldref_t fieldref_t;
 
 /** Represents a CONSTANT_NameAndType_info structure */
@@ -63,7 +63,7 @@ struct name_and_type_t {
     uint16_t descriptor_index; ///< Descriptor index
 };
 
-/** Typedef for ::struct name_and_type_t */
+/** Typedef for struct name_and_type_t */
 typedef struct name_and_type_t name_and_type_t;
 
 /** Structure representing a class' constant pool. Note that the first entry of

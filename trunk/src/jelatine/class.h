@@ -54,7 +54,7 @@ struct interface_manager_t {
     uint32_t entries; ///< The number of interfaces
 };
 
-/** Typedef for ::struct interface_manager_t */
+/** Typedef for struct interface_manager_t */
 typedef struct interface_manager_t interface_manager_t;
 
 /******************************************************************************
@@ -78,7 +78,7 @@ struct interface_iterator_t {
     size_t index; ///< Current index in the interface array
 };
 
-/** Typedef for the ::struct interface_iterator_t type */
+/** Typedef for the struct interface_iterator_t type */
 typedef struct interface_iterator_t interface_iterator_t;
 
 /** Creates an interface iterator from the interface manager \a im
@@ -97,7 +97,7 @@ static inline interface_iterator_t interface_itr(interface_manager_t *im)
 } // interface_itr()
 
 /** Returns true if another interface is available
- * \param iterator An interface iterator
+ * \param itr iterator An interface iterator
  * \returns true if there are more interfaces, false otherwise */
 
 static inline bool interface_itr_has_next(interface_iterator_t itr)
@@ -107,7 +107,7 @@ static inline bool interface_itr_has_next(interface_iterator_t itr)
 
 /** Returns the next interface, if the iterator has just been
  * created it returns the data of the first interface (if it is present)
- * \param iterator A pointer to an interface iterator
+ * \param itr A pointer to an interface iterator
  * \returns A pointer to an interface */
 
 static inline struct class_t *interface_itr_get_next(interface_iterator_t *itr)
@@ -133,7 +133,7 @@ enum class_state_t {
     CS_ERRONEOUS = 6 ///< The class is an erroneous state
 };
 
-/** Typedef for ::enum class_state_t */
+/** Typedef for enum class_state_t */
 typedef enum class_state_t class_state_t;
 
 /** Structure representing a Java class */
@@ -172,7 +172,7 @@ struct class_t {
     method_t **itable; ///< Interface dispatch table
 };
 
-/** Typedef for ::struct class_t */
+/** Typedef for struct class_t */
 typedef struct class_t class_t;
 
 /******************************************************************************

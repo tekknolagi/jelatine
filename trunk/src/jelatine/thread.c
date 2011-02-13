@@ -39,7 +39,8 @@
 
 static void native_key_create(native_key_t *);
 static void native_key_dispose(native_key_t);
-static void native_thread_create(native_thread_t *, void *(*)(void *), void *);
+static void native_thread_create(native_thread_t *, void *(*start)(void *),
+                                 void *);
 static void native_thread_exit( void );
 static void native_thread_yield( void );
 static void native_mutex_create(native_mutex_t *);
@@ -120,7 +121,7 @@ static void native_thread_create(native_thread_t *thread,
 
     pth_attr_destroy(attr);
 #endif
-} // native_thread_start()
+} // native_thread_create()
 
 /** Terminates the calling native thread */
 
@@ -166,7 +167,7 @@ static void native_mutex_create(native_mutex_t *mutex)
 } // native_mutex_create()
 
 /** Disposes of a native mutex
- * \param A pointer to the native mutex structure */
+ * \param mutex A pointer to the native mutex structure */
 
 static void native_mutex_dispose(native_mutex_t *mutex)
 {
@@ -176,7 +177,7 @@ static void native_mutex_dispose(native_mutex_t *mutex)
 } // native_mutex_dispose()
 
 /** Acquire the lock on a native mutex
- * \param A pointer to the native mutex structure */
+ * \param mutex A pointer to the native mutex structure */
 
 static void native_mutex_lock(native_mutex_t *mutex)
 {
@@ -188,7 +189,7 @@ static void native_mutex_lock(native_mutex_t *mutex)
 } // native_mutex_lock()
 
 /** Release the lock on a native mutex
- * \param A pointer to the native mutex structure */
+ * \param mutex A pointer to the native mutex structure */
 
 static void native_mutex_unlock(native_mutex_t *mutex)
 {
@@ -200,7 +201,7 @@ static void native_mutex_unlock(native_mutex_t *mutex)
 } // native_mutex_unlock()
 
 /** Creates a native condition variable
- * \param A pointer to the native condition variable structure */
+ * \param cond A pointer to the native condition variable structure */
 
 static void native_cond_create(native_cond_t *cond)
 {
@@ -212,7 +213,7 @@ static void native_cond_create(native_cond_t *cond)
 } // native_cond_dispose()
 
 /** Disposes of a native condition variable
- * \param A pointer to the native condition variable structure */
+ * \param cond A pointer to the native condition variable structure */
 
 static void native_cond_dispose(native_cond_t *cond)
 {
@@ -297,7 +298,7 @@ static void native_cond_signal(native_cond_t *cond)
 } // native_cond_signal()
 
 /** Signals all the threads waiting on a native condition variable
- * \param A pointer to the native condition variable */
+ * \param cond A pointer to the native condition variable */
 
 static void native_cond_broadcast(native_cond_t *cond)
 {
@@ -322,7 +323,7 @@ struct thread_payload_t {
     native_cond_t cond; ///< Synchronization condition variable
 };
 
-/** Typedef for the ::struct thread_payload_t type */
+/** Typedef for the struct thread_payload_t type */
 typedef struct thread_payload_t thread_payload_t;
 
 /** Represents a Java monitor */
@@ -335,7 +336,7 @@ struct monitor_t {
     native_cond_t *cond; ///< Condition variable associated with the monitor
 };
 
-/** Typedef for the ::struct monitor_t type */
+/** Typedef for the struct monitor_t type */
 typedef struct monitor_t monitor_t;
 
 /** Define the minimum capacity (i.e. number of buckets) of the monitor table */
@@ -356,7 +357,7 @@ struct thread_manager_t {
     monitor_t *buckets; ///< Buckets of the monitor hash-table
 };
 
-/** Typedef for the ::struct thread_manager_t type */
+/** Typedef for the struct thread_manager_t type */
 typedef struct thread_manager_t thread_manager_t;
 
 /******************************************************************************

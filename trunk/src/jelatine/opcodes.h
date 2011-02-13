@@ -44,7 +44,7 @@ enum array_type_t {
     T_LONG = 11 ///< Array of longs
 };
 
-/** Typedef for ::enum array_type_t */
+/** Typedef for enum array_type_t */
 typedef enum array_type_t array_type_t;
 
 /** Internal opcodes definition */
@@ -315,7 +315,7 @@ enum internal_opcode_t {
     HALT = 204 ///< Halt the exection of the interpreter
 };
 
-/** Typedef for ::enum internal_opcode_t */
+/** Typedef for enum internal_opcode_t */
 typedef enum internal_opcode_t internal_opcode_t;
 
 /** Java opcodes definition */
@@ -524,7 +524,7 @@ enum java_opcode_t {
     JAVA_JSR_W = 201, ///< Branch to subrouting wide index
 };
 
-/** Typedef for ::enum java_opcode_t */
+/** Typedef for enum java_opcode_t */
 typedef enum java_opcode_t java_opcode_t;
 
 #endif // !JELATINE_OPCODES_H

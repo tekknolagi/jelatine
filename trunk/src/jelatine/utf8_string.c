@@ -48,7 +48,7 @@ struct utf8_string_t {
     char data[]; ///< Variable size array holding the string data
 };
 
-/** Typedef for ::struct utf8_string_t */
+/** Typedef for struct utf8_string_t */
 typedef struct utf8_string_t utf8_string_t;
 
 /** The string manager holds all the UTF8 strings used by the VM */
@@ -61,13 +61,14 @@ struct string_manager_t {
     utf8_string_t **buckets; ///< Buckets array
 };
 
-/** Typedef for the ::struct string_manager_t */
+/** Typedef for the struct string_manager_t */
 typedef struct string_manager_t string_manager_t;
 
 /******************************************************************************
  * Local declarations                                                         *
  ******************************************************************************/
 
+/** Global string manager */
 static string_manager_t sm;
 
 /******************************************************************************

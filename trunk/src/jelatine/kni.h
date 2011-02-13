@@ -221,9 +221,9 @@ static inline void KNI_FindClass(const char *name, jclass classHandle)
 /** Initializes the \a parent handle to contain a pointer to the superclass of
  * the given class (represented by \a cl). If \a cl represents the class
  * java.lang.Object, then the function sets the \a parent handle to NULL
- * \param cl A handle initialized with a reference to the class object whose
- * superclass is to be determined
- * \param superclassHandle A handle which, upon return from this function, will
+ * \param classHandle A handle initialized with a reference to the class object
+ * whose superclass is to be determined
+ * \param superClassHandle A handle which, upon return from this function, will
  * contain a reference to the superclass object */
 
 static inline void KNI_GetSuperClass(jclass classHandle,
@@ -236,7 +236,7 @@ static inline void KNI_GetSuperClass(jclass classHandle,
     *superClassHandle = class_get_object(parent);
 } // KNI_GetSuperClass()
 
-/* Determines whether an object of class or interface \a cl1 can be safely cast
+/** Determines whether an object of class or interface \a cl1 can be safely cast
  * to a class or interface \a cl2
  * \param cl1 Handle initialized with a reference to the first class or
  * interface argument
@@ -290,7 +290,7 @@ static inline void KNI_GetObjectClass(jobject objectHandle, jclass classHandle)
 /** Tests whether an object represented by objectHandle is an instance of a
  * class or interface represented by classHandle
  * \param objectHandle A handle pointing to an object
- * \param clazz A handle pointing to a class or interface
+ * \param classHandle A handle pointing to a class or interface
  * \returns Returns KNI_TRUE if the given object is an instance of given class,
  * KNI_FALSE otherwise */
 
@@ -786,7 +786,7 @@ static inline void KNI_SetStaticDoubleField(jclass classHandle,
 
 #endif // JEL_FP_SUPPORT
 
-/* Sets the value of a static field of a reference type. The field to modify is
+/** Sets the value of a static field of a reference type. The field to modify is
  * denoted by \a fieldID
  * \param classHandle A handle pointing to the class or interface whose whose
  * static field is to be modified
@@ -809,7 +809,7 @@ static inline void KNI_SetStaticObjectField(jclass classHandle,
  * the given string handle is NULL, the function returns -1
  * \param stringHandle A handle pointing to a java.lang.String string object
  * whose length is to be determined
- * \param Returns the length of the string, or -1 if the given string handle is
+ * \returns The length of the string, or -1 if the given string handle is
  * NULL */
 
 static inline jsize KNI_GetStringLength(jstring stringHandle)
@@ -847,7 +847,6 @@ static inline void KNI_NewString(const jchar *uchars, jsize length,
  * object is returned to the caller via the stringHandle \a handle
  * \param utf8chars A UTF-8 string that will make up the contents of the new
  * string object
- * \param length Length of the Unicode string
  * \param stringHandle A handle to hold the reference to the new
  * java.lang.String object */
 
@@ -867,8 +866,8 @@ static inline void KNI_NewStringUTF(const char *utf8chars, jobject stringHandle)
  * argument may denote an array of any element type, including primitive types
  * or reference types. If the given array handle is NULL, the function returns
  * -1
- * \param arrayHandle A handle pointing to an array object whose length is to
- * be determined
+ * \param array A handle pointing to an array object whose length is to be
+ * determined
  * \returns Returns the number of elements in the array, or -1 if the given
  * array handle is NULL */
 
@@ -1489,8 +1488,8 @@ static inline jboolean KNI_IsNullHandle(jobject handle)
 
 /** Checks if the given two handles refer to the same object. No parameter type
  * checking is performed
- * \param handle1 A handle pointing to an object
- * \param handle2 A handle pointing to an object
+ * \param obj1 A handle pointing to an object
+ * \param obj2 A handle pointing to an object
  * \returns KNI_TRUE if the handles refer to the same object, KNI_FALSE
  * otherwise */
 

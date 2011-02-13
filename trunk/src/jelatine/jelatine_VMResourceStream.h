@@ -50,7 +50,7 @@ struct jelatine_VMResourceStream_t {
     int32_t available; ///< Number of bytes available
 };
 
-/** Typedef for ::struct jelatine_VMResourceStream */
+/** Typedef for struct jelatine_VMResourceStream */
 typedef struct jelatine_VMResourceStream_t jelatine_VMResourceStream_t;
 
 /** Turns a reference to a Java VMResourceStream object into a C pointer */

@@ -227,7 +227,7 @@ enum c_exception_class_t {
     JAVA_LANG_NOCLASSDEFFOUNDERROR ///< java.lang.NoClassDefFoundError class
 };
 
-/** typedef for the ::enum c_exception_class_t */
+/** typedef for the enum c_exception_class_t */
 typedef enum c_exception_class_t c_exception_class_t;
 
 /** 'try' clause of a C pseudo-exception block. Pseudo-exceptions can be thrown

@@ -54,7 +54,7 @@ struct virtual_machine_t {
 #endif // JEL_PRINT
 };
 
-/** Typedef for the ::struct virtual_machine_t */
+/** Typedef for the struct virtual_machine_t */
 typedef struct virtual_machine_t virtual_machine_t;
 
 /******************************************************************************

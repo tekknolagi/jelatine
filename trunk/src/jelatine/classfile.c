@@ -43,7 +43,7 @@ struct path_t {
 #endif // JEL_JARFILE_SUPPORT
 };
 
-/** Typedef for the ::struct path_t */
+/** Typedef for the struct path_t */
 typedef struct path_t path_t;
 
 /** Represents the virtual machine classpath */
@@ -54,7 +54,7 @@ struct classpath_t {
     path_t user[]; ///< Classpath for the application classes
 };
 
-/** Typedef for the ::struct classpath_t */
+/** Typedef for the struct classpath_t */
 typedef struct classpath_t classpath_t;
 
 /******************************************************************************
@@ -73,6 +73,10 @@ static void set_classpath_string(path_t *, const char *);
 /******************************************************************************
  * Classpath implementation                                                   *
  ******************************************************************************/
+
+/** Set the classpath string provided in \a str
+ * \param path The path to be set
+ * \param str The input string */
 
 static void set_classpath_string(path_t *path, const char *str)
 {

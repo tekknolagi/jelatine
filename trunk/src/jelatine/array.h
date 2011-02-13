@@ -80,7 +80,7 @@ struct array_t {
 #endif // SIZEOF_JWORD_T == 8
 };
 
-/** Typedef for ::struct array_t */
+/** Typedef for struct array_t */
 typedef struct array_t array_t;
 
 /** Reference array header */
@@ -95,7 +95,7 @@ struct ref_array_t {
 #endif // JEL_POINTER_REVERSAL
 };
 
-/** Typedef for ::struct ref_array_t */
+/** Typedef for struct ref_array_t */
 typedef struct ref_array_t ref_array_t;
 
 /******************************************************************************

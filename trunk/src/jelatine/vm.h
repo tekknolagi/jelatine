@@ -91,7 +91,7 @@ struct options_t {
     bool help; ///< True if the machines should print the help notice
 };
 
-/** Typedef for the ::struct options_t */
+/** Typedef for the struct options_t */
 typedef struct options_t options_t;
 
 extern options_t options;
@@ -322,7 +322,7 @@ static inline bool opts_get_version( void )
 } // opts_get_version
 
 /** Sets the global option 'help'
- * \param true if help information must be displayed, false otherwise */
+ * \param enable true if help information must be displayed, false otherwise */
 
 static inline void opts_set_help(bool enable)
 {

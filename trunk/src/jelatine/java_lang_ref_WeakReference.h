@@ -40,7 +40,7 @@ struct java_lang_ref_WeakReference_t {
     struct java_lang_ref_WeakReference_t *next; ///< Next in the list
 };
 
-/** Typedef for ::struct java_lang_ref_WeakReference */
+/** Typedef for struct java_lang_ref_WeakReference */
 typedef struct java_lang_ref_WeakReference_t java_lang_ref_WeakReference_t;
 
 /** Turns a reference to a Java WeakReference object into a C pointer */

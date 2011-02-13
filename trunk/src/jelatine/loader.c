@@ -66,7 +66,7 @@ struct loader_t {
     uint32_t interface_methods; ///< Counter used for method interfaces
 };
 
-/** Typedef for ::struct loader_t */
+/** Typedef for struct loader_t */
 typedef struct loader_t loader_t;
 
 /******************************************************************************
@@ -433,7 +433,7 @@ static uint32_t get_new_class_id( void )
 
 /** Resolves a class reference
  * \param orig The originating class
- * \param class_index Indes in the constant-pool were the class descriptor lies
+ * \param index Indes in the constant-pool were the class descriptor lies
  * \returns A pointer to the class */
 
 static class_t *resolve_class(class_t *orig, uint16_t index)

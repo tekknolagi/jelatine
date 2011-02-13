@@ -42,7 +42,7 @@ struct java_lang_Class_t {
     int8_t is_interface; ///< true if this class is an interface
 };
 
-/** Typedef for ::struct java_lang_Class_t */
+/** Typedef for struct java_lang_Class_t */
 typedef struct java_lang_Class_t java_lang_Class_t;
 
 /** Number of references in a java.lang.Class instance */

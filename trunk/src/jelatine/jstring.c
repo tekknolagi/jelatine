@@ -53,7 +53,7 @@ struct jstring_manager_t {
     java_lang_String_t **lit_buckets; ///< Buckets array for Java literals
 };
 
-/** Typedef for ::struct jstring_manager_t */
+/** Typedef for struct jstring_manager_t */
 typedef struct jstring_manager_t jstring_manager_t;
 
 /******************************************************************************

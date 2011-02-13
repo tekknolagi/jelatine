@@ -36,7 +36,7 @@ struct java_lang_ref_Reference_t {
     uintptr_t referent; ///< Referent of this reference
 };
 
-/** Typedef for ::struct java_lang_ref_Reference_t */
+/** Typedef for struct java_lang_ref_Reference_t */
 typedef struct java_lang_ref_Reference_t java_lang_ref_Reference_t;
 
 /** Turns a reference to a Java Reference object into a C pointer */
