@@ -59,7 +59,7 @@ struct native_method_desc_t {
     void *func; ///< Pointer to the function
 };
 
-/** Typedef for ::struct native_method_desc_t */
+/** Typedef for struct native_method_desc_t */
 typedef struct native_method_desc_t native_method_desc_t;
 
 /******************************************************************************

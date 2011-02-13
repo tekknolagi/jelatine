@@ -50,7 +50,7 @@ struct java_lang_String_t {
     uint32_t offset; ///< Start offset inside the value array
 };
 
-/** Typedef for ::struct java_lang_String_t */
+/** Typedef for struct java_lang_String_t */
 typedef struct java_lang_String_t java_lang_String_t;
 
 /** Number of references in a java.lang.String instance */

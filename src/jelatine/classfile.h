@@ -62,7 +62,7 @@ enum primitive_type_t {
     PT_VOID ///< Used only for method descriptors!
 };
 
-/** Typedef for ::enum primitive_type_t */
+/** Typedef for enum primitive_type_t */
 typedef enum primitive_type_t primitive_type_t;
 
 /** Defines the type of a constant pool element. Note that some of the entries
@@ -89,7 +89,7 @@ enum const_pool_type_t {
     CONSTANT_InterfaceMethodref_resolved = 2 ///< Represents a resolved interface method
 };
 
-/** Typedef for ::enum const_pool_type_t */
+/** Typedef for enum const_pool_type_t */
 typedef enum const_pool_type_t const_pool_type_t;
 
 /** Represents the different access flags of a class, field or method */
@@ -116,7 +116,7 @@ enum access_flags_t {
     ACC_MAIN = 0x2000 ///< This is the main() method
 };
 
-/** Typedef for ::enum access_flags_t */
+/** Typedef for enum access_flags_t */
 typedef enum access_flags_t access_flags_t;
 
 /**  Mask of defined flags of a class access_flags field */
@@ -146,7 +146,7 @@ struct class_file_t {
     bool jar; ///< True if the file is inside a JAR archive
 };
 
-/** Typedef for ::struct class_file_t */
+/** Typedef for struct class_file_t */
 typedef struct class_file_t class_file_t;
 
 /******************************************************************************
@@ -176,7 +176,7 @@ struct field_info_t {
     const char *descriptor; ///< Field descriptor
 };
 
-/** Typedef for ::struct field_info_t */
+/** Typedef for struct field_info_t */
 typedef struct field_info_t field_info_t;
 
 /** Representation of a field attributes */
@@ -186,7 +186,7 @@ struct field_attributes_t {
     uint16_t constant_value_index; ///< Index of the constant value
 };
 
-/** Typedef for ::struct field_attributes_t */
+/** Typedef for struct field_attributes_t */
 typedef struct field_attributes_t field_attributes_t;
 
 /** Represents the attributes of a method */
@@ -201,7 +201,7 @@ struct method_attributes_t {
     uint16_t exception_table_length; ///< Number of exception handlers
 };
 
-/** Typedef for ::struct method_attributes_t */
+/** Typedef for struct method_attributes_t */
 typedef struct method_attributes_t method_attributes_t;
 
 #endif // !JELATINE_CLASSFILE_H

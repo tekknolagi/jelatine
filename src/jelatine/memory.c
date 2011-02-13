@@ -44,7 +44,7 @@ struct finalizable_t {
     uintptr_t ref; ///< Reference to the finalized object
 };
 
-/** Typedef for the ::struct finalizable_t */
+/** Typedef for the struct finalizable_t */
 typedef struct finalizable_t finalizable_t;
 
 /** Represents a free chunk of memory belonging to the small bin */
@@ -53,17 +53,17 @@ struct small_chunk_t {
     struct small_chunk_t *next; ///< The next chunk in the list
 };
 
-/** Typedef for the ::struct small_chunk_t */
+/** Typedef for the struct small_chunk_t */
 typedef struct small_chunk_t small_chunk_t;
 
 /** Represents a free chunk of memory belonging to the large bin */
 
 struct large_chunk_t {
-    struct large_chunk_t *next; /**<  Next chunk in the list */
-    size_t size; /**<  Size of the chunk in bytes */
+    struct large_chunk_t *next; ///<  Next chunk in the list
+    size_t size; ///<  Size of the chunk in bytes
 };
 
-/** Typedef for the ::struct large_chunk_t */
+/** Typedef for the struct large_chunk_t */
 typedef struct large_chunk_t large_chunk_t;
 
 /** Defines the number of entries in the chunk-bin */
@@ -108,7 +108,7 @@ struct heap_t {
 #endif // JEL_FINALIZER
 };
 
-/** Typedef for the ::struct heap_t */
+/** Typedef for the struct heap_t */
 typedef struct heap_t heap_t;
 
 /******************************************************************************

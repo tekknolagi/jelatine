@@ -48,7 +48,7 @@ struct field_t {
     int16_t offset; ///< Offset in bytes
 };
 
-/** Typedef for ::struct field_t */
+/** Typedef for struct field_t */
 typedef struct field_t field_t;
 
 /** Static field data */
@@ -69,7 +69,7 @@ struct static_field_t {
     field_t *field; ///< Related field structure
 };
 
-/** Typedef for ::struct static_field_t */
+/** Typedef for struct static_field_t */
 typedef struct static_field_t static_field_t;
 
 /******************************************************************************
@@ -141,7 +141,7 @@ struct field_iterator_t {
     bool stat; ///< true when iterating over static fields, false otherwise
 };
 
-/** Typedef for the ::struct field_iterator_t */
+/** Typedef for the struct field_iterator_t */
 typedef struct field_iterator_t field_iterator_t;
 
 /******************************************************************************

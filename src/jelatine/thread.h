@@ -133,7 +133,7 @@ struct stack_frame_t {
     jword_t *locals; ///< Old locals pointer
 };
 
-/** Typedef for ::struct stack_frame_t */
+/** Typedef for struct stack_frame_t */
 typedef struct stack_frame_t stack_frame_t;
 
 /** Defines the initial number of temporary root pointers available */
@@ -181,7 +181,7 @@ struct thread_t {
 #endif // JEL_PRINT
 };
 
-/** Typedef for ::struct thread_t */
+/** Typedef for struct thread_t */
 typedef struct thread_t thread_t;
 
 /******************************************************************************

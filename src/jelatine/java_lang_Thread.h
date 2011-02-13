@@ -44,7 +44,7 @@ struct java_lang_Thread_t {
     int32_t priority; ///< Priority of this thread
 };
 
-/** Typedef for ::struct java_lang_Thread_t */
+/** Typedef for struct java_lang_Thread_t */
 typedef struct java_lang_Thread_t java_lang_Thread_t;
 
 /** Number of references in a java.lang.Thread instance */
