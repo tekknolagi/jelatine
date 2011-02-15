@@ -550,7 +550,6 @@ public final class StringBuffer
      * @return this <code>StringBuffer</code>
      * @throws NullPointerException if <code>data</code> is <code>null</code>
      * @throws StringIndexOutOfBoundsException if offset is out of bounds
-     * @see #insert(int, char[], int, int)
      */
     public StringBuffer insert(int offset, char[] data)
     {
