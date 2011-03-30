@@ -53,121 +53,65 @@ AH_TEMPLATE([JEL_PRINT], [Enabled if bytecode/method printing is needed])
 AH_TEMPLATE([JEL_CLASSPATH_DIR], [Holds the default classpath directory])
 AH_TEMPLATE([NDEBUG], [Enabled if debugging code must be removed])
 
-# Define shell variables
-
-AS_VAR_SET(want_preverifier, yes)
-AS_VAR_SET(jar_support, yes)
-AS_VAR_SET(socket_support, yes)
-AS_VAR_SET(threaded, auto)
-AS_VAR_SET(thread_model, auto)
-AS_VAR_SET(finalizer, yes)
-AS_VAR_SET(fp_support, yes)
-
 ################################################################################
 # Define the extra arguments the user can pass to the configure script         #
 ################################################################################
 
-AC_ARG_ENABLE(
-    [preverifier],
-    [AS_HELP_STRING(
-        [--disable-preverifier],
-        [Do not build the preverifier]
-    )],
-    [AS_VAR_SET(want_preverifier, no)]
-)
+AC_ARG_ENABLE([preverifier],
+              [AS_HELP_STRING([--disable-preverifier],
+                              [Do not build the preverifier])],
+              [want_preverifier="$enableval"], [want_preverifier=yes])
 
-AC_ARG_ENABLE(
-    [jar],
-    [AS_HELP_STRING(
-        [--disable-jar],
-        [Disables JAR file support in the VM]
-    )],
-    [AS_VAR_SET(jar_support, no)]
-)
+AC_ARG_ENABLE([jar],
+              [AS_HELP_STRING([--disable-jar],
+                              [Disables JAR file support in the VM])],
+              [jar_support="$enableval"], [jar_support=yes])
 
-AC_ARG_ENABLE(
-    [socket],
-    [AS_HELP_STRING(
-        [--disable-socket],
-        [Disables socket support in the VM]
-    )],
-    [AS_VAR_SET(socket_support, no)]
-)
+AC_ARG_ENABLE([socket],
+              [AS_HELP_STRING([--disable-socket],
+                              [Disables socket support in the VM])],
+              [socket_support="$enableval"], [socket_support=yes])
 
-AC_ARG_ENABLE(
-    [threaded],
-    [AS_HELP_STRING(
-        [--disable-threaded],
-        [Disables optimized threaded interpreter]
-    )],
-    [AS_VAR_SET(threaded, no)],
-)
+AC_ARG_ENABLE([threaded],
+              [AS_HELP_STRING([--disable-threaded],
+                              [Disables optimized threaded interpreter])],
+              [threaded="$enableval"], [threaded=auto])
 
-AC_ARG_WITH(
-    [thread-model],
-    [AS_HELP_STRING(
-        [--with-thread-model=<model>],
-        [Selects the thread model used by the VM (pthread, pth, none) [default=auto]]
-    )],
-    [AS_VAR_SET(thread_model, $withval)],
-)
+AC_ARG_WITH([thread-model],
+            [AS_HELP_STRING([--with-thread-model=<model>],
+                            [Selects the thread model used by the VM \
+                             (pthread, pth, none) (default: auto)])],
+            [thread_model="$withval"], [thread_model=auto])
 
-AC_ARG_ENABLE(
-    [finalizer],
-    [AS_HELP_STRING(
-        [--disable-finalizer],
-        [Disables object finalization support]
-    )],
-    [AS_VAR_SET(finalizer, no)],
-)
+AC_ARG_ENABLE([finalizer],
+              [AS_HELP_STRING([--disable-finalizer],
+                              [Disables object finalization support])],
+              [finalizer="$enableval"], [finalizer=yes])
 
-AC_ARG_ENABLE(
-    [fp-support],
-    [AS_HELP_STRING(
-        [--disable-fp-support],
-        [Disables fp support in the VM]
-    )],
-    [AS_VAR_SET(fp_support, no)],
-)
+AC_ARG_ENABLE([fp-support],
+              [AS_HELP_STRING([--disable-fp-support],
+                              [Disables fp support in the VM])],
+              [fp_support="$enableval"], [fp_support=yes])
 
-AC_ARG_ENABLE(
-    [prgc],
-    [AS_HELP_STRING(
-        [--disable-prgc],
-        [Disables the pointer reversal algorythm in the garbage collector]
-    )],
-    ,
-    [AC_DEFINE([JEL_POINTER_REVERSAL], [1])]
-)
+AC_ARG_ENABLE([prgc],
+              [AS_HELP_STRING([--disable-prgc],
+                              [Disables the pointer reversal algorythm in the \
+                               garbage collector])],
+              [prgc="$enableval"], [prgc=yes])
 
-AC_ARG_ENABLE(
-    [debug],
-    [AS_HELP_STRING(
-        [--enable-debug],
-        [Enables debugging code]
-    )],
-    [AS_VAR_SET(debug, yes)],
-    [AS_VAR_SET(debug, no)
-    AC_DEFINE([NDEBUG], [1])]
-)
+AC_ARG_ENABLE([debug],
+              [AS_HELP_STRING([--enable-debug], [Enables debugging code])],
+              [debug="$enableval"], [debug=no])
 
-AC_ARG_ENABLE(
-    [tracing],
-    [AS_HELP_STRING(
-        [--enable-tracing],
-        [Enables bytecode/method tracing facilities]
-    )],
-    [AC_DEFINE([JEL_TRACE], [1])]
-)
+AC_ARG_ENABLE([tracing],
+              [AS_HELP_STRING([--enable-tracing],
+                              [Enables bytecode/method tracing facilities])],
+              [tracing="$enableval"], [tracing=no])
 
-AC_ARG_ENABLE(
-    [printing],
-    [AS_HELP_STRING(
-        [--enable-printing],
-        [Enables bytecode/method printing facilites]
-    )],
-    [AC_DEFINE([JEL_PRINT], [1])]
-)
+AC_ARG_ENABLE([printing],
+              [AS_HELP_STRING([--enable-printing],
+                              [Enables bytecode/method printing facilites])],
+              [printing="$enableval"], [printing=no])
 
 ################################################################################
 # Check for programs                                                           #
@@ -177,9 +121,9 @@ AC_ARG_ENABLE(
 
 AC_PROG_CC_C99
 
-AS_IF([test "x$ac_cv_prog_cc_c99" = xno],
-    [AC_MSG_WARN([You don't seem to have a C99 compiler, compilation may fail])]
-)
+AS_IF([test no = "$ac_cv_prog_cc_c99"],
+      [AC_MSG_WARN([You don't seem to have a C99 compiler, compilation may \
+                    fail])])
 
 # Enable POSIX extensions for targets which disables them by default
 AC_USE_SYSTEM_EXTENSIONS
@@ -192,14 +136,10 @@ AC_CHECK_PROGS([JAR], [jar fastjar], [no])
 ################################################################################
 
 # JAR support
-PKG_CHECK_ZZIPLIB([ZZIP],
-   [0.13.00],
-   [AS_VAR_SET(have_zzip, yes)],
-   [AS_VAR_SET(have_zzip, no)]
-)
+PKG_CHECK_ZZIPLIB([ZZIP], [0.13.00], [have_zzip=yes], [have_zzip=no])
 
 # POSIX threads
-AX_PTHREAD([AS_VAR_SET(have_pthread, yes)])
+AX_PTHREAD([have_pthread=yes])
 
 # libpth
 AC_SEARCH_LIBS([pth_init], [pth])
@@ -207,10 +147,8 @@ AC_SEARCH_LIBS([pth_init], [pth])
 # Floating point support
 AC_CHECK_LIBM
 
-AS_IF([test "x$fp_support" = xyes],
-    [LIBS="$LIBS $LIBM"
-    AC_SUBST([LIBM])]
-)
+AS_IF([test yes = "$fp_support"], [LIBS="$LIBS $LIBM"
+                                   AC_SUBST([LIBS])])
 
 # Other libraries
 AC_SEARCH_LIBS([iconv], [iconv]) # Needed on some hosts for the preverifier
@@ -223,18 +161,17 @@ AC_SEARCH_LIBS([clock_gettime], [rt])
 # Check for the standard C includes
 AC_HEADER_STDC
 
-AS_IF([test "x$ac_cv_header_stdc" != xyes],
-    [AC_MSG_WARN([You don't seem to have standard C headers])]
-)
+AS_IF([test "yes" != "$ac_cv_header_stdc"],
+      [AC_MSG_WARN([You don't seem to have standard C headers])])
 
 AC_HEADER_STDBOOL
 AC_HEADER_TIME
 
-AC_CHECK_HEADERS([arpa/inet.h dirent.h fcntl.h iconv.h inttypes.h langinfo.h math.h stdarg.h sys/stat.h sys/types.h unistd.h])
+AC_CHECK_HEADERS([arpa/inet.h dirent.h fcntl.h iconv.h inttypes.h langinfo.h \
+                  math.h stdarg.h sys/stat.h sys/types.h unistd.h])
 
 # Socket support
-AC_CHECK_HEADERS([sys/socket.h netinet/in.h netdb.h], [],
-    [AS_VAR_SET(socket_support, no)])
+AC_CHECK_HEADERS([sys/socket.h netinet/in.h netdb.h], [], [socket_support=no])
 
 # libpth
 AC_CHECK_HEADER([pth.h])
@@ -294,30 +231,25 @@ ACX_CHECK_ATTRIBUTE([pure], [int], [void])
 # Check for label-as-values gcc extension
 
 AC_MSG_CHECKING([for gcc's labels-as-values extension])
-AC_COMPILE_IFELSE(
-    [AC_LANG_SOURCE(
-        [[
-            int main()
-            {
-                void *happy_label;
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([
+                                   int main()
+                                   {
+                                       void *happy_label;
 
-                happy_label = &&happy;
-                goto *happy_label;
+                                       happy_label = &&happy;
+                                       goto *happy_label;
 
-            happy:
-                return 0;
-            }
-        ]]
-    )],
-    [AC_MSG_RESULT([yes])
-    AS_VAR_SET(have_labels_as_values, yes)],
-    [AC_MSG_RESULT([no])]
-)
+                                       happy:
+                                           return 0;
+                                   }
+                  ])],
+                  [AC_MSG_RESULT([yes])
+                   have_labels_as_values=yes],
+                  [AC_MSG_RESULT([no])])
 
-AS_IF([test "x$threaded" = xauto && test "x$have_labels_as_values" = xyes],
-    [AS_VAR_SET(threaded, yes)
-    AC_DEFINE([JEL_THREADED_INTERPRETER], [1])]
-)
+AS_IF([test auto = "$threaded" && test yes = "$have_labels_as_values"],
+      [threaded=yes
+       AC_DEFINE([JEL_THREADED_INTERPRETER], [1])])
 
 # Check for local storage support
 AX_TLS
@@ -336,15 +268,13 @@ ACX_FUNC_VA_COPY
 
 # Tests for fp support
 AC_CHECK_FUNCS([fmod sin cos tan sqrt ceil floor], ,
-    [AS_IF([test "x$fp_support" = xyes],
-        [AC_MSG_ERROR([Standard math.h functions are needed for FP support])]
-    )]
-)
+               [AS_IF([test yes = "$fp_support"],
+                      [AC_MSG_ERROR([Standard math.h functions are needed for \
+                                     FP support])])])
 
 # Thread related tests
-AS_IF([test "x$thread_model" = xpthread],
-    [AC_CHECK_FUNCS([pthread_yield pthread_yield_np])]
-)
+AS_IF([test pthread = "$thread_model"],
+      [AC_CHECK_FUNCS([pthread_yield pthread_yield_np])])
 
 ################################################################################
 # Check for system services                                                    #
@@ -358,114 +288,105 @@ AS_IF([test "x$thread_model" = xpthread],
 
 # Check for floating point support
 
-AS_IF([test "x$fp_support" = xyes],
-    [AC_DEFINE([JEL_FP_SUPPORT], [1])]
-)
+AS_IF([test yes = "$fp_support"],
+      [AC_DEFINE([JEL_FP_SUPPORT], [1])])
 
 # Check for jar support
 
-AS_IF([test "x$JAR" = xno],
-    [AS_IF([test "x$jar_support" = xyes],
-        [AC_MSG_WARN(['jar' not found, JAR file support disabled])]
-    )
-    AS_VAR_SET(jar_support, no)]
-)
+AS_IF([test no = "$JAR"],
+      [AS_IF([test yes = "$jar_support"],
+             [AC_MSG_WARN(['jar' not found, JAR file support disabled])])
+       jar_support=no])
 
-AS_IF([test "x$jar_support" = xyes],
-    [AS_IF([test "x$have_zzip" = xyes],
-        [LIBS="$LIBS $ZZIP_LIBS"
-        CFLAGS="$CFLAGS $ZZIP_CFLAGS"
-        AC_SUBST([LIBS])
-        AC_SUBST([CFLAGS])],
-        [AS_VAR_SET(jar_support, no)
-        AC_MSG_WARN([JAR file support disabled, zziplib may not be installed or you may have an outdated version])]
-    )],
-)
+AS_IF([test yes = "$jar_support"],
+      [AS_IF([test yes = "$have_zzip"],
+             [LIBS="$LIBS $ZZIP_LIBS"
+              CFLAGS="$CFLAGS $ZZIP_CFLAGS"
+              AC_SUBST([LIBS])
+              AC_SUBST([CFLAGS])],
+             [jar_support=no
+              AC_MSG_WARN([JAR file support disabled, zziplib may not be \
+                           installed or you may have an outdated version])])])
 
-AS_IF([test "x$jar_support" = xyes],
-    [AS_VAR_SET(classpath, "classpath.jar")
-    AC_DEFINE([JEL_JARFILE_SUPPORT], [1])],
-    [AS_VAR_SET(classpath, "classpath/")]
-)
+AS_IF([test yes = "$jar_support"],
+      [classpath="classpath.jar"
+       AC_DEFINE([JEL_JARFILE_SUPPORT], [1])],
+      [classpath="classpath/"])
 
 # Check for socket support
 
-AS_IF([test "x$socket_support" = xyes],
-    [AC_DEFINE([JEL_SOCKET_SUPPORT], [1])]
-)
+AS_IF([test yes = "$socket_support"],
+      [AC_DEFINE([JEL_SOCKET_SUPPORT], [1])])
 
 # Select the thread model
 
-AS_IF([test "x$thread_model" = xauto],
-    [AS_IF([test "x$have_pthread" = xyes],
-        [AS_VAR_SET(thread_model, pthread)],
-        [AS_IF([test "x$ac_cv_search_pth_init" != xno -a "x$ac_cv_header_pth_h" != xno],
-            [AS_VAR_SET(thread_model, pth)],
-            [AS_VAR_SET(thread_model, none)]
-        )]
-    )]
-)
+AS_IF([test auto = "$thread_model"],
+      [AS_IF([test yes = "$have_pthread"],
+             [thread_model=pthread],
+             [AS_IF([test yes = "$ac_cv_search_pth_init" && \
+                     test yes = "$ac_cv_header_pth_h"],
+                    [thread_model=pth],
+                    [thread_model=none])])])
 
-AS_CASE(AS_VAR_GET(thread_model),
-    [pthread],
-    [AS_IF([test "x$have_pthread" = xyes],
-        [AC_DEFINE([JEL_THREAD_POSIX], [1])
-        LIBS="$LIBS $PTHREAD_LIBS"
-        CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
-        CC="$PTHREAD_CC"
-        AC_SUBST([LIBS])
-        AC_SUBST([CFLAGS])
-        AC_SUBST([CC])],
-        [AC_MSG_ERROR([POSIX threads headers and libraries were not found])]
-    )],
-    [pth],
-    [AS_IF([test "x$ac_cv_search_pth_init" = xno -o "x$ac_cv_header_pth_h" = xno],
-        [AC_MSG_ERROR([GNU Pth was not found])],
-        [AC_DEFINE([JEL_THREAD_PTH], [1])]
-    )],
-    [none],
-    [AC_DEFINE([JEL_THREAD_NONE], [1])],
-    [AC_MSG_ERROR([Unknown thread model: AS_VAR_GET(thread_model)])]
-)
+AS_CASE([AS_VAR_GET([thread_model])],
+        [pthread],
+        [AS_IF([test yes = "$have_pthread"],
+               [AC_DEFINE([JEL_THREAD_POSIX], [1])
+                LIBS="$LIBS $PTHREAD_LIBS"
+                CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+                CC="$PTHREAD_CC"
+                AC_SUBST([LIBS])
+                AC_SUBST([CFLAGS])
+                AC_SUBST([CC])],
+        [AC_MSG_ERROR([POSIX threads headers and libraries were not found])])],
+        [pth],
+        [AS_IF([test no = "$ac_cv_search_pth_init" || \
+                test no = "$ac_cv_header_pth_h"],
+               [AC_MSG_ERROR([GNU Pth was not found])],
+               [AC_DEFINE([JEL_THREAD_PTH], [1])])],
+        [none],
+        [AC_DEFINE([JEL_THREAD_NONE], [1])],
+        [AC_MSG_ERROR([Unknown thread model: AS_VAR_GET(thread_model)])])
 
 # Deal with finalization support
 
-AS_IF([test "x$finalizer" = xyes],
-    [AS_IF([test "x$thread_model" = xnone],
-        [AS_VAR_SET(finalizer, no)
-        AC_MSG_WARN([Finalization disabled, thread support is required])],
-        [AC_DEFINE([JEL_FINALIZER], [1])]
-    )]
-)
+AS_IF([test yes = "$finalizer"],
+      [AS_IF([test none = "$thread_model"],
+             [finalizer=no
+              AC_MSG_WARN([Finalization disabled, thread support is required])],
+             [AC_DEFINE([JEL_FINALIZER], [1])])])
 
 # Set preverifier path
 
-AS_IF([test "x$want_preverifier" = xyes],
-    [AS_VAR_SET(preverifier, "../preverifier/preverifier")],
-    [AS_VAR_SET(preverifier, "preverifier")]
-)
+AS_IF([test yes = "$want_preverifier"],
+      [preverifier="../preverifier/preverifier"],
+      [preverifier="preverifier"])
 
-AS_IF([test "x$cross_compiling" = xyes],
-    [AS_VAR_SET(preverifier, "preverifier")]
-)
+AS_IF([test yes = "$cross_compiling"],
+      [preverifier="preverifier"])
+
+# Define other variables
+
+AS_IF([test yes = "$prgc"], [AC_DEFINE([JEL_POINTER_REVERSAL], [1])])
+AS_IF([test no = "$debug"], [AC_DEFINE([NDEBUG], [1])])
+AS_IF([test yes = "$tracing"], [AC_DEFINE([JEL_TRACE], [1])])
+AS_IF([test yes = "$printing"], [AC_DEFINE([JEL_PRINT], [1])])
 
 # Set output variables
 
-AM_CONDITIONAL([COND_PREVERIFIER], [test "x$want_preverifier" = xyes])
+AM_CONDITIONAL([COND_PREVERIFIER], [test yes = "$want_preverifier"])
 AC_SUBST([preverifier])
 AC_SUBST([classpath])
 AC_SUBST([jar_support])
 
-AC_CONFIG_FILES([
-    Makefile
-    Doxyfile
-    docs/Makefile
-    m4/Makefile
-    src/Makefile
-    src/classpath/Makefile
-    src/preverifier/Makefile
-    src/jelatine/Makefile
-])
+AC_CONFIG_FILES([Makefile
+                 Doxyfile
+                 docs/Makefile
+                 m4/Makefile
+                 src/Makefile
+                 src/classpath/Makefile
+                 src/preverifier/Makefile
+                 src/jelatine/Makefile])
 
 AC_OUTPUT
 
