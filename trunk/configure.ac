@@ -136,7 +136,8 @@ AC_CHECK_PROGS([JAR], [jar fastjar], [no])
 ################################################################################
 
 # JAR support
-PKG_CHECK_MODULES([zziplib], [zziplib >= 0.13.00], [have_zzip=yes], [have_zzip=no])
+PKG_CHECK_MODULES([zziplib], [zziplib >= 0.13.00], [have_zzip=yes],
+                  [have_zzip=no])
 
 # POSIX threads
 AX_PTHREAD([have_pthread=yes])
@@ -145,7 +146,7 @@ AX_PTHREAD([have_pthread=yes])
 AC_SEARCH_LIBS([pth_init], [pth])
 
 # Floating point support
-AC_CHECK_LIBM
+LT_LIB_M
 
 AS_IF([test yes = "$fp_support"], [LIBS="$LIBS $LIBM"
                                    AC_SUBST([LIBS])])
