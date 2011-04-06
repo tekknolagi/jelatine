@@ -22,6 +22,18 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = docs m4 src
+SUBDIRS = docs src
 
-EXTRA_DIST = lib ChangeLog.old TODO
+EXTRA_DIST = \
+    m4/acx_attribute.m4 \
+    m4/acx_builtin.m4 \
+    m4/acx_func_va_copy.m4 \
+    m4/ax_pthread.m4 \
+    m4/ax_c_float_words_bigendian.m4 \
+    m4/ax_tls.m4 \
+    lib/malloc.c \
+    lib/memcmp.c \
+    lib/memcpy.c \
+    lib/memmove.c \
+    ChangeLog.old \
+    TODO

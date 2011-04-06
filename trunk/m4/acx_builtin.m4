@@ -16,7 +16,7 @@
 #
 # LAST MODIFICATION
 #
-#   2009-01-26
+#   2011-04-06
 #
 # COPYLEFT
 #
@@ -27,16 +27,14 @@
 #   the copyright notice and this notice are preserved.
 
 AC_DEFUN([ACX_CHECK_BUILTIN],
-    [AS_VAR_PUSHDEF([ac_var], [acx_cv_have_$1])
-    AC_CACHE_CHECK(
-        [for $1],
-        ac_var,
-        [AC_LINK_IFELSE([AC_LANG_PROGRAM([], [[$2 $1($3);]])],
-            [AS_VAR_SET(ac_var, yes)],
-            [AS_VAR_SET(ac_var, no)])])
+         [AS_VAR_PUSHDEF([ac_var], [acx_cv_have_$1])
+          AC_CACHE_CHECK([for $1], [ac_var],
+                         [AC_LINK_IFELSE([AC_LANG_PROGRAM([], [[$2 $1($3);]])],
+                                         [AS_VAR_SET([ac_var], [yes])],
+                                         [AS_VAR_SET([ac_var], [no])])])
 
-    AS_IF([test AS_VAR_GET(ac_var) = yes],
-        [AC_DEFINE_UNQUOTED(AS_TR_CPP(HAVE_$1), 1,
-            [Define to 1 if the system has the `$1' built-in function])],
-        [])
-    AS_VAR_POPDEF([ac_var])])
+          AS_IF([test yes = AS_VAR_GET([ac_var])],
+                [AC_DEFINE_UNQUOTED(AS_TR_CPP(HAVE_$1), 1,
+                                    [Define to 1 if the system has the `$1' \
+                                     built-in function])], [])
+          AS_VAR_POPDEF([ac_var])])

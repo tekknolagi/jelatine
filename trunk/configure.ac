@@ -136,7 +136,7 @@ AC_CHECK_PROGS([JAR], [jar fastjar], [no])
 ################################################################################
 
 # JAR support
-PKG_CHECK_ZZIPLIB([ZZIP], [0.13.00], [have_zzip=yes], [have_zzip=no])
+PKG_CHECK_MODULES([zziplib], [zziplib >= 0.13.00], [have_zzip=yes], [have_zzip=no])
 
 # POSIX threads
 AX_PTHREAD([have_pthread=yes])
@@ -300,8 +300,8 @@ AS_IF([test no = "$JAR"],
 
 AS_IF([test yes = "$jar_support"],
       [AS_IF([test yes = "$have_zzip"],
-             [LIBS="$LIBS $ZZIP_LIBS"
-              CFLAGS="$CFLAGS $ZZIP_CFLAGS"
+             [LIBS="$LIBS $zziplib_LIBS"
+              CFLAGS="$CFLAGS $zziplib_CFLAGS"
               AC_SUBST([LIBS])
               AC_SUBST([CFLAGS])],
              [jar_support=no
@@ -382,7 +382,6 @@ AC_SUBST([jar_support])
 AC_CONFIG_FILES([Makefile
                  Doxyfile
                  docs/Makefile
-                 m4/Makefile
                  src/Makefile
                  src/classpath/Makefile
                  src/preverifier/Makefile
