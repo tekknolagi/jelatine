@@ -197,7 +197,7 @@ const_pool_t *cp_create(class_t *cl, class_file_t *cf)
 
     // Check and process the various string entries
 
-    for (size_t i = 0; i < entries - 1; i++) {
+    for (size_t i = 0; i < (size_t)entries - 1; i++) {
         tag = tag_read(tags, i);
 
         switch (tag) {

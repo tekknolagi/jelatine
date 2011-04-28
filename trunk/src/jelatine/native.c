@@ -1063,8 +1063,8 @@ static KNI_RETURNTYPE_VOID java_lang_System_arraycopy( void )
     if ((srcOffset < 0)
         || (destOffset < 0)
         || (len < 0)
-        || (srcOffset + len > src_array->length)
-        || (destOffset + len > dest_array->length))
+        || (srcOffset + len > (int32_t)src_array->length)
+        || (destOffset + len > (int32_t)dest_array->length))
     {
         KNI_ThrowNew("java/lang/IndexOutOfBoundsException", NULL);
         goto end;
@@ -1085,7 +1085,7 @@ static KNI_RETURNTYPE_VOID java_lang_System_arraycopy( void )
                 direction = -1;
             }
 
-            for (size_t i = 0; i < len; i++) {
+            for (int32_t i = 0; i < len; i++) {
                 uint8_t temp;
                 uint8_t ntemp;
 
@@ -1482,7 +1482,7 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_readBuf( void )
         result = -1;
     } else {
         array = (array_t *) *src_ref;
-        data = (array_get_data(array) + offset);
+        data = ((uint8_t *)array_get_data(array) + offset);
 
         thread_may_block();
         result = recv(sock, data, len, 0);
@@ -1544,7 +1544,7 @@ static KNI_RETURNTYPE_INT jelatine_cldc_io_socket_ProtocolImpl_writeBuf( void )
         result = -1;
     } else {
         array = (array_t *) *src_ref;
-        data = (array_get_data(array) + offset);
+        data = ((uint8_t *)array_get_data(array) + offset);
 
         thread_may_block();
         result = send(sock, data, len, 0);
