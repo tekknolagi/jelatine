@@ -115,7 +115,6 @@ static void parse_method_descriptor(method_t *method)
     const char *desc = method->descriptor;
     size_t i = 0, j = 0; // A couple of counters
     uint32_t args_size = 0; // Size (in stack slots) of the arguments
-    uint32_t ret_size = 0; // Size (in stack slots) of the return value
     uint32_t dimensions = 0; // Array dimensions
 
     switch (desc[i]) {
@@ -190,7 +189,6 @@ return_type_pass:
 
     switch (desc[i]) {
         case 'V':
-            ret_size = 0;
             break;
 
         case 'B':
@@ -199,12 +197,10 @@ return_type_pass:
         case 'I':
         case 'S':
         case 'Z':
-            ret_size = 1;
             break;
 
         case 'J':
         case 'D':
-            ret_size = 2;
             break;
 
         case 'L':
@@ -219,7 +215,6 @@ return_type_pass:
             }
 
             i = j;
-            ret_size = 1;
             break;
 
         case '[':
@@ -254,7 +249,6 @@ return_type_pass:
             }
 
             i = j;
-            ret_size = 1;
             break;
 
         default:

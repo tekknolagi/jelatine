@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
 
 static void parse_command_line_args(int argc, char *argv[])
 {
-    size_t i = 1;
+    int i = 1;
 
     while (i < argc) {
         if (((strcmp("-c", argv[i]) == 0)

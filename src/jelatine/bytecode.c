@@ -51,8 +51,8 @@ void translate_bytecode(class_t *cl, method_t *method, uint8_t *code,
     const_pool_t *cp = cl->const_pool;
     uint8_t opcode;
     int32_t i = 0;
-    uint32_t j = 0;
-    uint32_t code_length = method_get_code_length(method);
+    int32_t j = 0;
+    int32_t code_length = method_get_code_length(method);
     bool synchronized = method_is_synchronized(method);
 
     /* Add a special monitor enter opcode at the beginning of the code if the
@@ -912,8 +912,8 @@ void translate_bytecode(class_t *cl, method_t *method, uint8_t *code,
     // Check consistency of the exception handlers
     for (i = 0; i < method->exception_table_length; i++) {
         if ((handlers[i].start_pc >= handlers[i].end_pc)
-            || (handlers[i].start_pc >= code_length)
-            || (handlers[i].end_pc > code_length))
+            || ((int32_t) handlers[i].start_pc >= code_length)
+            || ((int32_t) handlers[i].end_pc > code_length))
         {
             c_throw(JAVA_LANG_NOCLASSDEFFOUNDERROR,
                     "Malformed exception handler");

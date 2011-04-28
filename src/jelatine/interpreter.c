@@ -1472,7 +1472,7 @@ void interpreter(method_t *main_method)
 
         if (value2 == 0) {
             goto throw_arithmeticexception;
-        } else if ((value1 == 0x80000000) && (value2 == -1)) {
+        } else if ((value1 == (int32_t) 0x80000000) && (value2 == -1)) {
             *((int32_t *) (sp - 2)) = value1;
         } else {
             *((int32_t *) (sp - 2)) = value1 / value2;
@@ -1519,7 +1519,7 @@ void interpreter(method_t *main_method)
 
         if (value2 == 0) {
             goto throw_arithmeticexception;
-        } else if ((value1 == 0x80000000) && (value2 == -1)) {
+        } else if ((value1 == (int32_t) 0x80000000) && (value2 == -1)) {
             *((int32_t *) (sp - 2)) = 0;
         } else {
             *((int32_t *) (sp - 2)) = value1 % value2;
@@ -2061,7 +2061,7 @@ void interpreter(method_t *main_method)
         int32_t default_offset = aligned_ptr[0];
         int32_t n_pairs = aligned_ptr[1];
         int32_t key = *((int32_t *) (sp - 1));
-        uint32_t i;
+        int32_t i;
 
         aligned_ptr += 2;
         sp--;
