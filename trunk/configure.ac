@@ -220,14 +220,17 @@ AC_C_BIGENDIAN
 AX_C_FLOAT_WORDS_BIGENDIAN
 
 # Check for built-in functions
-ACX_CHECK_BUILTIN([__builtin_nan], [double my_nan =], [""])
+ACX_GCC_BUILTIN([__builtin_nan], [double my_nan =], [""])
+
+# Check for the __attribute__((unused)) variable attribute
+ACX_GCC_ATTRIBUTE_UNUSED
 
 # Check for function attributes
 
-ACX_CHECK_ATTRIBUTE([const], [int], [void])
-ACX_CHECK_ATTRIBUTE([malloc], [void *], [void])
-ACX_CHECK_ATTRIBUTE([noreturn], [void], [void])
-ACX_CHECK_ATTRIBUTE([pure], [int], [void])
+ACX_GCC_FUNC_ATTRIBUTE([const], [int], [void])
+ACX_GCC_FUNC_ATTRIBUTE([malloc], [void *], [void])
+ACX_GCC_FUNC_ATTRIBUTE([noreturn], [void], [void])
+ACX_GCC_FUNC_ATTRIBUTE([pure], [int], [void])
 
 # Check for label-as-values gcc extension
 

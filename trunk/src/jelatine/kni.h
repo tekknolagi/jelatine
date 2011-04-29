@@ -568,8 +568,8 @@ extern jfieldID KNI_GetStaticFieldID(jclass, const char *, const char *);
  * \param fieldID A field ID of the given class
  * \returns Returns the value of the specified static field */
 
-static inline jboolean KNI_GetStaticBooleanField(jclass classHandle,
-                                                 jfieldID fieldID)
+static inline jboolean KNI_GetStaticBooleanField(
+    jclass classHandle ATTRIBUTE_UNUSED, jfieldID fieldID)
 {
     return *((uint8_t *) fieldID);
 } // KNI_GetStaticBooleanField()
@@ -581,7 +581,8 @@ static inline jboolean KNI_GetStaticBooleanField(jclass classHandle,
  * \param fieldID A field ID of the given class
  * \returns Returns the value of the specified static field */
 
-static inline jbyte KNI_GetStaticByteField(jclass classHandle, jfieldID fieldID)
+static inline jbyte KNI_GetStaticByteField(jclass classHandle ATTRIBUTE_UNUSED,
+                                           jfieldID fieldID)
 {
     return *((int8_t *) fieldID);
 } // KNI_GetStaticByteField()
@@ -593,7 +594,8 @@ static inline jbyte KNI_GetStaticByteField(jclass classHandle, jfieldID fieldID)
  * \param fieldID A field ID of the given class
  * \returns Returns the value of the specified static field */
 
-static inline jchar KNI_GetStaticCharField(jclass classHandle, jfieldID fieldID)
+static inline jchar KNI_GetStaticCharField(jclass classHandle ATTRIBUTE_UNUSED,
+                                           jfieldID fieldID)
 {
     return *((uint16_t *) fieldID);
 } // KNI_GetStaticCharField()
@@ -605,8 +607,8 @@ static inline jchar KNI_GetStaticCharField(jclass classHandle, jfieldID fieldID)
  * \param fieldID A field ID of the given class
  * \returns Returns the value of the specified static field */
 
-static inline jshort KNI_GetStaticShortField(jclass classHandle,
-                                             jfieldID fieldID)
+static inline jshort KNI_GetStaticShortField(
+    jclass classHandle ATTRIBUTE_UNUSED, jfieldID fieldID)
 {
     return *((int16_t *) fieldID);
 } // KNI_GetStaticShortField()
@@ -618,7 +620,8 @@ static inline jshort KNI_GetStaticShortField(jclass classHandle,
  * \param fieldID A field ID of the given class
  * \returns Returns the value of the specified static field */
 
-static inline jint KNI_GetStaticIntField(jclass classHandle, jfieldID fieldID)
+static inline jint KNI_GetStaticIntField(jclass classHandle ATTRIBUTE_UNUSED,
+                                         jfieldID fieldID)
 {
     return *((int32_t *) fieldID);
 } // KNI_GetStaticIntField()
@@ -630,7 +633,8 @@ static inline jint KNI_GetStaticIntField(jclass classHandle, jfieldID fieldID)
  * \param fieldID A field ID of the given class
  * \returns Returns the value of the specified static field */
 
-static inline jlong KNI_GetStaticLongField(jclass classHandle, jfieldID fieldID)
+static inline jlong KNI_GetStaticLongField(jclass classHandle ATTRIBUTE_UNUSED,
+                                           jfieldID fieldID)
 {
     return *((int64_t *) fieldID);
 } // KNI_GetStaticLongField()
@@ -644,8 +648,8 @@ static inline jlong KNI_GetStaticLongField(jclass classHandle, jfieldID fieldID)
  * \param fieldID A field ID of the given class
  * \returns Returns the value of the specified static field */
 
-static inline jfloat KNI_GetStaticFloatField(jclass classHandle,
-                                             jfieldID fieldID)
+static inline jfloat KNI_GetStaticFloatField(
+    jclass classHandle ATTRIBUTE_UNUSED, jfieldID fieldID)
 {
     return *((float *) fieldID);
 } // KNI_GetStaticFloatField()
@@ -657,8 +661,8 @@ static inline jfloat KNI_GetStaticFloatField(jclass classHandle,
  * \param fieldID A field ID of the given class
  * \returns Returns the value of the specified static field */
 
-static inline jdouble KNI_GetStaticDoubleField(jclass classHandle,
-                                               jfieldID fieldID)
+static inline jdouble KNI_GetStaticDoubleField(
+    jclass classHandle ATTRIBUTE_UNUSED, jfieldID fieldID)
 {
     return *((double *) fieldID);
 } // KNI_GetStaticDoubleField()
@@ -672,7 +676,7 @@ static inline jdouble KNI_GetStaticDoubleField(jclass classHandle,
  * \param fieldID A field ID of the given class
  * \param toHandle A handle to which the return value will be assigned */
 
-static inline void KNI_GetStaticObjectField(jclass classHandle,
+static inline void KNI_GetStaticObjectField(jclass classHandle ATTRIBUTE_UNUSED,
                                             jfieldID fieldID, jobject toHandle)
 {
     *toHandle = *((uintptr_t *) fieldID);
@@ -685,8 +689,8 @@ static inline void KNI_GetStaticObjectField(jclass classHandle,
  * \param fieldID A field ID of the given class
  * \param value The value to set to the static field */
 
-static inline void KNI_SetStaticBooleanField(jclass classHandle,
-                                             jfieldID fieldID, jboolean value)
+static inline void KNI_SetStaticBooleanField(
+    jclass classHandle ATTRIBUTE_UNUSED, jfieldID fieldID, jboolean value)
 {
     *((uint8_t *) fieldID) = value;
 } // KNI_SetStaticBooleanField()
@@ -698,8 +702,8 @@ static inline void KNI_SetStaticBooleanField(jclass classHandle,
  * \param fieldID A field ID of the given class
  * \param value The value to set to the static field */
 
-static inline void KNI_SetStaticByteField(jclass classHandle, jfieldID fieldID,
-                                          jbyte value)
+static inline void KNI_SetStaticByteField(jclass classHandle ATTRIBUTE_UNUSED,
+                                          jfieldID fieldID, jbyte value)
 {
     *((int8_t *) fieldID) = value;
 } // KNI_SetStaticByteField()
@@ -711,8 +715,8 @@ static inline void KNI_SetStaticByteField(jclass classHandle, jfieldID fieldID,
  * \param fieldID A field ID of the given class
  * \param value The value to set to the static field */
 
-static inline void KNI_SetStaticCharField(jclass classHandle, jfieldID fieldID,
-                                          jchar value)
+static inline void KNI_SetStaticCharField(jclass classHandle ATTRIBUTE_UNUSED,
+                                          jfieldID fieldID, jchar value)
 {
     *((uint16_t *) fieldID) = value;
 } // KNI_SetStaticCharField()
@@ -724,8 +728,8 @@ static inline void KNI_SetStaticCharField(jclass classHandle, jfieldID fieldID,
  * \param fieldID A field ID of the given class
  * \param value The value to set to the static field */
 
-static inline void KNI_SetStaticShortField(jclass classHandle, jfieldID fieldID,
-                                           jshort value)
+static inline void KNI_SetStaticShortField(jclass classHandle ATTRIBUTE_UNUSED,
+                                           jfieldID fieldID, jshort value)
 {
     *((int16_t *) fieldID) = value;
 } // KNI_SetStaticShortField()
@@ -737,8 +741,8 @@ static inline void KNI_SetStaticShortField(jclass classHandle, jfieldID fieldID,
  * \param fieldID A field ID of the given class
  * \param value The value to set to the static field */
 
-static inline void KNI_SetStaticIntField(jclass classHandle, jfieldID fieldID,
-                                         jint value)
+static inline void KNI_SetStaticIntField(jclass classHandle ATTRIBUTE_UNUSED,
+                                         jfieldID fieldID, jint value)
 {
     *((int32_t *) fieldID) = value;
 } // KNI_SetStaticIntField()
@@ -750,8 +754,8 @@ static inline void KNI_SetStaticIntField(jclass classHandle, jfieldID fieldID,
  * \param fieldID A field ID of the given class
  * \param value The value to set to the static field */
 
-static inline void KNI_SetStaticLongField(jclass classHandle, jfieldID fieldID,
-                                          jlong value)
+static inline void KNI_SetStaticLongField(jclass classHandle ATTRIBUTE_UNUSED,
+                                          jfieldID fieldID, jlong value)
 {
     *((int64_t *) fieldID) = value;
 } // KNI_SetStaticLongField()
@@ -765,8 +769,8 @@ static inline void KNI_SetStaticLongField(jclass classHandle, jfieldID fieldID,
  * \param fieldID A field ID of the given class
  * \param value The value to set to the static field */
 
-static inline void KNI_SetStaticFloatField(jclass classHandle, jfieldID fieldID,
-                                           jfloat value)
+static inline void KNI_SetStaticFloatField(jclass classHandle ATTRIBUTE_UNUSED,
+                                           jfieldID fieldID, jfloat value)
 {
     *((float *) fieldID) = value;
 } // KNI_SetStaticFloatField()
@@ -778,7 +782,7 @@ static inline void KNI_SetStaticFloatField(jclass classHandle, jfieldID fieldID,
  * \param fieldID A field ID of the given class
  * \param value The value to set to the static field */
 
-static inline void KNI_SetStaticDoubleField(jclass classHandle,
+static inline void KNI_SetStaticDoubleField(jclass classHandle ATTRIBUTE_UNUSED,
                                             jfieldID fieldID, jdouble value)
 {
     *((double *) fieldID) = value;
@@ -794,7 +798,7 @@ static inline void KNI_SetStaticDoubleField(jclass classHandle,
  * \param fromHandle A handle pointing to an object that will assigned to the
  * field */
 
-static inline void KNI_SetStaticObjectField(jclass classHandle,
+static inline void KNI_SetStaticObjectField(jclass classHandle ATTRIBUTE_UNUSED,
                                             jfieldID fieldID,
                                             jobject fromHandle)
 {

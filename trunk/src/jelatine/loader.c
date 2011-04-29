@@ -923,7 +923,7 @@ static void load_interfaces(class_t *cl, class_file_t *cf)
  * \param cl A pointer to a class structure
  * \param cf A pointer to the class file */
 
-static void load_attributes(class_t *cl, class_file_t *cf)
+static void load_attributes(class_t *cl ATTRIBUTE_UNUSED, class_file_t *cf)
 {
     uint32_t attr_count = cf_load_u2(cf);
     uint32_t attr_length;
@@ -1205,8 +1205,8 @@ static void load_method_attribute_Code(class_t *cl, class_file_t *cf,
  * \param attr A pointer to a method_attributes_t structure used to hold the
  * attribute data */
 
-static void load_attribute_Code_attributes(class_t *cl, class_file_t *cf,
-                                           method_attributes_t *attr)
+static void load_attribute_Code_attributes(class_t *cl ATTRIBUTE_UNUSED,
+    class_file_t *cf, method_attributes_t *attr ATTRIBUTE_UNUSED)
 {
     long real_length;
     uint32_t attributes_count, attr_length;
@@ -1241,8 +1241,8 @@ static void load_attribute_Code_attributes(class_t *cl, class_file_t *cf,
  * \param attr A pointer to a method_attributes_t structure used to store the
  * attribute data */
 
-static void load_method_attribute_Exceptions(class_t *cl, class_file_t *cf,
-                                             method_attributes_t *attr)
+static void load_method_attribute_Exceptions(class_t *cl ATTRIBUTE_UNUSED,
+    class_file_t *cf, method_attributes_t *attr ATTRIBUTE_UNUSED)
 {
     uint16_t number_of_exceptions;
     uint16_t *exceptions;
@@ -1743,7 +1743,8 @@ static void load_field_attributes(class_t *cl, class_file_t *cf,
  * \param attr A pointer to a field_attributes_t structure used for storing the
  * attribute data */
 
-static void load_field_attribute_ConstantValue(class_t *cl, class_file_t *cf,
+static void load_field_attribute_ConstantValue(class_t *cl ATTRIBUTE_UNUSED,
+                                               class_file_t *cf,
                                                field_attributes_t *attr)
 {
     attr->constant_value_index = cf_load_u2(cf);
