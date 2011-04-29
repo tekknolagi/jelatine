@@ -1,7 +1,7 @@
 #
 # SYNOPSIS
 #
-#   ACX_CHECK_ATTRIBUTE(ATTRIBUTE, RETURN, PARAMS, [ATTR_PARAMS])
+#   ACX_GCC_CHECK_FUNC_ATTRIBUTE(ATTRIBUTE, RETURN, PARAMS, [ATTR_PARAMS])
 #
 # DESCRIPTION
 #
@@ -19,9 +19,11 @@
 #
 #   ACX_CHECK_ATTRIBUTE([alias], [int], [void], ["main"])
 #
+#   Defines HAVE___ATTRIBUTE__$ATTRIBUTE if the attribute is supported.
+#
 # LAST MODIFICATION
 #
-#   2011-04-06
+#   2011-04-28
 #
 # COPYLEFT
 #
@@ -31,21 +33,21 @@
 #   modification, are permitted in any medium without royalty provided
 #   the copyright notice and this notice are preserved.
 
-AC_DEFUN([ACX_CHECK_ATTRIBUTE],
-         [AS_VAR_PUSHDEF([ac_var], [acx_cv_have_attribute_$1])
-          acx_attribute_cflags="$CFLAGS"
+AC_DEFUN([ACX_GCC_FUNC_ATTRIBUTE],
+         [AS_VAR_PUSHDEF([ac_var], [acx_cv_gcc_func_attribute_$1])
+          acx_gcfa_cflags="$CFLAGS"
           CFLAGS="$CFLAGS -Werror"
           AS_IF([test x$4 = x],
-                [acx_attribute_t="extern $2 func($3) __attribute__(($1));"]
-                [acx_attribute_t="extern $2 func($3) __attribute__(($1($4)));"])
+                [acx_gcfa_code="extern $2 func($3) __attribute__(($1));"]
+                [acx_gcfa_code="extern $2 func($3) __attribute__(($1($4)));"])
           AC_CACHE_CHECK([for __attribute__(($1))], [ac_var],
-                         [AC_LINK_IFELSE([AC_LANG_PROGRAM([$acx_attribute_t],
+                         [AC_LINK_IFELSE([AC_LANG_PROGRAM([$acx_gcfa_code],
                                                           [])],
                                          [AS_VAR_SET([ac_var], [yes])],
                                          [AS_VAR_SET([ac_var], [no])])])
           AS_IF([test yes = AS_VAR_GET([ac_var])],
-                [AC_DEFINE_UNQUOTED(AS_TR_CPP(HAVE_ATTRIBUTE_$1), 1,
-                                    [Define to 1 if the system has the `$1' \
-                                     built-in function])], [])
-          CFLAGS="$acx_attribute_cflags"
+                [AC_DEFINE_UNQUOTED(AS_TR_CPP(HAVE___ATTRIBUTE__$1), 1,
+                                    [Define to 1 if the compiler supports the \
+                                     `$1' function attribute])], [])
+          CFLAGS="$acx_gcfa_cflags"
           AS_VAR_POPDEF([ac_var])])

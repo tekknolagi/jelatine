@@ -1,7 +1,7 @@
 #
 # SYNOPSIS
 #
-#   ACX_CHECK_BUILTIN(BUILTIN, [RESULT], [PARAMS])
+#   ACX_GCC_BUILTIN(BUILTIN, [RESULT], [PARAMS])
 #
 # DESCRIPTION
 #
@@ -12,11 +12,11 @@
 #   parameters passed to the builtin funciton. For example checking for
 #   __builtin_clz():
 #
-#   ACX_CHECK_BUILTIN([__builtin_clz], [int val =], [1])
+#   ACX_GCC_BUILTIN([__builtin_clz], [int val =], [1])
 #
 # LAST MODIFICATION
 #
-#   2011-04-06
+#   2011-04-28
 #
 # COPYLEFT
 #
@@ -26,7 +26,7 @@
 #   modification, are permitted in any medium without royalty provided
 #   the copyright notice and this notice are preserved.
 
-AC_DEFUN([ACX_CHECK_BUILTIN],
+AC_DEFUN([ACX_GCC_BUILTIN],
          [AS_VAR_PUSHDEF([ac_var], [acx_cv_have_$1])
           AC_CACHE_CHECK([for $1], [ac_var],
                          [AC_LINK_IFELSE([AC_LANG_PROGRAM([], [[$2 $1($3);]])],

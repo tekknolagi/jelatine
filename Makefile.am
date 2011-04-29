@@ -25,8 +25,9 @@ ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = docs src
 
 EXTRA_DIST = \
-    m4/acx_attribute.m4 \
-    m4/acx_builtin.m4 \
+    m4/acx_gcc_attribute_unused.m4 \
+    m4/acx_gcc_builtin.m4 \
+    m4/acx_gcc_func_attribute.m4 \
     m4/acx_func_va_copy.m4 \
     m4/ax_pthread.m4 \
     m4/ax_c_float_words_bigendian.m4 \
