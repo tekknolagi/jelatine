@@ -18,7 +18,9 @@
 ##   along with Jelatine.  If not, see <http://www.gnu.org/licenses/>.       ##
 ###############################################################################
 
-JAVAC = javac -g:none -classpath @srcdir@ -bootclasspath @srcdir@ -d . -source 1.4
+JAR = @JAR@
+JAVAC = @JAVAC@
+JAVACFLAGS = @JAVACFLAGS@ -classpath @srcdir@ -bootclasspath @srcdir@ -d . -source 1.4
 
 prefix = @prefix@
 datadir = @datadir@
@@ -415,7 +417,7 @@ $(java_io_classes) $(java_lang_classes) $(java_lang_ref_classes) \
 $(java_util_classes) $(javax_microedition_io_classes) \
 $(jelatine_classes) $(jelatine_cldc_io_classes) \
 $(jelatine_cldc_io_socket_classes) : %.class : @srcdir@/%.java
-	$(JAVAC) $<
+	$(JAVAC) $(JAVACFLAGS) $<
 
 $(prev_all_classes): preverification
 

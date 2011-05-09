@@ -29,6 +29,9 @@ EXTRA_DIST = \
     m4/acx_gcc_builtin.m4 \
     m4/acx_gcc_func_attribute.m4 \
     m4/acx_func_va_copy.m4 \
+    m4/ax_prog_javac.m4 \
+    m4/ax_prog_javac_works.m4 \
+    m4/ax_prog_jar.m4 \
     m4/ax_pthread.m4 \
     m4/ax_c_float_words_bigendian.m4 \
     m4/ax_tls.m4 \

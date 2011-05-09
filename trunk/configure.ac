@@ -128,8 +128,11 @@ AS_IF([test no = "$ac_cv_prog_cc_c99"],
 # Enable POSIX extensions for targets which disables them by default
 AC_USE_SYSTEM_EXTENSIONS
 
+# Check for a usable 'javac' compiler
+AX_PROG_JAVAC
+
 # Check for a usable 'jar' program
-AC_CHECK_PROGS([JAR], [jar fastjar], [no])
+AX_PROG_JAR
 
 ################################################################################
 # Check for libraries                                                          #
@@ -372,7 +375,12 @@ AS_IF([test yes = "$cross_compiling"],
 # Define other variables
 
 AS_IF([test yes = "$prgc"], [AC_DEFINE([JEL_POINTER_REVERSAL], [1])])
-AS_IF([test no = "$debug"], [AC_DEFINE([NDEBUG], [1])])
+AS_IF([test yes = "$debug"],
+      [JAVACFLAGS="$JAVACFLAGS -g"
+       AC_SUBST([JAVACFLAGS])],
+      [AC_DEFINE([NDEBUG], [1])
+       JAVACFLAGS="$JAVACFLAGS -g:none"
+       AC_SUBST([JAVACFLAGS])])
 AS_IF([test yes = "$tracing"], [AC_DEFINE([JEL_TRACE], [1])])
 AS_IF([test yes = "$printing"], [AC_DEFINE([JEL_PRINT], [1])])
 
