@@ -79,8 +79,7 @@ AC_ARG_ENABLE([threaded],
 
 AC_ARG_WITH([thread-model],
             [AS_HELP_STRING([--with-thread-model=<model>],
-                            [Selects the thread model used by the VM \
-                             (pthread, pth, none) (default: auto)])],
+                            [Selects the thread model used by the VM (pthread, pth, none) (default: auto)])],
             [thread_model="$withval"], [thread_model=auto])
 
 AC_ARG_ENABLE([finalizer],
@@ -95,8 +94,7 @@ AC_ARG_ENABLE([fp-support],
 
 AC_ARG_ENABLE([prgc],
               [AS_HELP_STRING([--disable-prgc],
-                              [Disables the pointer reversal algorythm in the \
-                               garbage collector])],
+                              [Disables the pointer reversal algorythm in the garbage collector])],
               [prgc="$enableval"], [prgc=yes])
 
 AC_ARG_ENABLE([debug],
@@ -122,8 +120,7 @@ AC_ARG_ENABLE([printing],
 AC_PROG_CC_C99
 
 AS_IF([test no = "$ac_cv_prog_cc_c99"],
-      [AC_MSG_WARN([You don't seem to have a C99 compiler, compilation may \
-                    fail])])
+      [AC_MSG_WARN([You don't seem to have a C99 compiler, compilation may fail])])
 
 # Enable POSIX extensions for targets which disables them by default
 AC_USE_SYSTEM_EXTENSIONS
@@ -139,7 +136,7 @@ AX_PROG_JAR
 ################################################################################
 
 # JAR support
-PKG_CHECK_MODULES([zziplib], [zziplib >= 0.13.00], [have_zzip=yes],
+PKG_CHECK_MODULES([zziplib], [zziplib >= 0.13.50], [have_zzip=yes],
                   [have_zzip=no])
 
 # POSIX threads
@@ -276,8 +273,7 @@ ACX_FUNC_VA_COPY
 # Tests for fp support
 AC_CHECK_FUNCS([fmod sin cos tan sqrt ceil floor], ,
                [AS_IF([test yes = "$fp_support"],
-                      [AC_MSG_ERROR([Standard math.h functions are needed for \
-                                     FP support])])])
+                      [AC_MSG_ERROR([Standard math.h functions are needed for FP support])])])
 
 # Thread related tests
 AS_IF([test pthread = "$thread_model"],
@@ -312,8 +308,7 @@ AS_IF([test yes = "$jar_support"],
               AC_SUBST([LIBS])
               AC_SUBST([CFLAGS])],
              [jar_support=no
-              AC_MSG_WARN([JAR file support disabled, zziplib may not be \
-                           installed or you may have an outdated version])])])
+              AC_MSG_WARN([JAR file support disabled, zziplib may not be installed or you may have an outdated version])])])
 
 AS_IF([test yes = "$jar_support"],
       [classpath="classpath.jar"
