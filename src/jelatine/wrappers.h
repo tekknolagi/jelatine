@@ -39,6 +39,13 @@
 #   include <pth.h>
 #endif
 
+// More thread-related definitions
+#if !defined(HAVE_PTHREAD_YIELD) && !defined(HAVE_PTHREAD_YIELD_NP)
+#   if HAVE_SCHED_H
+#       define NEED_SCHED_H (1)
+#   endif // HAVE_SCHED_H
+#endif // !defined(HAVE_PTHREAD_YIELD) && !defined(HAVE_PTHREAD_YIELD_NP)
+
 /* Adapt the NDEBUG macro to the convention used by the autotools of defining
  * all existing macros to 1 in order to simplify checking */
 

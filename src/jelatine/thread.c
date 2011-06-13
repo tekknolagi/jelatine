@@ -23,6 +23,10 @@
 
 #include "wrappers.h"
 
+#if NEED_SCHED_H
+#   include "sched.h"
+#endif // NEED_SCHED_H
+
 #include "class.h"
 #include "interpreter.h"
 #include "kni.h"
@@ -141,9 +145,11 @@ static void native_thread_yield( void )
 #if JEL_THREAD_POSIX
 #   if HAVE_PTHREAD_YIELD_NP
     pthread_yield_np();
-#   else
+#   elif HAVE_PTHREAD_YIELD
     pthread_yield();
-#endif // JEL_THREAD_POSIX
+#   elif HAVE_SCHED_YIELD
+    ; // NOP
+#   endif // JEL_THREAD_POSIX
 #elif JEL_THREAD_PTH
     pth_yield(NULL);
 #endif

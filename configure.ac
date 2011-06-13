@@ -169,7 +169,7 @@ AC_HEADER_STDBOOL
 AC_HEADER_TIME
 
 AC_CHECK_HEADERS([arpa/inet.h dirent.h fcntl.h iconv.h inttypes.h langinfo.h \
-                  math.h stdarg.h sys/stat.h sys/types.h unistd.h])
+                  math.h sched.h stdarg.h sys/stat.h sys/types.h unistd.h])
 
 # Socket support
 AC_CHECK_HEADERS([sys/socket.h netinet/in.h netdb.h], [], [socket_support=no])
@@ -276,8 +276,7 @@ AC_CHECK_FUNCS([fmod sin cos tan sqrt ceil floor], ,
                       [AC_MSG_ERROR([Standard math.h functions are needed for FP support])])])
 
 # Thread related tests
-AS_IF([test pthread = "$thread_model"],
-      [AC_CHECK_FUNCS([pthread_yield pthread_yield_np])])
+AC_CHECK_FUNCS([pthread_yield pthread_yield_np sched_yield])
 
 ################################################################################
 # Check for system services                                                    #
