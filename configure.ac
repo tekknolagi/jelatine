@@ -18,7 +18,7 @@
 ##   along with Jelatine.  If not, see <http://www.gnu.org/licenses/>.       ##
 ###############################################################################
 
-AC_INIT([Jelatine], [0.9.4], [gabriele.svelto@gmail.com],
+AC_INIT([Jelatine], [0.9.4], [gabriele.svelto@gmail.com], [jelatine],
         [http://jelatine.sourceforge.net])
 AM_INIT_AUTOMAKE
 
