@@ -80,14 +80,11 @@ static void set_classpath_string(path_t *, const char *);
 
 static void set_classpath_string(path_t *path, const char *str)
 {
+#if JEL_JARFILE_SUPPORT
     size_t len = strlen(str);
 
-    path->str = str;
-
-#if JEL_JARFILE_SUPPORT
     if ((len > 4) && (strcmp(str + len - 4, ".jar") == 0)) {
         // This is a JAR file
-        path->str = str;
         path->jar = zzip_dir_open(str, 0);
 
         if (path->jar == NULL) {
@@ -96,6 +93,8 @@ static void set_classpath_string(path_t *path, const char *str)
         }
     }
 #endif // JEL_JARFILE_SUPPORT
+
+    path->str = str;
 } // set_classpath_string()
 
 /** Initializes the classpath by processing the related options */
