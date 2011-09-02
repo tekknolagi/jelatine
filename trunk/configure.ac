@@ -405,7 +405,7 @@ cat <<EOF | tee -a config.log
 ## Configuration. ##
 ## -------------- ##
 
-Configuration for jelatine $VERSION
+Configuration for $PACKAGE_STRING
         Build preverifier: $want_preverifier
         With floating-point support: $fp_support
         With JAR support: $jar_support
