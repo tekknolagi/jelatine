@@ -406,13 +406,20 @@ cat <<EOF | tee -a config.log
 ## -------------- ##
 
 Configuration for $PACKAGE_STRING
-        Build preverifier: $want_preverifier
-        With floating-point support: $fp_support
-        With JAR support: $jar_support
-        With socket support: $socket_support
-        With threaded interpreter: $threaded
-        With thread model: $thread_model
-        With finalization: $finalizer
-        Debugging: $debug
+    Build preverifier: $want_preverifier
+    Floating-point support: $fp_support
+    JAR support: $jar_support
+    Socket support: $socket_support
+    Threaded interpreter: $threaded
+    Thread model: $thread_model
+    Finalization support: $finalizer
+    Debugging: $debug
+
+Used CFLAGS:
+    CPPFLAGS: $CPPFLAGS
+    CFLAGS: $CFLAGS
+
+Installation:
+    Prefix: $prefix
 
 EOF
