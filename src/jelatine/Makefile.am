@@ -20,8 +20,6 @@
 ##   along with Jelatine.  If not, see <http://www.gnu.org/licenses/>.       ##
 ###############################################################################
 
-AM_CPPFLAGS = -DJEL_CLASSPATH_DIR='"${pkgdatadir}/${classpath}"'
-
 bin_PROGRAMS = jelatine
 
 jelatine_SOURCES = \
@@ -56,3 +54,6 @@ jelatine_SOURCES = \
     verifier.c verifier.h \
     vm.c vm.h \
     wrappers.h
+
+jelatine_CPPFLAGS = -DJEL_CLASSPATH_DIR='"${pkgdatadir}/${classpath}"'
+jelatine_LDFLAGS = $(jelatine_LIBS)

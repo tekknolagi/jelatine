@@ -123,6 +123,8 @@ AC_PROG_CC_C99
 AS_IF([test no = "$ac_cv_prog_cc_c99"],
       [AC_MSG_WARN([You don't seem to have a C99 compiler, compilation may fail])])
 
+AM_PROG_CC_C_O
+
 # Enable POSIX extensions for targets which disables them by default
 AC_USE_SYSTEM_EXTENSIONS
 
@@ -144,17 +146,19 @@ PKG_CHECK_MODULES([zziplib], [zziplib >= 0.13.50], [have_zzip=yes],
 AX_PTHREAD([have_pthread=yes])
 
 # libpth
-AC_SEARCH_LIBS([pth_init], [pth])
+AC_CHECK_LIB([pth], [pth_init], [pth_LIBS="-lpth"], [pth_LIBS=""])
 
 # Floating point support
 LT_LIB_M
 
-AS_IF([test yes = "$fp_support"], [LIBS="$LIBS $LIBM"
-                                   AC_SUBST([LIBS])])
+AS_IF([test yes = "$fp_support"], [jelatine_LIBS="$jelatine_LIBS $LIBM"])
 
-# Other libraries
-AC_SEARCH_LIBS([iconv], [iconv]) # Needed on some hosts for the preverifier
-AC_SEARCH_LIBS([clock_gettime], [rt])
+# Needed on some hosts for the preverifier
+AC_CHECK_LIB([iconv], [iconv],
+             [preverifier_LIBS="-liconv"], [preverifier_LIBS=""])
+
+# Time measurements on Linux
+AC_CHECK_LIB([rt], [clock_gettime], [jelatine_LIBS="$jelatine_LIBS -lrt"])
 
 ################################################################################
 # Check for header files                                                       #
@@ -256,7 +260,7 @@ AS_IF([test auto = "$threaded" && test yes = "$have_labels_as_values"],
       [threaded=yes
        AC_DEFINE([JEL_THREADED_INTERPRETER], [1])])
 
-# Check for local storage support
+# Check for thread local storage support
 AX_TLS
 
 ################################################################################
@@ -272,12 +276,25 @@ AC_CHECK_FUNCS([gettimeofday clock_gettime])
 ACX_FUNC_VA_COPY
 
 # Tests for fp support
-AC_CHECK_FUNCS([fmod sin cos tan sqrt ceil floor], ,
+old_LIBS="$LIBS"
+LIBS="$LIBS $LIBM"
+
+AC_CHECK_FUNCS([fmod \
+                sin \
+                cos \
+                tan \
+                sqrt \
+                ceil \
+                floor], [],
                [AS_IF([test yes = "$fp_support"],
-                      [AC_MSG_ERROR([Standard math.h functions are needed for FP support])])])
+                      [AC_MSG_ERROR([required function $ac_func() is missing])])])
+
+LIBS="$old_LIBS"
 
 # Thread related tests
-AC_CHECK_FUNCS([pthread_yield pthread_yield_np sched_yield])
+AC_CHECK_FUNCS([pthread_yield \
+                pthread_yield_np \
+                sched_yield])
 
 ################################################################################
 # Check for system services                                                    #
@@ -325,30 +342,29 @@ AS_IF([test yes = "$socket_support"],
 AS_IF([test auto = "$thread_model"],
       [AS_IF([test yes = "$have_pthread"],
              [thread_model=pthread],
-             [AS_IF([test yes = "$ac_cv_search_pth_init" && \
+             [AS_IF([test yes = "$ac_cv_lib_pth_init" && \
                      test yes = "$ac_cv_header_pth_h"],
                     [thread_model=pth],
                     [thread_model=none])])])
 
-AS_CASE([AS_VAR_GET([thread_model])],
+AS_CASE([$thread_model],
         [pthread],
         [AS_IF([test yes = "$have_pthread"],
                [AC_DEFINE([JEL_THREAD_POSIX], [1])
-                LIBS="$LIBS $PTHREAD_LIBS"
-                CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
                 CC="$PTHREAD_CC"
-                AC_SUBST([LIBS])
-                AC_SUBST([CFLAGS])
-                AC_SUBST([CC])],
+                AC_SUBST([CC])
+                jelatine_CFLAGS="$jelatine_LIBS $PTHREAD_CFLAGS"
+                jelatine_LIBS="$jelatine_LIBS $PTHREAD_LIBS"],
         [AC_MSG_ERROR([POSIX threads headers and libraries were not found])])],
         [pth],
-        [AS_IF([test no = "$ac_cv_search_pth_init" || \
+        [AS_IF([test no = "$ac_cv_lib_pth_init" || \
                 test no = "$ac_cv_header_pth_h"],
                [AC_MSG_ERROR([GNU Pth was not found])],
-               [AC_DEFINE([JEL_THREAD_PTH], [1])])],
+               [AC_DEFINE([JEL_THREAD_PTH], [1])
+                jelatine_LIBS="$jelatine_LIBS $pth_LIBS"])],
         [none],
         [AC_DEFINE([JEL_THREAD_NONE], [1])],
-        [AC_MSG_ERROR([Unknown thread model: AS_VAR_GET(thread_model)])])
+        [AC_MSG_ERROR([Unknown thread model: $thread_model])])
 
 # Deal with finalization support
 
@@ -381,10 +397,16 @@ AS_IF([test yes = "$printing"], [AC_DEFINE([JEL_PRINT], [1])])
 
 # Set output variables
 
-AM_CONDITIONAL([COND_PREVERIFIER], [test yes = "$want_preverifier"])
-AC_SUBST([preverifier])
+# Jelatine output variables
+AC_SUBST([jelatine_LIBS])
+AC_SUBST([jelatine_CFLAGS])
 AC_SUBST([classpath])
 AC_SUBST([jar_support])
+
+# Preverifier output variables
+AM_CONDITIONAL([COND_PREVERIFIER], [test yes = "$want_preverifier"])
+AC_SUBST([preverifier])
+AC_SUBST([preverifier_LIBS])
 
 AC_CONFIG_FILES([Makefile
                  Doxyfile
