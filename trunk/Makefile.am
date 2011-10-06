@@ -35,6 +35,7 @@ EXTRA_DIST = \
     m4/ax_pthread.m4 \
     m4/ax_c_float_words_bigendian.m4 \
     m4/ax_tls.m4 \
+    m4/pkg.m4 \
     lib/malloc.c \
     lib/memcmp.c \
     lib/memcpy.c \
