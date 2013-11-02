@@ -121,7 +121,7 @@ AC_ARG_ENABLE([printing],
 AC_PROG_CC_C99
 
 AS_IF([test no = "$ac_cv_prog_cc_c99"],
-      [AC_MSG_WARN([You don't seem to have a C99 compiler, compilation may fail])])
+      [AC_MSG_WARN([You do not seem to have a C99 compiler, compilation may fail])])
 
 AM_PROG_CC_C_O
 
