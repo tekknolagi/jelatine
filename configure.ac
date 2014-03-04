@@ -225,17 +225,16 @@ AC_C_BIGENDIAN
 AX_C_FLOAT_WORDS_BIGENDIAN
 
 # Check for built-in functions
-ACX_GCC_BUILTIN([__builtin_nan], [double my_nan =], [""])
+AX_GCC_BUILTIN([__builtin_nan])
 
 # Check for the __attribute__((unused)) variable attribute
-ACX_GCC_ATTRIBUTE_UNUSED
+AX_GCC_VAR_ATTRIBUTE([unused])
 
 # Check for function attributes
-
-ACX_GCC_FUNC_ATTRIBUTE([const], [int], [void])
-ACX_GCC_FUNC_ATTRIBUTE([malloc], [void *], [void])
-ACX_GCC_FUNC_ATTRIBUTE([noreturn], [void], [void])
-ACX_GCC_FUNC_ATTRIBUTE([pure], [int], [void])
+AX_GCC_FUNC_ATTRIBUTE([const])
+AX_GCC_FUNC_ATTRIBUTE([malloc])
+AX_GCC_FUNC_ATTRIBUTE([noreturn])
+AX_GCC_FUNC_ATTRIBUTE([pure])
 
 # Check for label-as-values gcc extension
 
@@ -291,10 +290,21 @@ AC_CHECK_FUNCS([fmod \
 
 LIBS="$old_LIBS"
 
-# Thread related tests
+# Check for thread-related functions
+old_LIBS="$LIBS"
+old_CFLAGS="$CFLAGS"
+old_CC="$CC"
+LIBS="$PTHREAD_LIBS $LIBS"
+CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+CC="$PTHREAD_CC"
+
 AC_CHECK_FUNCS([pthread_yield \
                 pthread_yield_np \
                 sched_yield])
+
+LIBS="$old_LIBS"
+CFLAGS="$old_CFLAGS"
+CC="$old_CC"
 
 ################################################################################
 # Check for system services                                                    #

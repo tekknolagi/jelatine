@@ -181,35 +181,35 @@ static inline float __nan( void )
  * Compiler features                                                          *
  ******************************************************************************/
 
-#if HAVE___ATTRIBUTE__CONST
+#if HAVE_FUNC_ATTRIBUTE_CONST
 #   define ATTRIBUTE_CONST __attribute__((const))
 #else
 #   define ATTRIBUTE_CONST
-#endif // HAVE___ATTRIBUTE__CONST
+#endif // HAVE_FUNC_ATTRIBUTE_CONST
 
-#if HAVE___ATTRIBUTE__MALLOC
+#if HAVE_FUNC_ATTRIBUTE_MALLOC
 #   define ATTRIBUTE_MALLOC __attribute__((malloc))
 #else
 #   define ATTRIBUTE_MALLOC
-#endif // HAVE___ATTRIBUTE__MALLOC
+#endif // HAVE_FUNC_ATTRIBUTE_MALLOC
 
-#if HAVE___ATTRIBUTE__NORETURN
+#if HAVE_FUNC_ATTRIBUTE_NORETURN
 #   define ATTRIBUTE_NORETURN __attribute__((noreturn))
 #else
 #   define ATTRIBUTE_NORETURN
-#endif // HAVE___ATTRIBUTE__NORETURN
+#endif // HAVE_FUNC_ATTRIBUTE_NORETURN
 
-#if HAVE___ATTRIBUTE__PURE
+#if HAVE_FUNC_ATTRIBUTE_PURE
 #   define ATTRIBUTE_PURE __attribute__((pure))
 #else
 #   define ATTRIBUTE_PURE
-#endif // HAVE___ATTRIBUTE__PURE
+#endif // HAVE_FUNC_ATTRIBUTE_PURE
 
-#if HAVE___ATTRIBUTE__UNUSED
+#if HAVE_VAR_ATTRIBUTE_UNUSED
 #   define ATTRIBUTE_UNUSED __attribute__((unused))
 #else
 #   define ATTRIBUTE_UNUSED
-#endif // HAVE___ATTRIBUTE__UNUSED
+#endif // HAVE_VAR_ATTRIBUTE_UNUSED
 
 /** \endcond */
 
