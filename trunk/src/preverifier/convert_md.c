@@ -108,7 +108,7 @@ int utf2native(const char* from, char* to, int buflen) {
          * already in UTF-8 encoding
          * Copy over the 'from' to 'to'.
          */
-        memcpy(to, from, buflen);
+        strncpy(to, from, buflen);
         return 0;
     }
 
