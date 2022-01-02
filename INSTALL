@@ -29,6 +29,12 @@ $ ./configure --prefix=/home/myname/temp
 $ make
 $ make install
 
+ If you don't have a configure script, you can generate it yourself:
+
+$ aclocal && autoheader && automake --add-missing && autoconf
+
+ and then repeat the steps above.
+
 The configure script accepts the following extra options:
 
 --disable-preverifier

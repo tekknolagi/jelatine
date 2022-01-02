@@ -28,6 +28,8 @@ AC_PREREQ([2.63])
 # Inform autoconf to output a config.h file
 AC_CONFIG_HEADERS([config.h])
 
+AC_SEARCH_LIBS([fmod], [m])
+
 # Check if main.c is present in the 'src' directory
 AC_CONFIG_SRCDIR([src/jelatine/main.c])
 
